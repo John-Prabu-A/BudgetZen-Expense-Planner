@@ -1,5 +1,6 @@
 
-import { Button, Input } from '@/components/ui';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import { useAuth } from '@/context/Auth';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
@@ -74,10 +75,10 @@ export default function Account() {
         <Input label="Email" value={session?.user?.email} disabled />
       </View>
       <View style={styles.verticallySpaced}>
-        <Input label="Username" value={username || ''} onChangeText={(text) => setUsername(text)} />
+        <Input label="Username" value={username || ''} onChangeText={(text: String) => setUsername(String(text))} />
       </View>
       <View style={styles.verticallySpaced}>
-        <Input label="Website" value={website || ''} onChangeText={(text) => setWebsite(text)} />
+        <Input label="Website" value={website || ''} onChangeText={(text: String) => setWebsite(String(text))} />
       </View>
 
       <View style={[styles.verticallySpaced, styles.mt20]}>

@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
-import { Alert, StyleSheet, View, AppState } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
-import { Button, Input } from '@/components/ui';
+import React, { useState } from 'react';
+import { Alert, AppState, StyleSheet, View } from 'react-native';
 
 // Tells Supabase Auth to continuously refresh the session automatically
 // if the app is in the foreground. When this is added, you will continue
@@ -48,7 +49,7 @@ export default function Auth() {
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Input
           label="Email"
-          onChangeText={(text) => setEmail(text)}
+          onChangeText={(text: String) => setEmail(String(text))}
           value={email}
           placeholder="email@address.com"
           autoCapitalize={'none'}
@@ -57,7 +58,7 @@ export default function Auth() {
       <View style={styles.verticallySpaced}>
         <Input
           label="Password"
-          onChangeText={(text) => setPassword(text)}
+          onChangeText={(text: String) => setPassword(String(text))}
           value={password}
           secureTextEntry={true}
           placeholder="Password"
