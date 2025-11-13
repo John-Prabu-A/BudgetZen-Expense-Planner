@@ -1,7 +1,13 @@
+import { useAuth } from '@/context/Auth';
+import { deleteCategory, readCategories } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function CategoriesScreen() {
+  const router = useRouter();
+  const { user, session } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = {
@@ -13,51 +19,148 @@ export default function CategoriesScreen() {
     accent: '#0284c7',
   };
 
-  const expenseCategories = [
-    { id: '1', name: 'Housing', icon: 'home', color: '#FF6B6B' },
-    { id: '2', name: 'Food', icon: 'food', color: '#4ECDC4' },
-    { id: '3', name: 'Shopping', icon: 'shopping', color: '#FFE66D' },
-    { id: '4', name: 'Entertainment', icon: 'movie', color: '#A8E6CF' },
-    { id: '5', name: 'Transportation', icon: 'car', color: '#FF8B94' },
-    { id: '6', name: 'Utilities', icon: 'lightning-bolt', color: '#95E1D3' },
-  ];
+  const [expenseCategories, setExpenseCategories] = useState<any[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<any[]>([]);
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const incomeCategories = [
-    { id: '7', name: 'Salary', icon: 'briefcase', color: '#6BCB77' },
-    { id: '8', name: 'Freelance', icon: 'laptop', color: '#4D96FF' },
-    { id: '9', name: 'Investment', icon: 'chart-line', color: '#FFB700' },
-    { id: '10', name: 'Other', icon: 'gift', color: '#FF6B9D' },
-  ];
+  const defaultCategoryColors: { [key: string]: string } = {
+    'Housing': '#FF6B6B',
+    'Food': '#4ECDC4',
+    'Shopping': '#FFE66D',
+    'Entertainment': '#A8E6CF',
+    'Transportation': '#FF8B94',
+    'Utilities': '#95E1D3',
+    'Salary': '#6BCB77',
+    'Freelance': '#4D96FF',
+    'Investment': '#FFB700',
+    'Other': '#FF6B9D',
+  };
 
-  const CategoryCard = ({ category, type }: any) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryCard,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-        },
-      ]}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
-        <MaterialCommunityIcons name={category.icon} size={24} color="#FFFFFF" />
-      </View>
-      <View style={styles.categoryInfo}>
-        <Text style={[styles.categoryName, { color: colors.text }]}>
-          {category.name}
-        </Text>
-        <Text style={[styles.categoryType, { color: colors.textSecondary }]}>
-          {type}
-        </Text>
-      </View>
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={20}
-        color={colors.textSecondary}
-      />
-    </TouchableOpacity>
+  useEffect(() => {
+    if (user && session) {
+      loadCategories();
+    }
+  }, [user, session]);
+
+  // Reload categories whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (user && session) {
+        loadCategories();
+      }
+    }, [user, session])
   );
+
+  const loadCategories = async () => {
+    try {
+      setLoading(true);
+      const data = await readCategories();
+      // For now, separate by type if available, otherwise all in expense
+      const expense = (data || []).filter((c: any) => !c.type || c.type === 'expense');
+      const income = (data || []).filter((c: any) => c.type === 'income');
+      
+      setExpenseCategories(expense);
+      setIncomeCategories(income);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      Alert.alert('Error', 'Failed to load categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string, categoryName: string, type: string) => {
+    Alert.alert(
+      'Delete Category',
+      `Are you sure you want to delete "${categoryName}"?`,
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {},
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          onPress: async () => {
+            try {
+              await deleteCategory(categoryId);
+              if (type === 'Expense') {
+                setExpenseCategories(expenseCategories.filter((c) => c.id !== categoryId));
+              } else {
+                setIncomeCategories(incomeCategories.filter((c) => c.id !== categoryId));
+              }
+              Alert.alert('Success', 'Category deleted successfully!');
+            } catch (error) {
+              console.error('Error deleting category:', error);
+              Alert.alert('Error', 'Failed to delete category');
+            }
+          },
+          style: 'destructive',
+        },
+      ],
+    );
+  };
+
+  const CategoryCard = ({ category, type }: any) => {
+    const isExpanded = expandedCategoryId === category.id;
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.categoryCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setExpandedCategoryId(isExpanded ? null : category.id)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.categoryHeader}>
+          <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
+            <MaterialCommunityIcons name={category.icon} size={24} color="#FFFFFF" />
+          </View>
+          <View style={styles.categoryInfo}>
+            <Text style={[styles.categoryName, { color: colors.text }]}>
+              {category.name}
+            </Text>
+            <Text style={[styles.categoryType, { color: colors.textSecondary }]}>
+              {type}
+            </Text>
+          </View>
+          <MaterialCommunityIcons
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={colors.textSecondary}
+          />
+        </View>
+
+        {/* Expanded Actions */}
+        {isExpanded && (
+          <View style={[styles.expandedActions, { borderTopColor: colors.border }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.accent }]}
+              onPress={() => {
+                // TODO: Navigate to edit category modal with category data
+                Alert.alert('Edit Category', `Editing "${category.name}"`);
+              }}
+            >
+              <MaterialCommunityIcons name="pencil" size={16} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
+              onPress={() => handleDeleteCategory(category.id, category.name, type)}
+            >
+              <MaterialCommunityIcons name="trash-can" size={16} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScrollView
@@ -69,50 +172,81 @@ export default function CategoriesScreen() {
       <View style={[styles.section, { borderBottomColor: colors.border }]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Expense Categories
+            Expense Categories {loading && '(Loading...)'}
           </Text>
           <TouchableOpacity
             style={[
               styles.addButton,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
+            onPress={() => router.push('/add-category-modal')}
           >
             <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
           </TouchableOpacity>
         </View>
 
-        {expenseCategories.map((category) => (
-          <CategoryCard
-            key={category.id}
-            category={category}
-            type="Expense"
-          />
-        ))}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading categories...
+            </Text>
+          </View>
+        ) : expenseCategories.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="inbox" size={48} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No expense categories yet.
+            </Text>
+          </View>
+        ) : (
+          expenseCategories.map((category) => (
+            <CategoryCard
+              key={category.id}
+              category={category}
+              type="Expense"
+            />
+          ))
+        )}
       </View>
 
       {/* Income Categories */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Income Categories
+            Income Categories {loading && '(Loading...)'}
           </Text>
           <TouchableOpacity
             style={[
               styles.addButton,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
+            onPress={() => router.push('/add-category-modal')}
           >
             <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
           </TouchableOpacity>
         </View>
 
-        {incomeCategories.map((category) => (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading categories...
+            </Text>
+          </View>
+        ) : incomeCategories.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="inbox" size={48} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No income categories yet.
+            </Text>
+          </View>
+        ) : (
+          incomeCategories.map((category) => (
           <CategoryCard
             key={category.id}
             category={category}
             type="Income"
           />
-        ))}
+        )))}
       </View>
     </ScrollView>
   );
@@ -149,13 +283,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   categoryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 8,
     borderRadius: 8,
     borderWidth: 1,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   categoryIcon: {
@@ -175,5 +312,44 @@ const styles = StyleSheet.create({
   },
   categoryType: {
     fontSize: 12,
+  },
+  expandedActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

@@ -1,7 +1,13 @@
+import { useAuth } from '@/context/Auth';
+import { deleteAccount, readAccounts } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function AccountsScreen() {
+  const router = useRouter();
+  const { user, session } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = {
@@ -13,87 +19,155 @@ export default function AccountsScreen() {
     accent: '#0284c7',
   };
 
-  const accounts = [
-    {
-      id: '1',
-      name: 'Savings Account',
-      type: 'Bank',
-      balance: 50000,
-      icon: 'bank',
-    },
-    {
-      id: '2',
-      name: 'Credit Card',
-      type: 'Credit',
-      balance: -5000,
-      icon: 'credit-card',
-    },
-    {
-      id: '3',
-      name: 'Cash',
-      type: 'Cash',
-      balance: 10000,
-      icon: 'wallet',
-    },
-    {
-      id: '4',
-      name: 'Investment',
-      type: 'Investment',
-      balance: 100000,
-      icon: 'trending-up',
-    },
-  ];
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  // Map account types to icons
+  const accountTypeIcons: { [key: string]: string } = {
+    'Bank Account': 'bank',
+    'Credit Card': 'credit-card',
+    'Cash': 'wallet',
+    'Investment': 'trending-up',
+    'Savings': 'piggy-bank',
+    'Loan': 'file-document',
+  };
 
-  const AccountCard = ({ account }: any) => (
-    <TouchableOpacity
-      style={[
-        styles.accountCard,
+  useEffect(() => {
+    if (user && session) {
+      loadAccounts();
+    }
+  }, [user, session]);
+
+  // Reload accounts whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (user && session) {
+        loadAccounts();
+      }
+    }, [user, session])
+  );
+
+  const loadAccounts = async () => {
+    try {
+      setLoading(true);
+      const data = await readAccounts();
+      setAccounts(data || []);
+    } catch (error) {
+      console.error('Error loading accounts:', error);
+      Alert.alert('Error', 'Failed to load accounts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = (accountId: string, accountName: string) => {
+    Alert.alert(
+      'Delete Account',
+      `Are you sure you want to delete "${accountName}"?`,
+      [
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
+          text: 'Cancel',
+          onPress: () => {},
+          style: 'cancel',
         },
-      ]}
-      activeOpacity={0.7}
-    >
-      <View style={styles.accountHeader}>
-        <View style={[styles.accountIcon, { backgroundColor: colors.accent }]}>
+        {
+          text: 'Delete',
+          onPress: async () => {
+            try {
+              await deleteAccount(accountId);
+              setAccounts(accounts.filter((a) => a.id !== accountId));
+              Alert.alert('Success', 'Account deleted successfully!');
+            } catch (error) {
+              console.error('Error deleting account:', error);
+              Alert.alert('Error', 'Failed to delete account');
+            }
+          },
+          style: 'destructive',
+        },
+      ],
+    );
+  };
+
+  const totalBalance = accounts.reduce((sum, acc) => sum + (acc.initial_balance || 0), 0);
+
+  const AccountCard = ({ account }: any) => {
+    const isExpanded = expandedAccountId === account.id;
+    const iconName = accountTypeIcons[account.type] || 'wallet';
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.accountCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setExpandedAccountId(isExpanded ? null : account.id)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.accountHeader}>
+          <View style={[styles.accountIcon, { backgroundColor: colors.accent }]}>
+            <MaterialCommunityIcons
+              name={iconName as any}
+              size={20}
+              color="#FFFFFF"
+            />
+          </View>
+          <View style={styles.accountInfo}>
+            <Text style={[styles.accountName, { color: colors.text }]}>
+              {account.name}
+            </Text>
+            <Text style={[styles.accountType, { color: colors.textSecondary }]}>
+              {account.type}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.accountFooter}>
+          <Text
+            style={[
+              styles.accountBalance,
+              {
+                color: account.initial_balance >= 0 ? colors.text : '#EF4444',
+              },
+            ]}
+          >
+            ₹{(account.initial_balance || 0).toLocaleString()}
+          </Text>
           <MaterialCommunityIcons
-            name={account.icon}
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={20}
-            color="#FFFFFF"
+            color={colors.textSecondary}
           />
         </View>
-        <View style={styles.accountInfo}>
-          <Text style={[styles.accountName, { color: colors.text }]}>
-            {account.name}
-          </Text>
-          <Text style={[styles.accountType, { color: colors.textSecondary }]}>
-            {account.type}
-          </Text>
-        </View>
-      </View>
 
-      <View style={styles.accountFooter}>
-        <Text
-          style={[
-            styles.accountBalance,
-            {
-              color: account.balance >= 0 ? colors.text : '#EF4444',
-            },
-          ]}
-        >
-          ₹{account.balance.toLocaleString()}
-        </Text>
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={20}
-          color={colors.textSecondary}
-        />
-      </View>
-    </TouchableOpacity>
-  );
+        {/* Expanded Actions */}
+        {isExpanded && (
+          <View style={[styles.expandedActions, { borderTopColor: colors.border }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.accent }]}
+              onPress={() => {
+                // TODO: Navigate to edit account modal with account data
+                Alert.alert('Edit Account', `Editing "${account.name}"`);
+              }}
+            >
+              <MaterialCommunityIcons name="pencil" size={16} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
+              onPress={() => handleDeleteAccount(account.id, account.name)}
+            >
+              <MaterialCommunityIcons name="trash-can" size={16} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScrollView
@@ -118,7 +192,7 @@ export default function AccountsScreen() {
           ₹{totalBalance.toLocaleString()}
         </Text>
         <View style={styles.totalBalanceFooter}>
-          <TouchableOpacity style={[styles.actionButton, { borderColor: '#FFFFFF' }]}>
+          <TouchableOpacity style={[styles.actionButton, { borderColor: '#FFFFFF' }]} onPress={() => router.push('/add-account-modal')}>
             <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Add Account</Text>
           </TouchableOpacity>
@@ -128,11 +202,26 @@ export default function AccountsScreen() {
       {/* Accounts List */}
       <View style={[styles.section, { borderBottomColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Your Accounts
+          Your Accounts {loading && '(Loading...)'}
         </Text>
-        {accounts.map((account) => (
-          <AccountCard key={account.id} account={account} />
-        ))}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading accounts...
+            </Text>
+          </View>
+        ) : accounts.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="inbox" size={48} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No accounts yet. Add your first account!
+            </Text>
+          </View>
+        ) : (
+          accounts.map((account) => (
+            <AccountCard key={account.id} account={account} />
+          ))
+        )}
       </View>
 
       {/* Account Types Info */}
@@ -254,6 +343,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  expandedActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -267,5 +363,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 18,
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

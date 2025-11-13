@@ -1,7 +1,13 @@
+import { useAuth } from '@/context/Auth';
+import { deleteBudget, readBudgets } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function BudgetsScreen() {
+  const router = useRouter();
+  const { user, session } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = {
@@ -15,12 +21,81 @@ export default function BudgetsScreen() {
     danger: '#EF4444',
   };
 
-  const budgets = [
-    { id: '1', name: 'Housing', limit: 15000, spent: 14200, icon: 'home' },
-    { id: '2', name: 'Food', limit: 5000, spent: 4500, icon: 'food' },
-    { id: '3', name: 'Shopping', limit: 3000, spent: 3200, icon: 'shopping' },
-    { id: '4', name: 'Entertainment', limit: 2000, spent: 1500, icon: 'movie' },
-  ];
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [expandedBudgetId, setExpandedBudgetId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const categoryIcons: { [key: string]: string } = {
+    'Housing': 'home',
+    'Food': 'food',
+    'Shopping': 'shopping-cart',
+    'Entertainment': 'movie',
+    'Transportation': 'car',
+    'Utilities': 'lightning-bolt',
+  };
+
+  useEffect(() => {
+    if (user && session) {
+      loadBudgets();
+    }
+  }, [user, session]);
+
+  // Reload budgets whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (user && session) {
+        loadBudgets();
+      }
+    }, [user, session])
+  );
+
+  const loadBudgets = async () => {
+    try {
+      setLoading(true);
+      const data = await readBudgets();
+      const transformedBudgets = (data || []).map((budget: any) => ({
+        ...budget,
+        icon: categoryIcons[budget.categories?.name] || 'tag',
+        name: budget.categories?.name || 'Unknown',
+        limit: budget.amount,
+        spent: 0,
+      }));
+      setBudgets(transformedBudgets);
+    } catch (error) {
+      console.error('Error loading budgets:', error);
+      Alert.alert('Error', 'Failed to load budgets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBudget = (budgetId: string, budgetName: string) => {
+    Alert.alert(
+      'Delete Budget',
+      `Are you sure you want to delete "${budgetName}" budget?`,
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {},
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          onPress: async () => {
+            try {
+              await deleteBudget(budgetId);
+              setBudgets(budgets.filter((b) => b.id !== budgetId));
+              Alert.alert('Success', 'Budget deleted successfully!');
+            } catch (error) {
+              console.error('Error deleting budget:', error);
+              Alert.alert('Error', 'Failed to delete budget');
+            }
+          },
+          style: 'destructive',
+        },
+      ],
+    );
+  };
 
   const getProgressColor = (spent: number, limit: number) => {
     const percentage = (spent / limit) * 100;
@@ -32,9 +107,10 @@ export default function BudgetsScreen() {
   const BudgetCard = ({ budget }: any) => {
     const percentage = (budget.spent / budget.limit) * 100;
     const progressColor = getProgressColor(budget.spent, budget.limit);
+    const isExpanded = expandedBudgetId === budget.id;
 
     return (
-      <View
+      <TouchableOpacity
         style={[
           styles.budgetCard,
           {
@@ -42,6 +118,8 @@ export default function BudgetsScreen() {
             borderColor: colors.border,
           },
         ]}
+        onPress={() => setExpandedBudgetId(isExpanded ? null : budget.id)}
+        activeOpacity={0.7}
       >
         <View style={styles.budgetHeader}>
           <View style={styles.budgetTitleContainer}>
@@ -59,16 +137,23 @@ export default function BudgetsScreen() {
               </Text>
             </View>
           </View>
-          <Text
-            style={[
-              styles.budgetAmount,
-              {
-                color: percentage >= 100 ? colors.danger : colors.text,
-              },
-            ]}
-          >
-            ₹{budget.spent.toLocaleString()}
-          </Text>
+          <View style={styles.budgetHeaderRight}>
+            <Text
+              style={[
+                styles.budgetAmount,
+                {
+                  color: percentage >= 100 ? colors.danger : colors.text,
+                },
+              ]}
+            >
+              ₹{budget.spent.toLocaleString()}
+            </Text>
+            <MaterialCommunityIcons
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </View>
         </View>
 
         {/* Progress Bar */}
@@ -97,7 +182,30 @@ export default function BudgetsScreen() {
             ₹{Math.max(0, budget.limit - budget.spent).toLocaleString()} remaining
           </Text>
         </View>
-      </View>
+
+        {/* Expanded Actions */}
+        {isExpanded && (
+          <View style={[styles.expandedActions, { borderTopColor: colors.border }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.accent }]}
+              onPress={() => {
+                // TODO: Navigate to edit budget modal with budget data
+                Alert.alert('Edit Budget', `Editing "${budget.name}" budget`);
+              }}
+            >
+              <MaterialCommunityIcons name="pencil" size={16} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.danger }]}
+              onPress={() => handleDeleteBudget(budget.id, budget.name)}
+            >
+              <MaterialCommunityIcons name="trash-can" size={16} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -110,21 +218,37 @@ export default function BudgetsScreen() {
       <View style={[styles.section, { borderBottomColor: colors.border }]}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Monthly Budgets
+            Monthly Budgets {loading && '(Loading...)'}
           </Text>
           <TouchableOpacity
             style={[
               styles.addButton,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
+            onPress={() => router.push('/add-budget-modal')}
           >
             <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
           </TouchableOpacity>
         </View>
 
-        {budgets.map((budget) => (
-          <BudgetCard key={budget.id} budget={budget} />
-        ))}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading budgets...
+            </Text>
+          </View>
+        ) : budgets.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="inbox" size={48} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No budgets yet. Create your first budget!
+            </Text>
+          </View>
+        ) : (
+          budgets.map((budget) => (
+            <BudgetCard key={budget.id} budget={budget} />
+          ))
+        )}
       </View>
 
       <View style={styles.section}>
@@ -217,6 +341,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  budgetHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   budgetTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -257,6 +386,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  expandedActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
   summaryCard: {
     borderRadius: 8,
     borderWidth: 1,
@@ -277,5 +427,23 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

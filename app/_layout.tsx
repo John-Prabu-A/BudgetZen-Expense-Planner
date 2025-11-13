@@ -1,5 +1,5 @@
 
-import { Slot, useRootNavigationState, useRouter, useSegments } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -36,6 +36,14 @@ const InitialLayout = () => {
         const inAuthGroup = segments[0] === '(auth)';
         const inOnboardingGroup = segments[0] === '(onboarding)';
         const inTabsGroup = segments[0] === '(tabs)';
+        
+        // Check if we're in a modal route
+        const isModalRoute = [
+            'add-record-modal',
+            'add-budget-modal',
+            'add-account-modal',
+            'add-category-modal',
+        ].includes(segments[0]);
 
         console.log('Navigation check:', {
             session: !!session,
@@ -43,8 +51,15 @@ const InitialLayout = () => {
             inAuthGroup,
             inOnboardingGroup,
             inTabsGroup,
+            isModalRoute,
             segments,
         });
+
+        // Skip navigation checks if we're in a modal route
+        if (isModalRoute) {
+            console.log('In modal route, skipping navigation validation');
+            return;
+        }
 
         // If not authenticated, go to login
         if (!session) {
@@ -82,7 +97,17 @@ const InitialLayout = () => {
         );
     }
 
-    return <Slot />;
+    return (
+        <Stack>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="add-record-modal" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="add-budget-modal" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="add-account-modal" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="add-category-modal" options={{ presentation: 'modal', headerShown: false }} />
+        </Stack>
+    );
 };
 
 export default function RootLayout() {
