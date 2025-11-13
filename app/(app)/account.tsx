@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
 export default function Account() {
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState('');
   const [website, setWebsite] = useState('');
@@ -69,6 +69,14 @@ export default function Account() {
     }
   }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to sign out');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={[styles.verticallySpaced, styles.mt20]}>
@@ -90,7 +98,7 @@ export default function Account() {
       </View>
 
       <View style={styles.verticallySpaced}>
-        <Button title="Sign Out" onPress={() => supabase.auth.signOut()} />
+        <Button title="Sign Out" onPress={handleSignOut} />
       </View>
     </View>
   );

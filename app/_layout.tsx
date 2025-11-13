@@ -1,27 +1,80 @@
 
+import { Slot, useRootNavigationState, useRouter, useSegments } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/Auth';
-import { Slot, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
 
 const InitialLayout = () => {
     const { session, loading } = useAuth();
     const router = useRouter();
     const segments = useSegments();
+    const navigationReady = useRootNavigationState()?.key;
+    const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+
+    // Check if onboarding is complete on mount
+    useEffect(() => {
+        const checkOnboarding = async () => {
+            try {
+                const completed = await SecureStore.getItemAsync('onboarding_complete');
+                console.log('Onboarding status from storage:', completed);
+                setOnboardingComplete(completed === 'true');
+            } catch (error) {
+                console.error('Error reading onboarding status:', error);
+                setOnboardingComplete(false);
+            }
+        };
+
+        checkOnboarding();
+    }, []);
 
     useEffect(() => {
+        if (!navigationReady) return;
         if (loading) return;
+        if (onboardingComplete === null) return;
 
         const inAuthGroup = segments[0] === '(auth)';
+        const inOnboardingGroup = segments[0] === '(onboarding)';
+        const inTabsGroup = segments[0] === '(tabs)';
 
-        if (session && !inAuthGroup) {
-            router.replace('/(app)/account');
-        } else if (!session && inAuthGroup) {
-            router.replace('/(auth)/login');
+        console.log('Navigation check:', {
+            session: !!session,
+            onboardingComplete,
+            inAuthGroup,
+            inOnboardingGroup,
+            inTabsGroup,
+            segments,
+        });
+
+        // If not authenticated, go to login
+        if (!session) {
+            console.log('No session, redirecting to login');
+            if (!inAuthGroup) {
+                router.replace('/(auth)/login');
+            }
         }
-    }, [session, loading, segments, router]);
+        // If authenticated
+        else {
+            console.log('Session exists, checking onboarding...');
+            // If onboarding is not complete, go to onboarding
+            if (!onboardingComplete && !inOnboardingGroup) {
+                console.log('Onboarding not complete, redirecting to currency');
+                router.replace('/(onboarding)/currency');
+            }
+            // If onboarding is complete, go to main app (tabs)
+            else if (onboardingComplete && !inTabsGroup) {
+                console.log('Onboarding complete, redirecting to tabs');
+                router.replace('/(tabs)');
+            }
+            // Prevent going back to auth screen when logged in
+            else if (inAuthGroup && onboardingComplete) {
+                console.log('In auth but onboarding complete, redirecting to tabs');
+                router.replace('/(tabs)');
+            }
+        }
+    }, [session, loading, navigationReady, onboardingComplete, segments]);
 
-    if (loading) {
+    if (loading || onboardingComplete === null || !navigationReady) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" />

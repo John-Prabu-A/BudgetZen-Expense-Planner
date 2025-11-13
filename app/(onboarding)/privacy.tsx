@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
-import { View, Text, Switch, TouchableOpacity, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Linking, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 const PrivacyScreen = () => {
   const [sendStats, setSendStats] = useState(false);
@@ -24,7 +24,7 @@ const PrivacyScreen = () => {
           <Text style={{ color: 'blue' }}>Privacy Policy</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity onPress={() => router.push('/(onboarding)/tutorial')}>
+      <TouchableOpacity onPress={() => router.push('./tutorial')}>
         <View style={{ backgroundColor: 'blue', padding: 15, borderRadius: 5 }}>
           <Text style={{ color: 'white', fontWeight: 'bold' }}>Next</Text>
         </View>

@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
-import { View, Text, Switch, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Switch, Text, TouchableOpacity, View } from 'react-native';
 
 const RemindersScreen = () => {
   const [showReminders, setShowReminders] = useState(false);
@@ -16,7 +16,7 @@ const RemindersScreen = () => {
         <Text>Show reminder notification</Text>
         <Switch value={showReminders} onValueChange={setShowReminders} />
       </View>
-      <TouchableOpacity onPress={() => router.push('/(onboarding)/privacy')}>
+      <TouchableOpacity onPress={() => router.push('./privacy')}>
         <View style={{ backgroundColor: 'blue', padding: 15, borderRadius: 5 }}>
           <Text style={{ color: 'white', fontWeight: 'bold' }}>Next</Text>
         </View>

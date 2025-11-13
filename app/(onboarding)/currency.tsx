@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { currencies } from '../../lib/currencies';
 
 const CurrencyScreen = () => {
@@ -29,7 +29,7 @@ const CurrencyScreen = () => {
         data={filteredCurrencies}
         keyExtractor={(item) => item.code}
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => router.push('/(onboarding)/reminders')}>
+          <TouchableOpacity onPress={() => router.push('./reminders')}>
             <View style={{ padding: 15, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
               <Text>{`${item.name} - ${item.code}`}</Text>
             </View>

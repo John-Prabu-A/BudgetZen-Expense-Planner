@@ -1,12 +1,13 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
+import * as SecureStore from 'expo-secure-store';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 type AuthContextType = {
   session: Session | null;
   user: User | null;
-  signOut: () => void;
+  signOut: () => Promise<void>;
   loading: boolean;
 };
 
@@ -19,13 +20,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Clear onboarding flag if user signs out
+      if (event === 'SIGNED_OUT') {
+        SecureStore.deleteItemAsync('onboarding_complete').catch(err =>
+          console.error('Error clearing onboarding flag:', err)
+        );
+      }
     });
 
     // Fetch initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', !!session);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -36,8 +46,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const signOut = () => {
-    supabase.auth.signOut();
+  const signOut = async () => {
+    try {
+      // Clear onboarding flag
+      await SecureStore.deleteItemAsync('onboarding_complete');
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      throw error;
+    }
   };
 
   return (
