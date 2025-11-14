@@ -187,7 +187,7 @@ JSX Rendering (Charts, Categories, Insights)
 - PropTypes validation for component props
 
 ### Theme Support
-- Automatic light/dark theme detection using `useColorScheme()`
+- Automatic light/dark theme detection using `useAppColorScheme()`
 - Dynamic color object applied to all components
 - Consistent color naming:
   - `colors.income` (#10B981 - green)
@@ -488,7 +488,7 @@ useEffect(() => {
 
 ### Issue: Colors not adapting to dark mode
 **Solution**:
-- Verify `useColorScheme()` is working
+- Verify `useAppColorScheme()` is working
 - Check if color object is updated dynamically
 - Ensure all style properties use the dynamic `colors` object
 

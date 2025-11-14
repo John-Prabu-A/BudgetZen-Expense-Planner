@@ -1,4 +1,5 @@
 import { useAuth } from '@/context/Auth';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { createCategory } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -10,7 +11,6 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    useColorScheme,
     View,
 } from 'react-native';
 
@@ -27,7 +27,7 @@ const categoryIcons = [
 
 export default function AddCategoryModal() {
     const router = useRouter();
-    const colorScheme = useColorScheme();
+    const colorScheme = useAppColorScheme();
     const isDark = colorScheme === 'dark';
     const { user, session } = useAuth();
     const colors = {

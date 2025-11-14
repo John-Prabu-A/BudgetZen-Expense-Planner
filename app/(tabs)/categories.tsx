@@ -1,15 +1,19 @@
 import { useAuth } from '@/context/Auth';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useUIMode } from '@/hooks/useUIMode';
 import { deleteCategory, readCategories } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function CategoriesScreen() {
   const router = useRouter();
   const { user, session } = useAuth();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
+  const spacing = useUIMode();
+  const styles = createCategoriesStyles(spacing);
   const colors = {
     background: isDark ? '#1A1A1A' : '#FFFFFF',
     surface: isDark ? '#262626' : '#F5F5F5',
@@ -252,23 +256,23 @@ export default function CategoriesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createCategoriesStyles = (spacing: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
   scrollContent: {
-    paddingVertical: 16,
+    paddingVertical: spacing.lg,
   },
   section: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderBottomWidth: 1,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: 16,
@@ -284,16 +288,16 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     flexDirection: 'column',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.xs,
     borderRadius: 8,
     borderWidth: 1,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   categoryIcon: {
     width: 40,
@@ -315,9 +319,9 @@ const styles = StyleSheet.create({
   },
   expandedActions: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 12,
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
   },
   actionButton: {
@@ -325,7 +329,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: spacing.xs,
     borderRadius: 8,
     gap: 6,
   },
@@ -335,7 +339,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   loadingContainer: {
-    paddingVertical: 20,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -343,10 +347,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   emptyContainer: {
-    paddingVertical: 40,
+    paddingVertical: spacing.xxl,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   emptyText: {
     fontSize: 14,

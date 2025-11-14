@@ -4,9 +4,12 @@ import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/Auth';
+import { PreferencesProvider } from '../context/Preferences';
+import { useAppColorScheme } from '../hooks/useAppColorScheme';
 
 const InitialLayout = () => {
     const { session, loading } = useAuth();
+    const colorScheme = useAppColorScheme();
     const router = useRouter();
     const segments = useSegments();
     const navigationReady = useRootNavigationState()?.key;
@@ -43,6 +46,18 @@ const InitialLayout = () => {
             'add-budget-modal',
             'add-account-modal',
             'add-category-modal',
+            'preferences',
+            'passcode-setup',
+            'export-records-modal',
+            'backup-restore-modal',
+            'delete-reset-modal',
+            'security-modal',
+            'notifications-modal',
+            'advanced-modal',
+            'data-management-modal',
+            'about-modal',
+            'help-modal',
+            'feedback-modal',
         ].includes(segments[0]);
 
         console.log('Navigation check:', {
@@ -98,7 +113,13 @@ const InitialLayout = () => {
     }
 
     return (
-        <Stack>
+        <Stack
+            screenOptions={{
+                contentStyle: {
+                    backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
+                },
+            }}
+        >
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -106,6 +127,18 @@ const InitialLayout = () => {
             <Stack.Screen name="add-budget-modal" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="add-account-modal" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="add-category-modal" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="preferences" options={{ headerShown: false }} />
+            <Stack.Screen name="passcode-setup" options={{ headerShown: false }} />
+            <Stack.Screen name="export-records-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="backup-restore-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="delete-reset-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="security-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="notifications-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="advanced-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="data-management-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="about-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="help-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="feedback-modal" options={{ headerShown: false }} />
         </Stack>
     );
 };
@@ -113,7 +146,9 @@ const InitialLayout = () => {
 export default function RootLayout() {
     return (
         <AuthProvider>
-            <InitialLayout />
+            <PreferencesProvider>
+                <InitialLayout />
+            </PreferencesProvider>
         </AuthProvider>
     );
 }

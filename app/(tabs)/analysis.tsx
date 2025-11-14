@@ -1,15 +1,19 @@
 import { useAuth } from '@/context/Auth';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useUIMode } from '@/hooks/useUIMode';
 import { readCategories, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY';
 
 export default function AnalysisScreen() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
+  const spacing = useUIMode();
+  const styles = createAnalysisStyles(spacing);
   const { user, session } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -722,42 +726,42 @@ export default function AnalysisScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createAnalysisStyles = (spacing: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
   scrollContent: {
-    paddingVertical: 16,
+    paddingVertical: spacing.lg,
   },
   section: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderBottomWidth: 1,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   
   // Chart Styles
   chartContainer: {
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    gap: spacing.lg,
   },
   barChartWrapper: {
-    gap: 20,
+    gap: spacing.lg,
   },
   barGroup: {
-    gap: 8,
+    gap: spacing.xs,
   },
   barLabelGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   barLabel: {
     fontSize: 13,
@@ -779,20 +783,20 @@ const styles = StyleSheet.create({
   },
   summaryStats: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: spacing.md,
+    marginTop: spacing.xs,
   },
   statBox: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     borderRadius: 8,
     borderWidth: 1,
   },
   statLabel: {
     fontSize: 11,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   statValue: {
     fontSize: 16,
@@ -806,15 +810,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   emptyState: {
-    paddingVertical: 40,
+    paddingVertical: spacing.xxl,
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   placeholderText: {
     fontSize: 14,
@@ -825,10 +829,10 @@ const styles = StyleSheet.create({
   categoryItem: {
     borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 8,
-    gap: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.xs,
+    gap: spacing.md,
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -839,7 +843,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.md,
   },
   categoryIcon: {
     width: 40,
@@ -885,12 +889,12 @@ const styles = StyleSheet.create({
   insightCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.xs,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 12,
+    gap: spacing.md,
   },
   insightIcon: {
     width: 48,
@@ -919,10 +923,10 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 24,
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    marginBottom: spacing.xl,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
   headerTitle: {
     fontSize: 28,
@@ -950,8 +954,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderBottomWidth: 1,
   },
   modalTitle: {
@@ -960,29 +964,29 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
   modalSection: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   modalSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   modalSectionDescription: {
     fontSize: 13,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   viewModeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: spacing.md,
   },
   viewModeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
     borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
@@ -995,7 +999,7 @@ const styles = StyleSheet.create({
   },
   modalDivider: {
     height: 1,
-    marginVertical: 16,
+    marginVertical: spacing.lg,
   },
   toggleHeader: {
     flexDirection: 'row',
@@ -1005,7 +1009,7 @@ const styles = StyleSheet.create({
   toggleTitle: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   toggleDescription: {
     fontSize: 12,
@@ -1031,12 +1035,12 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     borderRadius: 10,
     borderWidth: 1,
-    marginTop: 20,
+    marginTop: spacing.lg,
   },
   infoText: {
     fontSize: 12,
@@ -1045,14 +1049,14 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderTopWidth: 1,
   },
   footerButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,

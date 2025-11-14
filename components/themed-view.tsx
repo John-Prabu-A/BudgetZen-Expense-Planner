@@ -1,4 +1,5 @@
-import { View, ViewProps, useColorScheme } from 'react-native';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { View, ViewProps } from 'react-native';
 
 const Colors = {
   light: {
@@ -30,7 +31,7 @@ export function ThemedView({
   variant = 'background',
   ...otherProps
 }: ThemedViewProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const backgroundColor =
     colorScheme === 'dark'
       ? darkColor || Colors.dark[variant]

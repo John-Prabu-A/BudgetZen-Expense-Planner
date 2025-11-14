@@ -1,15 +1,19 @@
 import { useAuth } from '@/context/Auth';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useUIMode } from '@/hooks/useUIMode';
 import { deleteAccount, readAccounts } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function AccountsScreen() {
   const router = useRouter();
   const { user, session } = useAuth();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
+  const spacing = useUIMode();
+  const styles = createAccountsStyles(spacing);
   const colors = {
     background: isDark ? '#1A1A1A' : '#FFFFFF',
     surface: isDark ? '#262626' : '#F5F5F5',
@@ -249,41 +253,41 @@ export default function AccountsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createAccountsStyles = (spacing: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
   scrollContent: {
-    paddingVertical: 16,
+    paddingVertical: spacing.lg,
   },
   totalBalanceCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderRadius: 12,
     borderWidth: 1,
   },
   totalBalanceLabel: {
     fontSize: 14,
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   totalBalanceAmount: {
     fontSize: 32,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   totalBalanceFooter: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.xs,
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: spacing.xs,
     borderRadius: 8,
     borderWidth: 1,
     gap: 6,
@@ -294,27 +298,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   section: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderBottomWidth: 1,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   accountCard: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.xs,
     borderRadius: 8,
     borderWidth: 1,
   },
   accountHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
   accountIcon: {
     width: 40,
@@ -345,19 +349,19 @@ const styles = StyleSheet.create({
   },
   expandedActions: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 12,
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 12,
+    gap: spacing.md,
   },
   infoText: {
     flex: 1,
@@ -365,7 +369,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   loadingContainer: {
-    paddingVertical: 20,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -373,10 +377,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   emptyContainer: {
-    paddingVertical: 40,
+    paddingVertical: spacing.xxl,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   emptyText: {
     fontSize: 14,

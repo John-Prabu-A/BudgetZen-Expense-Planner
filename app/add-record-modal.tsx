@@ -1,4 +1,6 @@
 import { useAuth } from '@/context/Auth';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useUIMode } from '@/hooks/useUIMode';
 import { createRecord, readAccounts, readCategories } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -12,7 +14,6 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    useColorScheme,
     View,
 } from 'react-native';
 
@@ -21,8 +22,9 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function AddRecordModal() {
   const router = useRouter();
   const { user } = useAuth();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
+  const spacing = useUIMode();
 
   const colors = {
     background: isDark ? '#1A1A1A' : '#FFFFFF',

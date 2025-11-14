@@ -153,7 +153,7 @@ The Records screen maintains a FAB that navigates to this screen:
 - **Keyboard Handling**: Works with both Android and iOS keyboards
 
 ## Dark/Light Mode Support
-- Full theme support using React Native's `useColorScheme()`
+- Full theme support using React Native's `useAppColorScheme()`
 - All text, backgrounds, and borders adapt to theme
 - Consistent color palette across all UI elements
 

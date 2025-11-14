@@ -1,4 +1,5 @@
 import { useAuth } from '@/context/Auth';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { createBudget, readCategories } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -10,13 +11,12 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    useColorScheme,
     View
 } from 'react-native';
 
 export default function AddBudgetModal() {
     const router = useRouter();
-    const colorScheme = useColorScheme();
+    const colorScheme = useAppColorScheme();
     const isDark = colorScheme === 'dark';
     const { user, session } = useAuth();
     const colors = {

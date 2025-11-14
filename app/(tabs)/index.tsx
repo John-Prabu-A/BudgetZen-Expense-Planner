@@ -1,4 +1,6 @@
 import { useAuth } from '@/context/Auth';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useUIMode } from '@/hooks/useUIMode';
 import { deleteRecord, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -10,7 +12,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View
 } from 'react-native';
 
@@ -19,8 +20,10 @@ type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY
 export default function RecordsScreen() {
   const router = useRouter();
   const { user, session } = useAuth();
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
+  const spacing = useUIMode();
+  const styles = getStyles(spacing);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +64,7 @@ export default function RecordsScreen() {
     try {
       setLoading(true);
       const data = await readRecords();
-      console.log("Loaded records:", JSON.stringify(data, null, 2));
+      // console.log("Loaded records:", JSON.stringify(data, null, 2));
       
       // Transform backend data to match UI expectations
       const transformedRecords = (data || []).map((record: any) => ({
@@ -488,6 +491,8 @@ export default function RecordsScreen() {
             {
               backgroundColor: colors.surface,
               borderColor: colors.border,
+              paddingHorizontal: spacing.paddingHorizontalSmall,
+              paddingVertical: spacing.paddingVerticalSmall,
             },
           ]}
           onPress={() => setExpandedRecordId(isExpanded ? null : record.id)}
@@ -839,7 +844,8 @@ export default function RecordsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create a function to generate styles based on spacing
+const createStyles = (spacing: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -847,11 +853,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContentInner: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
   headerTitle: {
     fontSize: 28,
@@ -863,21 +869,21 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   statCard: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.lg,
     borderRadius: 12,
     borderWidth: 1,
   },
   statCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
   },
   statLabel: {
     fontSize: 12,
@@ -890,29 +896,29 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   recordsSection: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   recordItemWrapper: {
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   recordItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     borderRadius: 10,
     borderWidth: 1,
   },
   recordLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
     flex: 1,
   },
   recordIcon: {
@@ -932,7 +938,7 @@ const styles = StyleSheet.create({
   },
   recordRight: {
     alignItems: 'flex-end',
-    marginRight: 8,
+    marginRight: spacing.xs,
   },
   recordAmount: {
     fontSize: 14,
@@ -950,7 +956,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderBottomWidth: 1,
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   actionsDivider: {
     height: 1,
@@ -958,9 +964,9 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
   actionButton: {
     flex: 1,
@@ -977,8 +983,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   notesSection: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     borderTopWidth: 1,
   },
   notesLabel: {
@@ -991,23 +997,23 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   emptyState: {
-    paddingVertical: 40,
+    paddingVertical: spacing.xxl,
     borderRadius: 12,
     alignItems: 'center',
   },
   emptyStateText: {
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   emptyStateSubtext: {
     fontSize: 13,
-    marginTop: 6,
+    marginTop: spacing.sm,
   },
   fab: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    bottom: spacing.lg,
+    right: spacing.lg,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -1023,32 +1029,32 @@ const styles = StyleSheet.create({
   chartContainer: {
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginBottom: 24,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.xl,
   },
   chartTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   barChartWrapper: {
     flexDirection: 'row',
-    gap: 24,
+    gap: spacing.xl,
     justifyContent: 'space-around',
     alignItems: 'flex-end',
     height: 180,
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   barGroup: {
     flex: 1,
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   barLabelGroup: {
     alignItems: 'center',
     width: '100%',
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   barLabel: {
     fontSize: 13,
@@ -1102,29 +1108,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
   navButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: 8,
   },
   monthDisplay: {
     flex: 1,
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   monthText: {
     fontSize: 16,
     fontWeight: '700',
   },
   todayButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: 6,
   },
   todayButtonText: {
@@ -1136,8 +1142,8 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 24,
-    gap: 12,
+    marginBottom: spacing.xl,
+    gap: spacing.md,
   },
   filterButton: {
     width: 48,
@@ -1157,8 +1163,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderBottomWidth: 1,
   },
   modalTitle: {
@@ -1167,29 +1173,29 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
   modalSection: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   modalSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   modalSectionDescription: {
     fontSize: 13,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   viewModeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: spacing.md,
   },
   viewModeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
     borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
@@ -1202,7 +1208,7 @@ const styles = StyleSheet.create({
   },
   modalDivider: {
     height: 1,
-    marginVertical: 16,
+    marginVertical: spacing.lg,
   },
   toggleHeader: {
     flexDirection: 'row',
@@ -1212,7 +1218,7 @@ const styles = StyleSheet.create({
   toggleTitle: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   toggleDescription: {
     fontSize: 12,
@@ -1238,12 +1244,12 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     borderRadius: 10,
     borderWidth: 1,
-    marginTop: 20,
+    marginTop: spacing.lg,
   },
   infoText: {
     fontSize: 12,
@@ -1252,14 +1258,14 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderTopWidth: 1,
   },
   footerButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,
@@ -1269,3 +1275,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+// Create a memoized styles function to prevent unnecessary recalculations
+const getStyles = (spacing: any) => createStyles(spacing);

@@ -1,15 +1,16 @@
-import { StyleSheet, useColorScheme } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  withRepeat,
-  Easing,
-} from 'react-native-reanimated';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
+import Animated, {
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
+} from 'react-native-reanimated';
 
 export function HelloWave() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useAppColorScheme();
   const rotation = useSharedValue(0);
 
   useEffect(() => {

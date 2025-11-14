@@ -113,7 +113,7 @@ const colors = {
 - Overflow handling
 
 ### Light & Dark Mode
-- Automatic detection via `useColorScheme()`
+- Automatic detection via `useAppColorScheme()`
 - All colors adapt dynamically
 - Proper contrast ratios
 - Readable in all conditions
