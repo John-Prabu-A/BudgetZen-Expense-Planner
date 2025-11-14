@@ -1,25 +1,34 @@
-import SidebarDrawer from '@/components/SidebarDrawer';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { TouchableOpacity } from 'react-native';
+import { Tabs } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useUIMode } from '@/hooks/useUIMode';
+import SidebarDrawer from '@/components/SidebarDrawer';
+import Header from '@/components/Header';
 
 const Colors = {
   light: {
     tint: '#0284c7',
     tabIconDefault: '#687076',
     tabIconSelected: '#0284c7',
+    background: '#FFFFFF',
+    border: '#E5E5E5',
+    text: '#000000',
   },
   dark: {
     tint: '#fff',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: '#fff',
+    background: '#1A1A1A',
+    border: '#404040',
+    text: '#FFFFFF',
   },
 };
 
 export default function TabsLayout() {
   const colorScheme = useAppColorScheme();
+  const { fontMd, md } = useUIMode();
   const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const [drawerVisible, setDrawerVisible] = useState(false);
 
@@ -30,23 +39,20 @@ export default function TabsLayout() {
         screenOptions={{
           tabBarActiveTintColor: colors.tabIconSelected,
           tabBarInactiveTintColor: colors.tabIconDefault,
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
-          },
-          headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+          header: () => <Header />,
+          tabBarLabelStyle: { fontSize: fontMd },
           tabBarStyle: {
-            backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
-            borderTopColor: colorScheme === 'dark' ? '#404040' : '#E5E5E5',
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
           },
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => setDrawerVisible(true)}
-              style={{ paddingLeft: 16 }}>
+              style={{ paddingLeft: md }}>
               <MaterialCommunityIcons
                 name="menu"
                 size={28}
-                color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'}
+                color={colors.text}
               />
             </TouchableOpacity>
           ),
@@ -55,7 +61,6 @@ export default function TabsLayout() {
           name="index"
           options={{
             title: 'Records',
-            headerTitle: 'Records',
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="receipt" size={24} color={color} />
             ),
@@ -65,7 +70,6 @@ export default function TabsLayout() {
           name="analysis"
           options={{
             title: 'Analysis',
-            headerTitle: 'Analysis',
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="chart-line" size={24} color={color} />
             ),
@@ -75,7 +79,6 @@ export default function TabsLayout() {
           name="budgets"
           options={{
             title: 'Budgets',
-            headerTitle: 'Budgets',
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="wallet" size={24} color={color} />
             ),
@@ -85,7 +88,6 @@ export default function TabsLayout() {
           name="accounts"
           options={{
             title: 'Accounts',
-            headerTitle: 'Accounts',
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="bank" size={24} color={color} />
             ),
@@ -95,7 +97,6 @@ export default function TabsLayout() {
           name="categories"
           options={{
             title: 'Categories',
-            headerTitle: 'Categories',
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="tag-multiple" size={24} color={color} />
             ),
