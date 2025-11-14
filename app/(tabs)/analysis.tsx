@@ -3,7 +3,9 @@ import { readCategories, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+
+type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY';
 
 export default function AnalysisScreen() {
   const colorScheme = useColorScheme();
@@ -13,6 +15,10 @@ export default function AnalysisScreen() {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [displayModalVisible, setDisplayModalVisible] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('MONTHLY');
+  const [showCharts, setShowCharts] = useState(true);
+  const [showInsights, setShowInsights] = useState(true);
 
   const colors = {
     background: isDark ? '#1A1A1A' : '#FFFFFF',
@@ -47,8 +53,34 @@ export default function AnalysisScreen() {
         readRecords(),
         readCategories(),
       ]);
-      setRecords(recordsData || []);
-      setCategories(categoriesData || []);
+      
+      // Transform records data to match UI expectations
+      const transformedRecords = (recordsData || []).map((record: any) => ({
+        id: record.id,
+        type: record.type.toUpperCase(), // Convert 'expense' to 'EXPENSE', 'income' to 'INCOME'
+        amount: record.amount,
+        category: record.categories?.name || 'Unknown',
+        category_id: record.category_id,
+        category_color: record.categories?.color || '#888888',
+        icon: record.categories?.icon || 'cash',
+        account: record.accounts?.name || 'Unknown Account',
+        account_id: record.account_id,
+        date: new Date(record.transaction_date), // Parse ISO date string
+        notes: record.notes || '',
+      }));
+      
+      // Transform categories data
+      const transformedCategories = (categoriesData || []).map((cat: any) => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+        type: cat.type,
+        color: cat.color,
+        user_id: cat.user_id,
+      }));
+      
+      setRecords(transformedRecords);
+      setCategories(transformedCategories);
     } catch (error) {
       console.error('Error loading analysis data:', error);
       Alert.alert('Error', 'Failed to load analysis data');
@@ -57,7 +89,67 @@ export default function AnalysisScreen() {
     }
   };
 
-  // Current month data
+  // Helper function to get start and end dates based on view mode
+  const getDateRange = (mode: ViewMode, referenceDate: Date) => {
+    const date = new Date(referenceDate);
+    let start, end;
+
+    switch (mode) {
+      case 'DAILY':
+        start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        end = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+        break;
+      case 'WEEKLY':
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        start = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+        end = new Date(start);
+        end.setDate(start.getDate() + 7);
+        break;
+      case 'MONTHLY':
+        start = new Date(date.getFullYear(), date.getMonth(), 1);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+        break;
+      case '3MONTHS':
+        start = new Date(date.getFullYear(), date.getMonth() - 2, 1);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+        break;
+      case '6MONTHS':
+        start = new Date(date.getFullYear(), date.getMonth() - 5, 1);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+        break;
+      case 'YEARLY':
+        start = new Date(date.getFullYear(), 0, 1);
+        end = new Date(date.getFullYear() + 1, 0, 1);
+        break;
+      default:
+        start = new Date(date.getFullYear(), date.getMonth(), 1);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+    }
+
+    return { start, end };
+  };
+
+  // Current data based on selected view mode
+  const currentViewData = useMemo(() => {
+    const { start, end } = getDateRange(viewMode, selectedDate);
+    
+    const filteredRecords = records.filter((r) => {
+      const recordDate = new Date(r.date);
+      return recordDate >= start && recordDate < end;
+    });
+
+    const income = filteredRecords
+      .filter((r) => r.type === 'INCOME')
+      .reduce((sum, r) => sum + r.amount, 0);
+    const expense = filteredRecords
+      .filter((r) => r.type === 'EXPENSE')
+      .reduce((sum, r) => sum + r.amount, 0);
+
+    return { income, expense, records: filteredRecords };
+  }, [records, selectedDate, viewMode]);
+
+  // Keep monthly data for backwards compatibility
   const currentMonthData = useMemo(() => {
     const monthRecords = records.filter((r) => {
       const recordDate = new Date(r.date);
@@ -77,16 +169,11 @@ export default function AnalysisScreen() {
     return { income, expense, records: monthRecords };
   }, [records, selectedDate]);
 
-  // Category breakdown
+  // Category breakdown based on current view data
   const categoryBreakdown = useMemo(() => {
     const breakdown: Record<string, any> = {};
-    const categoryMap: Record<string, any> = {};
 
-    categories.forEach((cat: any) => {
-      categoryMap[cat.id] = cat;
-    });
-
-    currentMonthData.records
+    currentViewData.records
       .filter((r: any) => r.type === 'EXPENSE')
       .forEach((record: any) => {
         if (!breakdown[record.category_id]) {
@@ -112,7 +199,7 @@ export default function AnalysisScreen() {
       amount: number;
       count: number;
     }>;
-  }, [currentMonthData, categories]);
+  }, [currentViewData]);
 
   // Calculate percentage for category
   const getCategoryPercentage = (amount: number) => {
@@ -120,19 +207,186 @@ export default function AnalysisScreen() {
     return total > 0 ? Math.round((amount / total) * 100) : 0;
   };
 
-  return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
+  // Display Options Modal Component
+  const DisplayOptionsModal = () => (
+    <Modal
+      visible={displayModalVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setDisplayModalVisible(false)}
     >
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        {/* Modal Header */}
+        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => setDisplayModalVisible(false)}>
+            <MaterialCommunityIcons name="close" size={28} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Display Options</Text>
+          <View style={{ width: 28 }} />
+        </View>
+
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+          {/* View Mode Section */}
+          <View style={styles.modalSection}>
+            <Text style={[styles.modalSectionTitle, { color: colors.text }]}>View Mode</Text>
+            <Text style={[styles.modalSectionDescription, { color: colors.textSecondary }]}>
+              Choose how you want to view your analysis
+            </Text>
+
+            <View style={styles.viewModeGrid}>
+              {(['DAILY', 'WEEKLY', 'MONTHLY', '3MONTHS', '6MONTHS', 'YEARLY'] as ViewMode[]).map((mode) => (
+                <TouchableOpacity
+                  key={mode}
+                  style={[
+                    styles.viewModeButton,
+                    {
+                      backgroundColor: viewMode === mode ? colors.accent : colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={() => setViewMode(mode)}
+                >
+                  <Text
+                    style={[
+                      styles.viewModeText,
+                      { color: viewMode === mode ? '#FFFFFF' : colors.text },
+                    ]}
+                  >
+                    {mode === '3MONTHS' ? '3M' : mode === '6MONTHS' ? '6M' : mode.charAt(0) + mode.slice(1).toLowerCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+          {/* Show Charts Toggle */}
+          <View style={styles.modalSection}>
+            <View style={styles.toggleHeader}>
+              <View>
+                <Text style={[styles.toggleTitle, { color: colors.text }]}>Show Charts</Text>
+                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
+                  Display overview charts
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.toggleSwitch,
+                  { backgroundColor: showCharts ? colors.income : colors.textSecondary },
+                ]}
+                onPress={() => setShowCharts(!showCharts)}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      transform: [{ translateX: showCharts ? 20 : 0 }],
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+          {/* Show Insights Toggle */}
+          <View style={styles.modalSection}>
+            <View style={styles.toggleHeader}>
+              <View>
+                <Text style={[styles.toggleTitle, { color: colors.text }]}>Show Insights</Text>
+                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
+                  Display quick insights
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.toggleSwitch,
+                  { backgroundColor: showInsights ? colors.income : colors.textSecondary },
+                ]}
+                onPress={() => setShowInsights(!showInsights)}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      transform: [{ translateX: showInsights ? 20 : 0 }],
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Additional Info */}
+          <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <MaterialCommunityIcons name="information" size={20} color={colors.accent} />
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              Customize which analysis sections to display
+            </Text>
+          </View>
+
+          <View style={{ height: 20 }} />
+        </ScrollView>
+
+        {/* Action Buttons */}
+        <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.footerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => setDisplayModalVisible(false)}
+          >
+            <Text style={[styles.footerButtonText, { color: colors.text }]}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.footerButton, { backgroundColor: colors.accent }]}
+            onPress={() => setDisplayModalVisible(false)}
+          >
+            <Text style={[styles.footerButtonText, { color: '#FFFFFF' }]}>Apply</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  return (
+    <>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+      {/* Header with Filter Button */}
+      <View style={[styles.headerContainer, { justifyContent: 'space-between' }]}>
+        <View>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Analysis</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+            Financial insights & breakdown
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => setDisplayModalVisible(true)}
+        >
+          <MaterialCommunityIcons name="filter-outline" size={24} color={colors.accent} />
+        </TouchableOpacity>
+      </View>
+
       {/* Monthly Overview Chart */}
+      {showCharts && (
       <View style={[styles.section, { borderBottomColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Monthly Overview
+          {viewMode === 'DAILY' ? 'Daily Overview' : 
+           viewMode === 'WEEKLY' ? 'Weekly Overview' :
+           viewMode === 'MONTHLY' ? 'Monthly Overview' :
+           viewMode === '3MONTHS' ? '3-Month Overview' :
+           viewMode === '6MONTHS' ? '6-Month Overview' :
+           'Yearly Overview'}
         </Text>
         
-        {currentMonthData.income > 0 || currentMonthData.expense > 0 ? (
+        {currentViewData.income > 0 || currentViewData.expense > 0 ? (
           <View
             style={[
               styles.chartContainer,
@@ -165,13 +419,13 @@ export default function AnalysisScreen() {
                       styles.bar,
                       {
                         backgroundColor: colors.income,
-                        width: `${currentMonthData.income > 0 ? 100 : 0}%`,
+                        width: `${currentViewData.income > 0 ? 100 : 0}%`,
                       },
                     ]}
                   />
                 </View>
                 <Text style={[styles.barAmount, { color: colors.text }]}>
-                  ₹{currentMonthData.income.toLocaleString()}
+                  ₹{currentViewData.income.toLocaleString()}
                 </Text>
               </View>
 
@@ -197,9 +451,9 @@ export default function AnalysisScreen() {
                       {
                         backgroundColor: colors.expense,
                         width:
-                          currentMonthData.income > 0
-                            ? `${(currentMonthData.expense / currentMonthData.income) * 100}%`
-                            : currentMonthData.expense > 0
+                          currentViewData.income > 0
+                            ? `${(currentViewData.expense / currentViewData.income) * 100}%`
+                            : currentViewData.expense > 0
                             ? '100%'
                             : '0%',
                       },
@@ -207,7 +461,7 @@ export default function AnalysisScreen() {
                   />
                 </View>
                 <Text style={[styles.barAmount, { color: colors.text }]}>
-                  ₹{currentMonthData.expense.toLocaleString()}
+                  ₹{currentViewData.expense.toLocaleString()}
                 </Text>
               </View>
             </View>
@@ -223,13 +477,13 @@ export default function AnalysisScreen() {
                     styles.statValue,
                     {
                       color:
-                        currentMonthData.income - currentMonthData.expense >= 0
+                        currentViewData.income - currentViewData.expense >= 0
                           ? colors.income
                           : colors.expense,
                     },
                   ]}
                 >
-                  ₹{(currentMonthData.income - currentMonthData.expense).toLocaleString()}
+                  ₹{(currentViewData.income - currentViewData.expense).toLocaleString()}
                 </Text>
               </View>
 
@@ -243,10 +497,10 @@ export default function AnalysisScreen() {
                     { color: colors.income },
                   ]}
                 >
-                  {currentMonthData.income > 0
+                  {currentViewData.income > 0
                     ? Math.round(
-                        ((currentMonthData.income - currentMonthData.expense) /
-                          currentMonthData.income) *
+                        ((currentViewData.income - currentViewData.expense) /
+                          currentViewData.income) *
                           100
                       )
                     : 0}
@@ -271,13 +525,15 @@ export default function AnalysisScreen() {
               color={colors.textSecondary}
             />
             <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-              No data for this month
+              No data for this period
             </Text>
           </View>
         )}
       </View>
+      )}
 
       {/* Category Breakdown */}
+      {showCharts && (
       <View style={[styles.section, { borderBottomColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Category Breakdown
@@ -372,13 +628,15 @@ export default function AnalysisScreen() {
               color={colors.textSecondary}
             />
             <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-              No expenses this month
+              No expenses in this period
             </Text>
           </View>
         )}
       </View>
+      )}
 
       {/* Trends */}
+      {showInsights && (
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Quick Insights
@@ -455,7 +713,12 @@ export default function AnalysisScreen() {
           </View>
         )}
       </View>
-    </ScrollView>
+      )}
+      </ScrollView>
+
+      {/* Display Options Modal */}
+      <DisplayOptionsModal />
+    </>
   );
 }
 
@@ -651,5 +914,151 @@ const styles = StyleSheet.create({
   },
   insightSubtext: {
     fontSize: 11,
+  },
+  // Header Styles
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  filterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    paddingTop: 60,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  modalSection: {
+    marginBottom: 16,
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  modalSectionDescription: {
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  viewModeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  viewModeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '30%',
+  },
+  viewModeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalDivider: {
+    height: 1,
+    marginVertical: 16,
+  },
+  toggleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toggleTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  toggleDescription: {
+    fontSize: 12,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 20,
+  },
+  infoText: {
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 16,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+  },
+  footerButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  footerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

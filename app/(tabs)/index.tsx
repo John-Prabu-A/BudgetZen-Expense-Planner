@@ -5,6 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +13,8 @@ import {
   useColorScheme,
   View
 } from 'react-native';
+
+type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY';
 
 export default function RecordsScreen() {
   const router = useRouter();
@@ -22,6 +25,10 @@ export default function RecordsScreen() {
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [displayModalVisible, setDisplayModalVisible] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('MONTHLY');
+  const [showTotal, setShowTotal] = useState(true);
+  const [carryOver, setCarryOver] = useState(false);
 
   const colors = {
     background: isDark ? '#1A1A1A' : '#FFFFFF',
@@ -54,8 +61,24 @@ export default function RecordsScreen() {
     try {
       setLoading(true);
       const data = await readRecords();
-      console.log("Loaded records:", data);
-      setRecords(data || []);
+      console.log("Loaded records:", JSON.stringify(data, null, 2));
+      
+      // Transform backend data to match UI expectations
+      const transformedRecords = (data || []).map((record: any) => ({
+        id: record.id,
+        type: record.type.toUpperCase(), // Convert 'expense' to 'EXPENSE', 'income' to 'INCOME'
+        amount: record.amount,
+        category: record.categories?.name || 'Unknown',
+        category_id: record.category_id,
+        category_color: record.categories?.color || '#888888',
+        icon: record.categories?.icon || 'cash',
+        account: record.accounts?.name || 'Unknown Account',
+        account_id: record.account_id,
+        date: new Date(record.transaction_date), // Parse ISO date string
+        notes: record.notes || '',
+      }));
+      
+      setRecords(transformedRecords);
     } catch (error) {
       console.error('Error loading records:', error);
       Alert.alert('Error', 'Failed to load records');
@@ -175,6 +198,56 @@ export default function RecordsScreen() {
     );
   };
 
+  // Helper function to get start and end dates based on view mode
+  const getDateRange = (mode: ViewMode, referenceDate: Date) => {
+    const date = new Date(referenceDate);
+    let start, end;
+
+    switch (mode) {
+      case 'DAILY':
+        start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        end = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+        break;
+      case 'WEEKLY':
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        start = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+        end = new Date(start);
+        end.setDate(start.getDate() + 7);
+        break;
+      case 'MONTHLY':
+        start = new Date(date.getFullYear(), date.getMonth(), 1);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+        break;
+      case '3MONTHS':
+        start = new Date(date.getFullYear(), date.getMonth() - 2, 1);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+        break;
+      case '6MONTHS':
+        start = new Date(date.getFullYear(), date.getMonth() - 5, 1);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+        break;
+      case 'YEARLY':
+        start = new Date(date.getFullYear(), 0, 1);
+        end = new Date(date.getFullYear() + 1, 0, 1);
+        break;
+      default:
+        start = new Date(date.getFullYear(), date.getMonth(), 1);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+    }
+
+    return { start, end };
+  };
+
+  // Filter records based on view mode
+  const filteredRecords = useMemo(() => {
+    const { start, end } = getDateRange(viewMode, selectedDate);
+    return records.filter((r) => {
+      const recordDate = new Date(r.date);
+      return recordDate >= start && recordDate < end;
+    });
+  }, [records, selectedDate, viewMode]);
+
   const monthRecords = useMemo(() => {
     return records.filter((r) => {
       const recordDate = new Date(r.date);
@@ -186,16 +259,19 @@ export default function RecordsScreen() {
   }, [records, selectedDate]);
 
   const totals = useMemo(() => {
-    const expense = monthRecords
+    // Always use filtered records to show data for current view mode
+    const recordsToUse = filteredRecords;
+    
+    const expense = recordsToUse
       .filter((r) => r.type === 'EXPENSE')
       .reduce((sum, r) => sum + r.amount, 0);
-    const income = monthRecords
+    const income = recordsToUse
       .filter((r) => r.type === 'INCOME')
       .reduce((sum, r) => sum + r.amount, 0);
     const total = income - expense;
 
     return { expense, income, total };
-  }, [monthRecords]);
+  }, [filteredRecords]);
 
   // Month Navigator Component
   const MonthNavigator = () => (
@@ -232,6 +308,46 @@ export default function RecordsScreen() {
     </View>
   );
 
+  // Helper function to get period label
+  const getPeriodLabel = () => {
+    switch (viewMode) {
+      case 'DAILY':
+        return `Track your daily records`;
+      case 'WEEKLY':
+        return `Track your weekly records`;
+      case 'MONTHLY':
+        return `Track your monthly records`;
+      case '3MONTHS':
+        return `Track your 3-month records`;
+      case '6MONTHS':
+        return `Track your 6-month records`;
+      case 'YEARLY':
+        return `Track your yearly records`;
+      default:
+        return `Track your records`;
+    }
+  };
+
+  // Helper function to get chart title
+  const getChartTitle = () => {
+    switch (viewMode) {
+      case 'DAILY':
+        return `Daily Income vs Expense`;
+      case 'WEEKLY':
+        return `Weekly Income vs Expense`;
+      case 'MONTHLY':
+        return `Monthly Income vs Expense`;
+      case '3MONTHS':
+        return `3-Month Income vs Expense`;
+      case '6MONTHS':
+        return `6-Month Income vs Expense`;
+      case 'YEARLY':
+        return `Yearly Income vs Expense`;
+      default:
+        return `Income vs Expense`;
+    }
+  };
+
   // Monthly chart visualization
   const MonthlyChart = () => {
     const maxAmount = Math.max(totals.income, totals.expense, 1);
@@ -240,7 +356,7 @@ export default function RecordsScreen() {
 
     return (
       <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.chartTitle, { color: colors.text }]}>Income vs Expense</Text>
+        <Text style={[styles.chartTitle, { color: colors.text }]}>{getChartTitle()}</Text>
         
         <View style={styles.barChartWrapper}>
           {/* Income Bar */}
@@ -480,6 +596,150 @@ export default function RecordsScreen() {
     );
   };
 
+  // Display Options Modal Component
+  const DisplayOptionsModal = () => (
+    <Modal
+      visible={displayModalVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setDisplayModalVisible(false)}
+    >
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        {/* Modal Header */}
+        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => setDisplayModalVisible(false)}>
+            <MaterialCommunityIcons name="close" size={28} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Display Options</Text>
+          <View style={{ width: 28 }} />
+        </View>
+
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+          {/* View Mode Section */}
+          <View style={styles.modalSection}>
+            <Text style={[styles.modalSectionTitle, { color: colors.text }]}>View Mode</Text>
+            <Text style={[styles.modalSectionDescription, { color: colors.textSecondary }]}>
+              Choose how you want to view your transactions
+            </Text>
+
+            <View style={styles.viewModeGrid}>
+              {(['DAILY', 'WEEKLY', 'MONTHLY', '3MONTHS', '6MONTHS', 'YEARLY'] as ViewMode[]).map((mode) => (
+                <TouchableOpacity
+                  key={mode}
+                  style={[
+                    styles.viewModeButton,
+                    {
+                      backgroundColor: viewMode === mode ? colors.accent : colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={() => setViewMode(mode)}
+                >
+                  <Text
+                    style={[
+                      styles.viewModeText,
+                      { color: viewMode === mode ? '#FFFFFF' : colors.text },
+                    ]}
+                  >
+                    {mode === '3MONTHS' ? '3M' : mode === '6MONTHS' ? '6M' : mode.charAt(0) + mode.slice(1).toLowerCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+          {/* Show Total Toggle */}
+          <View style={styles.modalSection}>
+            <View style={styles.toggleHeader}>
+              <View>
+                <Text style={[styles.toggleTitle, { color: colors.text }]}>Show Total</Text>
+                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
+                  Display total amount in header
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.toggleSwitch,
+                  { backgroundColor: showTotal ? colors.income : colors.textSecondary },
+                ]}
+                onPress={() => setShowTotal(!showTotal)}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      transform: [{ translateX: showTotal ? 20 : 0 }],
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+          {/* Carry Over Toggle */}
+          <View style={styles.modalSection}>
+            <View style={styles.toggleHeader}>
+              <View>
+                <Text style={[styles.toggleTitle, { color: colors.text }]}>Carry Over</Text>
+                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
+                  Include previous balance
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.toggleSwitch,
+                  { backgroundColor: carryOver ? colors.income : colors.textSecondary },
+                ]}
+                onPress={() => setCarryOver(!carryOver)}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      transform: [{ translateX: carryOver ? 20 : 0 }],
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Additional Info */}
+          <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <MaterialCommunityIcons name="information" size={20} color={colors.accent} />
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              These display options help you customize how your financial data is presented
+            </Text>
+          </View>
+
+          <View style={{ height: 20 }} />
+        </ScrollView>
+
+        {/* Action Buttons */}
+        <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.footerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => setDisplayModalVisible(false)}
+          >
+            <Text style={[styles.footerButtonText, { color: colors.text }]}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.footerButton, { backgroundColor: colors.accent }]}
+            onPress={() => setDisplayModalVisible(false)}
+          >
+            <Text style={[styles.footerButtonText, { color: '#FFFFFF' }]}>Apply</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
@@ -488,13 +748,21 @@ export default function RecordsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            Financial Overview
-          </Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-            Track your monthly records
-          </Text>
+        <View style={[styles.headerContainer, { justifyContent: 'space-between' }]}>
+          <View style={styles.header}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              Financial Overview
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+              {getPeriodLabel()}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => setDisplayModalVisible(true)}
+          >
+            <MaterialCommunityIcons name="filter-outline" size={24} color={colors.accent} />
+          </TouchableOpacity>
         </View>
 
         {/* Month Navigator */}
@@ -531,9 +799,9 @@ export default function RecordsScreen() {
             Recent Transactions
           </Text>
 
-          {monthRecords.length > 0 ? (
+          {filteredRecords.length > 0 ? (
             <View>
-              {monthRecords.map((record) => (
+              {filteredRecords.map((record) => (
                 <RecordItem key={record.id} record={record} />
               ))}
             </View>
@@ -545,7 +813,7 @@ export default function RecordsScreen() {
                 color={colors.textSecondary}
               />
               <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                No records in this month
+                No records in this period
               </Text>
               <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
                 Add your first transaction to get started
@@ -556,6 +824,9 @@ export default function RecordsScreen() {
 
         <View style={{ height: 20 }} />
       </ScrollView>
+
+      {/* Display Options Modal */}
+      <DisplayOptionsModal />
 
       {/* FAB Button */}
       <TouchableOpacity
@@ -860,5 +1131,141 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  // Header Container
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    gap: 12,
+  },
+  filterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    paddingTop: 60,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  modalSection: {
+    marginBottom: 16,
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  modalSectionDescription: {
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  viewModeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  viewModeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '30%',
+  },
+  viewModeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalDivider: {
+    height: 1,
+    marginVertical: 16,
+  },
+  toggleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toggleTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  toggleDescription: {
+    fontSize: 12,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 20,
+  },
+  infoText: {
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 16,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+  },
+  footerButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  footerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
