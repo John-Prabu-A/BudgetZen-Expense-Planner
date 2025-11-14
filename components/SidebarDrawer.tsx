@@ -2,15 +2,16 @@ import { useAuth } from '@/context/Auth';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -135,6 +136,25 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
   const router = useRouter();
   const { user, signOut } = useAuth();
 
+  // Animated value for slide-in effect
+  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: -DRAWER_WIDTH,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [visible, slideAnim]);
+
   const isDark = colorScheme === 'dark';
   const colors = {
     background: isDark ? '#1A1A1A' : '#FFFFFF',
@@ -209,26 +229,28 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}>
-      {/* Overlay */}
-      <TouchableOpacity
-        style={[styles.overlay, { backgroundColor: colors.overlay }]}
-        activeOpacity={1}
-        onPress={onClose}
-      />
-
-      {/* Drawer */}
-      <View
-        style={[
-          styles.drawer,
-          {
-            backgroundColor: colors.background,
-            width: DRAWER_WIDTH,
-          },
-        ]}>
-        {/* Header */}
+      <View style={styles.modalContainer}>
+        {/* Drawer on LEFT - slides from left */}
+        <Animated.View
+          style={[
+            styles.drawer,
+            {
+              backgroundColor: colors.background,
+              width: DRAWER_WIDTH,
+              transform: [{ translateX: slideAnim }],
+            },
+          ]}>
+          {/* Header */}
         <View style={[styles.drawerHeader, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <MaterialCommunityIcons
+              name="close"
+              size={24}
+              color={colors.text}
+            />
+          </TouchableOpacity>
           <View style={styles.headerContent}>
             <View
               style={[
@@ -250,13 +272,6 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
               </Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <MaterialCommunityIcons
-              name="close"
-              size={24}
-              color={colors.text}
-            />
-          </TouchableOpacity>
         </View>
 
         {/* Menu Items */}
@@ -291,24 +306,29 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
             BudgetZen v1.0.0
           </Text>
         </View>
+        </Animated.View>
+
+        {/* Overlay on RIGHT - fills remaining space */}
+        <TouchableOpacity
+          style={[styles.overlay, { backgroundColor: colors.overlay }]}
+          activeOpacity={1}
+          onPress={onClose}
+        />
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+  },
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
   },
   drawer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
     flexDirection: 'column',
     elevation: 5,
     shadowColor: '#000',
@@ -320,7 +340,7 @@ const styles = StyleSheet.create({
   drawerHeader: {
     padding: 16,
     borderBottomWidth: 1,
-    paddingTop: 12,
+    paddingTop: 0,
   },
   headerContent: {
     flexDirection: 'row',
@@ -349,6 +369,7 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 8,
     marginRight: -8,
+    paddingBottom: 12,
   },
   menuScroll: {
     flex: 1,

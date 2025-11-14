@@ -1,49 +1,122 @@
-import React from 'react';
-import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { useUIMode } from '@/hooks/useUIMode';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React from 'react';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const Header = () => {
+interface HeaderProps {
+  onMenuPress?: () => void;
+}
+
+const Header = ({ onMenuPress }: HeaderProps) => {
   const { lg, md } = useUIMode();
   const colorScheme = useColorScheme();
+
   const colors = {
     light: {
       background: '#FFFFFF',
-      text: '#000000',
-      subText: '#6c757d',
+      text: '#111111',
+      subText: '#6B7280',
     },
     dark: {
       background: '#1A1A1A',
       text: '#FFFFFF',
-      subText: '#adb5bd',
+      subText: '#9CA3AF',
     },
   };
+
   const selectedColors = colors[colorScheme || 'light'];
 
   return (
-    <View style={[styles.headerContainer, { backgroundColor: selectedColors.background, paddingVertical: lg, paddingHorizontal: md }]}>
-      <Text style={[styles.appName, { color: selectedColors.text }]}>
-        BudgetZen
-      </Text>
-      <Text style={[styles.subTitle, { color: selectedColors.subText }]}>
-        Expense Planner
-      </Text>
-    </View>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ backgroundColor: colors[colorScheme || 'light'].background }}>
+      <View
+        style={[
+          styles.headerContainer,
+          {
+            backgroundColor: selectedColors.background,
+            paddingVertical: lg + 4,
+            paddingHorizontal: md,
+          },
+        ]}
+      >
+        {/* Menu Button */}
+        <TouchableOpacity onPress={onMenuPress} style={styles.menuButton}>
+          <MaterialCommunityIcons
+            name="menu"
+            size={28}
+            color={selectedColors.text}
+          />
+        </TouchableOpacity>
+
+        {/* Title */}
+        <View style={styles.titleContainer}>
+          <Text style={styles.inlineText}>
+            <Text style={[styles.appName, { color: selectedColors.text }]}>
+              Budget
+            </Text>
+            <Text style={[styles.appNameAccent, { color: selectedColors.text }]}>
+              Zen
+            </Text>
+            {"  "}
+            <Text style={[styles.subTitle, { color: selectedColors.subText }]}>
+              Expense Planner
+            </Text>
+          </Text>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   headerContainer: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: '#303030',
+  },
+  menuButton: {
+    padding: 8,
+    marginLeft: 0,
+    marginTop: 4,
+  },
+  titleContainer: {
+    flex: 1,
+    paddingTop: 8,
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
+
+  // Makes inline text work
+  inlineText: {
+    flexDirection: 'row',
+  },
+
+  // App title
   appName: {
     fontSize: 28,
-    fontWeight: 'bold',
-    fontFamily: 'YourStylishFont', // Replace with a stylish font
+    fontFamily: 'Poppins-Bold',
+    letterSpacing: 0.3,
   },
+  appNameAccent: {
+    fontSize: 28,
+    fontFamily: 'Poppins-Bold',
+    color: '#6366F1', // Elegant Indigo Accent
+    letterSpacing: 0.3,
+  },
+
+  // Subtitle
   subTitle: {
-    fontSize: 16,
-    fontFamily: 'YourSuitableFont', // Replace with a suitable font
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    opacity: 0.65,
+    marginLeft: 4,
   },
 });
 

@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/Auth';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useSmartLoading } from '@/hooks/useSmartLoading';
 import { useUIMode } from '@/hooks/useUIMode';
 import { deleteRecord, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -26,12 +27,33 @@ export default function RecordsScreen() {
   const styles = getStyles(spacing);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [records, setRecords] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [displayModalVisible, setDisplayModalVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('MONTHLY');
   const [showTotal, setShowTotal] = useState(true);
   const [carryOver, setCarryOver] = useState(false);
+
+  // Smart loading hook - only shows loading on first load, not on tab switches
+  const { loading, handleLoad } = useSmartLoading(
+    async () => {
+      const data = await readRecords();
+      const transformedRecords = (data || []).map((record: any) => ({
+        id: record.id,
+        type: record.type.toUpperCase(),
+        amount: record.amount,
+        category: record.categories?.name || 'Unknown',
+        category_id: record.category_id,
+        category_color: record.categories?.color || '#888888',
+        icon: record.categories?.icon || 'cash',
+        account: record.accounts?.name || 'Unknown Account',
+        account_id: record.account_id,
+        date: new Date(record.transaction_date),
+        notes: record.notes || '',
+      }));
+      setRecords(transformedRecords);
+    },
+    [user, session]
+  );
 
   const colors = {
     background: isDark ? '#1A1A1A' : '#FFFFFF',
@@ -47,50 +69,20 @@ export default function RecordsScreen() {
 
   useEffect(() => {
     if (user && session) {
-      loadRecords();
+      handleLoad();
     }
-  }, [user, session]);
+  }, [user, session, handleLoad]);
 
   // Reload records whenever screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (user && session) {
-        loadRecords();
+        handleLoad();
       }
-    }, [user, session])
+    }, [user, session, handleLoad])
   );
 
-  const loadRecords = async () => {
-    try {
-      setLoading(true);
-      const data = await readRecords();
-      // console.log("Loaded records:", JSON.stringify(data, null, 2));
-      
-      // Transform backend data to match UI expectations
-      const transformedRecords = (data || []).map((record: any) => ({
-        id: record.id,
-        type: record.type.toUpperCase(), // Convert 'expense' to 'EXPENSE', 'income' to 'INCOME'
-        amount: record.amount,
-        category: record.categories?.name || 'Unknown',
-        category_id: record.category_id,
-        category_color: record.categories?.color || '#888888',
-        icon: record.categories?.icon || 'cash',
-        account: record.accounts?.name || 'Unknown Account',
-        account_id: record.account_id,
-        date: new Date(record.transaction_date), // Parse ISO date string
-        notes: record.notes || '',
-      }));
-      
-      setRecords(transformedRecords);
-    } catch (error) {
-      console.error('Error loading records:', error);
-      Alert.alert('Error', 'Failed to load records');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteRecord = (recordId: string, recordAmount: number) => {
+  const deleteRecordHandler = (recordId: string, recordAmount: number) => {
     Alert.alert(
       'Delete Record',
       `Are you sure you want to delete this ₹${recordAmount} record?`,
@@ -491,8 +483,8 @@ export default function RecordsScreen() {
             {
               backgroundColor: colors.surface,
               borderColor: colors.border,
-              paddingHorizontal: spacing.paddingHorizontalSmall,
-              paddingVertical: spacing.paddingVerticalSmall,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm,
             },
           ]}
           onPress={() => setExpandedRecordId(isExpanded ? null : record.id)}

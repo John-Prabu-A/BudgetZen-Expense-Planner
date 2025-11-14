@@ -118,6 +118,7 @@ const InitialLayout = () => {
                 contentStyle: {
                     backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
                 },
+                headerShown: false,
             }}
         >
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />

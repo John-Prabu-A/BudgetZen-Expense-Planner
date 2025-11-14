@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { TouchableOpacity } from 'react-native';
-import { Tabs } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Header from '@/components/Header';
+import SidebarDrawer from '@/components/SidebarDrawer';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useUIMode } from '@/hooks/useUIMode';
-import SidebarDrawer from '@/components/SidebarDrawer';
-import Header from '@/components/Header';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import React, { useState } from 'react';
 
 const Colors = {
   light: {
@@ -39,23 +38,12 @@ export default function TabsLayout() {
         screenOptions={{
           tabBarActiveTintColor: colors.tabIconSelected,
           tabBarInactiveTintColor: colors.tabIconDefault,
-          header: () => <Header />,
+          header: () => <Header onMenuPress={() => setDrawerVisible(true)} />,
           tabBarLabelStyle: { fontSize: fontMd },
           tabBarStyle: {
             backgroundColor: colors.background,
             borderTopColor: colors.border,
           },
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => setDrawerVisible(true)}
-              style={{ paddingLeft: md }}>
-              <MaterialCommunityIcons
-                name="menu"
-                size={28}
-                color={colors.text}
-              />
-            </TouchableOpacity>
-          ),
         }}>
         <Tabs.Screen
           name="index"

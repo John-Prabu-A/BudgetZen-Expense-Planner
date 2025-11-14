@@ -1,11 +1,12 @@
 import { useAuth } from '@/context/Auth';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useSmartLoading } from '@/hooks/useSmartLoading';
 import { useUIMode } from '@/hooks/useUIMode';
 import { readCategories, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY';
 
@@ -17,12 +18,48 @@ export default function AnalysisScreen() {
   const { user, session } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [displayModalVisible, setDisplayModalVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('MONTHLY');
   const [showCharts, setShowCharts] = useState(true);
   const [showInsights, setShowInsights] = useState(true);
+
+  // Smart loading hook - only shows loading on first load, not on tab switches
+  const { loading, handleLoad } = useSmartLoading(
+    async () => {
+      const [recordsData, categoriesData] = await Promise.all([
+        readRecords(),
+        readCategories(),
+      ]);
+      
+      const transformedRecords = (recordsData || []).map((record: any) => ({
+        id: record.id,
+        type: record.type.toUpperCase(),
+        amount: record.amount,
+        category: record.categories?.name || 'Unknown',
+        category_id: record.category_id,
+        category_color: record.categories?.color || '#888888',
+        icon: record.categories?.icon || 'cash',
+        account: record.accounts?.name || 'Unknown Account',
+        account_id: record.account_id,
+        date: new Date(record.transaction_date),
+        notes: record.notes || '',
+      }));
+      
+      const transformedCategories = (categoriesData || []).map((cat: any) => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+        type: cat.type,
+        color: cat.color,
+        user_id: cat.user_id,
+      }));
+      
+      setRecords(transformedRecords);
+      setCategories(transformedCategories);
+    },
+    [user, session]
+  );
 
   const colors = {
     background: isDark ? '#1A1A1A' : '#FFFFFF',
@@ -37,61 +74,18 @@ export default function AnalysisScreen() {
 
   useEffect(() => {
     if (user && session) {
-      loadData();
+      handleLoad();
     }
-  }, [user, session]);
+  }, [user, session, handleLoad]);
 
   // Reload data whenever screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (user && session) {
-        loadData();
+        handleLoad();
       }
-    }, [user, session])
+    }, [user, session, handleLoad])
   );
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [recordsData, categoriesData] = await Promise.all([
-        readRecords(),
-        readCategories(),
-      ]);
-      
-      // Transform records data to match UI expectations
-      const transformedRecords = (recordsData || []).map((record: any) => ({
-        id: record.id,
-        type: record.type.toUpperCase(), // Convert 'expense' to 'EXPENSE', 'income' to 'INCOME'
-        amount: record.amount,
-        category: record.categories?.name || 'Unknown',
-        category_id: record.category_id,
-        category_color: record.categories?.color || '#888888',
-        icon: record.categories?.icon || 'cash',
-        account: record.accounts?.name || 'Unknown Account',
-        account_id: record.account_id,
-        date: new Date(record.transaction_date), // Parse ISO date string
-        notes: record.notes || '',
-      }));
-      
-      // Transform categories data
-      const transformedCategories = (categoriesData || []).map((cat: any) => ({
-        id: cat.id,
-        name: cat.name,
-        icon: cat.icon,
-        type: cat.type,
-        color: cat.color,
-        user_id: cat.user_id,
-      }));
-      
-      setRecords(transformedRecords);
-      setCategories(transformedCategories);
-    } catch (error) {
-      console.error('Error loading analysis data:', error);
-      Alert.alert('Error', 'Failed to load analysis data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Helper function to get start and end dates based on view mode
   const getDateRange = (mode: ViewMode, referenceDate: Date) => {
