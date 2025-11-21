@@ -1,116 +1,115 @@
+
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useUIMode } from '@/hooks/useUIMode';
+import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 
-type DayItem = {
-  date: Date;
-  key: string;
-  income: number;
-  expense: number;
-  net: number;
-  cumulative: number;
+type IncomeExpenseCalendarProps = {
+  year: number;
+  month: number;
+  data: { [day: number]: { income?: number; expense?: number } };
 };
 
-type Props = {
-  dailyData: DayItem[];
-  rangeTotals: { income: number; expense: number; net: number };
-  colors: Record<string, string>;
-  spacing?: any;
-  onDayPress?: (day: DayItem) => void;
-  title?: string;
-};
+const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({ year, month, data }) => {
+  const spacing = useUIMode();
+  const colorScheme = useAppColorScheme();
+  const isDark = colorScheme === 'dark';
 
-export default function IncomeExpenseCalendar({ dailyData, rangeTotals, colors, spacing, onDayPress, title = 'Income vs Expense (Calendar)' }: Props) {
-  // Build rows of 7 days
-  const rows: DayItem[][] = [];
-  for (let i = 0; i < dailyData.length; i += 7) rows.push(dailyData.slice(i, i + 7));
+  const colors = {
+    background: isDark ? '#1A1A1A' : '#FFFFFF',
+    text: isDark ? '#FFFFFF' : '#000000',
+    textSecondary: isDark ? '#A0A0A0' : '#666666',
+    border: isDark ? '#404040' : '#E5E5E5',
+    income: '#10B981',
+    expense: '#EF4444',
+  };
+
+  const styles = StyleSheet.create({
+    container: {
+      padding: spacing.md,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginBottom: spacing.md,
+    },
+    dayHeader: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      width: '14.28%',
+      textAlign: 'center',
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    dayCell: {
+      width: '14.28%',
+      height: 60,
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      padding: spacing.xs,
+    },
+    dayText: {
+      fontSize: 12,
+      color: colors.text,
+      marginBottom: spacing.xs,
+    },
+    amountText: {
+      fontSize: 10,
+    },
+  });
+
+  const generateCalendar = () => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const calendarDays = [];
+
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      calendarDays.push(<View key={`empty-${i}`} style={styles.dayCell} />);
+    }
+
+    // Add cells for each day of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayData = data[day];
+      calendarDays.push(
+        <View key={day} style={styles.dayCell}>
+          <Text style={styles.dayText}>{day}</Text>
+          {dayData?.income && (
+            <Text style={[styles.amountText, { color: colors.income }]}>
+              {dayData.income.toFixed(2)}
+            </Text>
+          )}
+          {dayData?.expense && (
+            <Text style={[styles.amountText, { color: colors.expense }]}>
+              -{dayData.expense.toFixed(2)}
+            </Text>
+          )}
+        </View>
+      );
+    }
+
+    return calendarDays;
+  };
+
+  const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border, padding: spacing?.md ?? 12 }]}>
-      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-
-      <View style={styles.rangeRow}>
-        <Text style={{ color: colors.textSecondary }}>Range Total</Text>
-        <Text style={{ color: rangeTotals.net >= 0 ? colors.income : colors.expense, fontWeight: '700' }}>₹{rangeTotals.net.toLocaleString()}</Text>
-      </View>
-
-      <View style={styles.weekHeader}>
-        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((w) => (
-          <Text key={w} style={[styles.weekHeaderText, { color: colors.textSecondary }]}>{w}</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        {dayHeaders.map(day => (
+          <Text key={day} style={styles.dayHeader}>{day}</Text>
         ))}
       </View>
-
-      {rows.map((week, idx) => (
-        <View key={idx} style={styles.weekRow}>
-          {week.map((d) => (
-            <TouchableOpacity
-              key={d.key}
-              style={[styles.dayCell, { backgroundColor: colors.background, borderColor: colors.border }]}
-              activeOpacity={0.8}
-              onPress={() => onDayPress && onDayPress(d)}
-            >
-              <Text style={[styles.dayNumber, { color: colors.textSecondary }]}>{d.date.getDate()}</Text>
-              {<Text style={[styles.dayNet, { color: colors.income }]}>+₹{Math.abs(d.income).toLocaleString()}</Text>}
-              {<Text style={[styles.dayNet, { color: colors.expense }]}>-₹{Math.abs(d.expense).toLocaleString()}</Text>}
-              {/* <Text style={[styles.dayCumulative, { color: colors.textSecondary }]}>Cum: ₹{d.cumulative.toLocaleString()}</Text> */}
-            </TouchableOpacity>
-          ))}
-
-          {week.length < 7 && Array.from({ length: 7 - week.length }).map((_, i) => (
-            <View key={`empty-${i}`} style={styles.dayCellEmpty} />
-          ))}
-        </View>
-      ))}
+      <View style={styles.grid}>{generateCalendar()}</View>
     </View>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  rangeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  weekHeader: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  weekHeaderText: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 12,
-  },
-  weekRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  dayCell: {
-    flex: 1,
-    borderRadius: 8,
-    padding: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  dayCellEmpty: {
-    flex: 1,
-  },
-  dayNumber: {
-    fontSize: 12,
-  },
-  dayNet: {
-    marginTop: 6,
-    fontWeight: '700',
-  },
-  dayCumulative: {
-    fontSize: 11,
-    marginTop: 6,
-  },
-});
+export default IncomeExpenseCalendar;

@@ -1,158 +1,79 @@
+
 import { useAuth } from '@/context/Auth';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useSmartLoading } from '@/hooks/useSmartLoading';
 import { useUIMode } from '@/hooks/useUIMode';
-import { readCategories, readRecords } from '@/lib/finance';
+import { readCategories, readRecords, readAccounts } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { VictoryBar, VictoryChart, VictoryTheme, VictoryPie, VictoryLine } from 'victory-native';
+import IncomeExpenseCalendar from '@/app/components/IncomeExpenseCalendar';
 
-type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY';
+type AnalysisView =
+  | 'ACCOUNT_ANALYSIS'
+  | 'INCOME_FLOW'
+  | 'EXPENSE_FLOW'
+  | 'INCOME_OVERVIEW'
+  | 'EXPENSE_OVERVIEW';
 
 export default function AnalysisScreen() {
   const colorScheme = useAppColorScheme();
   const isDark = colorScheme === 'dark';
   const spacing = useUIMode();
-  const styles = createAnalysisStyles(spacing);
   const { user, session } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [displayModalVisible, setDisplayModalVisible] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('MONTHLY');
-  const [showCharts, setShowCharts] = useState(true);
-  const [showInsights, setShowInsights] = useState(true);
+  const [analysisView, setAnalysisView] = useState<AnalysisView>('ACCOUNT_ANALYSIS');
 
-  // Smart loading hook - only shows loading on first load, not on tab switches
   const { loading, handleLoad } = useSmartLoading(
     async () => {
-      const [recordsData, categoriesData] = await Promise.all([
+      const [recordsData, categoriesData, accountsData] = await Promise.all([
         readRecords(),
         readCategories(),
+        readAccounts(),
       ]);
-      
+
       const transformedRecords = (recordsData || []).map((record: any) => ({
         id: record.id,
         type: record.type.toUpperCase(),
         amount: record.amount,
         category: record.categories?.name || 'Unknown',
         category_id: record.category_id,
-        category_color: record.categories?.color || '#888888',
-        icon: record.categories?.icon || 'cash',
         account: record.accounts?.name || 'Unknown Account',
         account_id: record.account_id,
         date: new Date(record.transaction_date),
-        notes: record.notes || '',
       }));
-      
-      const transformedCategories = (categoriesData || []).map((cat: any) => ({
-        id: cat.id,
-        name: cat.name,
-        icon: cat.icon,
-        type: cat.type,
-        color: cat.color,
-        user_id: cat.user_id,
-      }));
-      
+
       setRecords(transformedRecords);
-      setCategories(transformedCategories);
+      setCategories(categoriesData || []);
+      setAccounts(accountsData || []);
     },
     [user, session]
   );
-
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#262626' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E5E5E5',
-    accent: '#0284c7',
-    income: '#10B981',
-    expense: '#EF4444',
-  };
 
   useEffect(() => {
     if (user && session) {
       handleLoad();
     }
-  }, [user, session, handleLoad]);
+  }, [user, session]);
 
-  // Reload data whenever screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (user && session) {
         handleLoad();
       }
-    }, [user, session, handleLoad])
+    }, [user, session])
   );
-
-  // Helper function to get start and end dates based on view mode
-  const getDateRange = (mode: ViewMode, referenceDate: Date) => {
-    const date = new Date(referenceDate);
-    let start, end;
-
-    switch (mode) {
-      case 'DAILY':
-        start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        end = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-        break;
-      case 'WEEKLY':
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        start = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
-        end = new Date(start);
-        end.setDate(start.getDate() + 7);
-        break;
-      case 'MONTHLY':
-        start = new Date(date.getFullYear(), date.getMonth(), 1);
-        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-        break;
-      case '3MONTHS':
-        start = new Date(date.getFullYear(), date.getMonth() - 2, 1);
-        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-        break;
-      case '6MONTHS':
-        start = new Date(date.getFullYear(), date.getMonth() - 5, 1);
-        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-        break;
-      case 'YEARLY':
-        start = new Date(date.getFullYear(), 0, 1);
-        end = new Date(date.getFullYear() + 1, 0, 1);
-        break;
-      default:
-        start = new Date(date.getFullYear(), date.getMonth(), 1);
-        end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-    }
-
-    return { start, end };
-  };
-
-  // Current data based on selected view mode
-  const currentViewData = useMemo(() => {
-    const { start, end } = getDateRange(viewMode, selectedDate);
-    
-    const filteredRecords = records.filter((r) => {
-      const recordDate = new Date(r.date);
-      return recordDate >= start && recordDate < end;
-    });
-
-    const income = filteredRecords
-      .filter((r) => r.type === 'INCOME')
-      .reduce((sum, r) => sum + r.amount, 0);
-    const expense = filteredRecords
-      .filter((r) => r.type === 'EXPENSE')
-      .reduce((sum, r) => sum + r.amount, 0);
-
-    return { income, expense, records: filteredRecords };
-  }, [records, selectedDate, viewMode]);
-
-  // Keep monthly data for backwards compatibility
+  
   const currentMonthData = useMemo(() => {
     const monthRecords = records.filter((r) => {
       const recordDate = new Date(r.date);
       return (
-        recordDate.getMonth() === selectedDate.getMonth() && 
+        recordDate.getMonth() === selectedDate.getMonth() &&
         recordDate.getFullYear() === selectedDate.getFullYear()
       );
     });
@@ -167,896 +88,293 @@ export default function AnalysisScreen() {
     return { income, expense, records: monthRecords };
   }, [records, selectedDate]);
 
-  // Category breakdown based on current view data
-  const categoryBreakdown = useMemo(() => {
-    const breakdown: Record<string, any> = {};
 
-    currentViewData.records
-      .filter((r: any) => r.type === 'EXPENSE')
-      .forEach((record: any) => {
-        if (!breakdown[record.category_id]) {
-          breakdown[record.category_id] = {
-            id: record.category_id,
-            name: record.category,
-            icon: record.icon,
-            color: record.category_color,
-            amount: 0,
-            count: 0,
-          };
+  const calendarData = useMemo(() => {
+    const data: { [day: number]: { income?: number; expense?: number } } = {};
+    currentMonthData.records.forEach(record => {
+      const day = record.date.getDate();
+      if (!data[day]) {
+        data[day] = {};
+      }
+      if (record.type === 'INCOME') {
+        data[day].income = (data[day].income || 0) + record.amount;
+      } else {
+        data[day].expense = (data[day].expense || 0) + record.amount;
+      }
+    });
+    return data;
+  }, [currentMonthData.records]);
+
+  const accountAnalysisData = useMemo(() => {
+    const data = accounts.map(account => {
+      const accountRecords = currentMonthData.records.filter(r => r.account_id === account.id);
+      const income = accountRecords.filter(r => r.type === 'INCOME').reduce((sum, r) => sum + r.amount, 0);
+      const expense = accountRecords.filter(r => r.type === 'EXPENSE').reduce((sum, r) => sum + r.amount, 0);
+      return {
+        id: account.id,
+        name: account.name,
+        income,
+        expense,
+      };
+    });
+    return data;
+  }, [accounts, currentMonthData.records]);
+
+  const incomeExpenseFlowData = useMemo(() => {
+    const incomeData: {x: number, y: number}[] = [];
+    const expenseData: {x: number, y: number}[] = [];
+    for (let i = 1; i <= 31; i++) {
+        incomeData.push({x: i, y: 0});
+        expenseData.push({x: i, y: 0});
+    }
+
+    currentMonthData.records.forEach(record => {
+        const day = record.date.getDate();
+        if (record.type === 'INCOME') {
+            incomeData[day - 1].y += record.amount;
+        } else {
+            expenseData[day - 1].y += record.amount;
         }
-        breakdown[record.category_id].amount += record.amount;
-        breakdown[record.category_id].count += 1;
-      });
+    });
 
-    const result = Object.values(breakdown).sort((a: any, b: any) => b.amount - a.amount);
-    return result as Array<{
-      id: string;
-      name: string;
-      icon: string;
-      color: string;
-      amount: number;
-      count: number;
-    }>;
-  }, [currentViewData]);
+    return {incomeData, expenseData};
+  }, [currentMonthData.records]);
+  
+  const incomeExpenseOverviewData = useMemo(() => {
+    const incomeByCategory = categories.filter(c => c.type === 'income').map(category => {
+        const categoryRecords = currentMonthData.records.filter(r => r.category_id === category.id && r.type === 'INCOME');
+        const total = categoryRecords.reduce((sum, r) => sum + r.amount, 0);
+        return {
+            x: category.name,
+            y: total
+        }
+    }).filter(d => d.y > 0);
 
-  // Calculate percentage for category
-  const getCategoryPercentage = (amount: number) => {
-    const total = categoryBreakdown.reduce((sum: number, cat: any) => sum + cat.amount, 0);
-    return total > 0 ? Math.round((amount / total) * 100) : 0;
+    const expenseByCategory = categories.filter(c => c.type === 'expense').map(category => {
+        const categoryRecords = currentMonthData.records.filter(r => r.category_id === category.id && r.type === 'EXPENSE');
+        const total = categoryRecords.reduce((sum, r) => sum + r.amount, 0);
+        return {
+            x: category.name,
+            y: total
+        }
+    }).filter(d => d.y > 0);
+
+    return {incomeByCategory, expenseByCategory};
+  }, [categories, currentMonthData.records]);
+
+
+  const handleDateChange = (direction: 'prev' | 'next') => {
+    setSelectedDate(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setMonth(newDate.getMonth() + (direction === 'prev' ? -1 : 1));
+      return newDate;
+    });
   };
 
-  // Display Options Modal Component
-  const DisplayOptionsModal = () => (
-    <Modal
-      visible={displayModalVisible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={() => setDisplayModalVisible(false)}
-    >
-      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-        {/* Modal Header */}
-        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => setDisplayModalVisible(false)}>
-            <MaterialCommunityIcons name="close" size={28} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>Display Options</Text>
-          <View style={{ width: 28 }} />
-        </View>
-
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-          {/* View Mode Section */}
-          <View style={styles.modalSection}>
-            <Text style={[styles.modalSectionTitle, { color: colors.text }]}>View Mode</Text>
-            <Text style={[styles.modalSectionDescription, { color: colors.textSecondary }]}>
-              Choose how you want to view your analysis
-            </Text>
-
-            <View style={styles.viewModeGrid}>
-              {(['DAILY', 'WEEKLY', 'MONTHLY', '3MONTHS', '6MONTHS', 'YEARLY'] as ViewMode[]).map((mode) => (
-                <TouchableOpacity
-                  key={mode}
-                  style={[
-                    styles.viewModeButton,
-                    {
-                      backgroundColor: viewMode === mode ? colors.accent : colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={() => setViewMode(mode)}
-                >
-                  <Text
-                    style={[
-                      styles.viewModeText,
-                      { color: viewMode === mode ? '#FFFFFF' : colors.text },
-                    ]}
-                  >
-                    {mode === '3MONTHS' ? '3M' : mode === '6MONTHS' ? '6M' : mode.charAt(0) + mode.slice(1).toLowerCase()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+  const renderAnalysisView = () => {
+    switch (analysisView) {
+      case 'ACCOUNT_ANALYSIS':
+        return (
+            <View>
+                <VictoryChart theme={VictoryTheme.material}>
+                    <VictoryBar
+                        data={accountAnalysisData}
+                        x="name"
+                        y={(d) => d.income - d.expense}
+                        style={{ data: { fill: "#4CAF50" } }}
+                    />
+                </VictoryChart>
+                 {accountAnalysisData.map(account => (
+                    <View key={account.id} style={styles.accountItem}>
+                        <Text style={styles.accountName}>{account.name}</Text>
+                        <Text style={styles.accountIncome}>+{account.income.toFixed(2)}</Text>
+                        <Text style={styles.accountExpense}>-{account.expense.toFixed(2)}</Text>
+                    </View>
+                ))}
             </View>
+        );
+      case 'INCOME_FLOW':
+        return (
+          <View>
+            <VictoryChart theme={VictoryTheme.material}>
+              <VictoryLine data={incomeExpenseFlowData.incomeData} />
+            </VictoryChart>
+            <IncomeExpenseCalendar year={selectedDate.getFullYear()} month={selectedDate.getMonth()} data={calendarData} />
           </View>
-
-          {/* Divider */}
-          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
-
-          {/* Show Charts Toggle */}
-          <View style={styles.modalSection}>
-            <View style={styles.toggleHeader}>
-              <View>
-                <Text style={[styles.toggleTitle, { color: colors.text }]}>Show Charts</Text>
-                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
-                  Display overview charts
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.toggleSwitch,
-                  { backgroundColor: showCharts ? colors.income : colors.textSecondary },
-                ]}
-                onPress={() => setShowCharts(!showCharts)}
-              >
-                <View
-                  style={[
-                    styles.toggleThumb,
-                    {
-                      transform: [{ translateX: showCharts ? 20 : 0 }],
-                    },
-                  ]}
-                />
-              </TouchableOpacity>
+        );
+      case 'EXPENSE_FLOW':
+        return (
+          <View>
+            <VictoryChart theme={VictoryTheme.material}>
+              <VictoryLine data={incomeExpenseFlowData.expenseData} style={{data: {stroke: '#EF4444'}}}/>
+            </VictoryChart>
+            <IncomeExpenseCalendar year={selectedDate.getFullYear()} month={selectedDate.getMonth()} data={calendarData} />
+          </View>
+        );
+      case 'INCOME_OVERVIEW':
+        return (
+          <View>
+             <VictoryPie data={incomeExpenseOverviewData.incomeByCategory} />
+             {incomeExpenseOverviewData.incomeByCategory.map(d => (
+                 <View key={d.x} style={styles.categoryItem}>
+                    <Text>{d.x}</Text>
+                    <Text>+{d.y.toFixed(2)}</Text>
+                 </View>
+             ))}
+          </View>
+        );
+      case 'EXPENSE_OVERVIEW':
+        return (
+            <View>
+                <VictoryPie data={incomeExpenseOverviewData.expenseByCategory} />
+                {incomeExpenseOverviewData.expenseByCategory.map(d => (
+                    <View key={d.x} style={styles.categoryItem}>
+                        <Text>{d.x}</Text>
+                        <Text>-{d.y.toFixed(2)}</Text>
+                    </View>
+                ))}
             </View>
-          </View>
+        );
+      default:
+        return null;
+    }
+  };
 
-          {/* Divider */}
-          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
-
-          {/* Show Insights Toggle */}
-          <View style={styles.modalSection}>
-            <View style={styles.toggleHeader}>
-              <View>
-                <Text style={[styles.toggleTitle, { color: colors.text }]}>Show Insights</Text>
-                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
-                  Display quick insights
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.toggleSwitch,
-                  { backgroundColor: showInsights ? colors.income : colors.textSecondary },
-                ]}
-                onPress={() => setShowInsights(!showInsights)}
-              >
-                <View
-                  style={[
-                    styles.toggleThumb,
-                    {
-                      transform: [{ translateX: showInsights ? 20 : 0 }],
-                    },
-                  ]}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Additional Info */}
-          <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="information" size={20} color={colors.accent} />
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              Customize which analysis sections to display
-            </Text>
-          </View>
-
-          <View style={{ height: 20 }} />
-        </ScrollView>
-
-        {/* Action Buttons */}
-        <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.footerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => setDisplayModalVisible(false)}
-          >
-            <Text style={[styles.footerButtonText, { color: colors.text }]}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.footerButton, { backgroundColor: colors.accent }]}
-            onPress={() => setDisplayModalVisible(false)}
-          >
-            <Text style={[styles.footerButtonText, { color: '#FFFFFF' }]}>Apply</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
+  const styles = createAnalysisStyles(spacing, isDark);
 
   return (
-    <>
-      <ScrollView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-      {/* Header with Filter Button */}
-      <View style={[styles.headerContainer, { justifyContent: 'space-between' }]}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Analysis</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-            Financial insights & breakdown
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => setDisplayModalVisible(true)}
-        >
-          <MaterialCommunityIcons name="filter-outline" size={24} color={colors.accent} />
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => handleDateChange('prev')}>
+          <MaterialCommunityIcons name="chevron-left" size={24} color={isDark ? 'white' : 'black'} />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>{selectedDate.toLocaleString('default', { month: 'long' })}, {selectedDate.getFullYear()}</Text>
+        <TouchableOpacity onPress={() => handleDateChange('next')}>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={isDark ? 'white' : 'black'} />
         </TouchableOpacity>
       </View>
-
-      {/* Monthly Overview Chart */}
-      {showCharts && (
-      <View style={[styles.section, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {viewMode === 'DAILY' ? 'Daily Overview' : 
-           viewMode === 'WEEKLY' ? 'Weekly Overview' :
-           viewMode === 'MONTHLY' ? 'Monthly Overview' :
-           viewMode === '3MONTHS' ? '3-Month Overview' :
-           viewMode === '6MONTHS' ? '6-Month Overview' :
-           'Yearly Overview'}
-        </Text>
-        
-        {currentViewData.income > 0 || currentViewData.expense > 0 ? (
-          <View
-            style={[
-              styles.chartContainer,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            {/* Income and Expense Bars */}
-            <View style={styles.barChartWrapper}>
-              {/* Income Bar */}
-              <View style={styles.barGroup}>
-                <View style={styles.barLabelGroup}>
-                  <MaterialCommunityIcons
-                    name="trending-up"
-                    size={20}
-                    color={colors.income}
-                  />
-                  <Text style={[styles.barLabel, { color: colors.text }]}>Income</Text>
-                </View>
-                <View
-                  style={[
-                    styles.barBackground,
-                    { backgroundColor: colors.border },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        backgroundColor: colors.income,
-                        width: `${currentViewData.income > 0 ? 100 : 0}%`,
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={[styles.barAmount, { color: colors.text }]}>
-                  ₹{currentViewData.income.toLocaleString()}
-                </Text>
-              </View>
-
-              {/* Expense Bar */}
-              <View style={styles.barGroup}>
-                <View style={styles.barLabelGroup}>
-                  <MaterialCommunityIcons
-                    name="trending-down"
-                    size={20}
-                    color={colors.expense}
-                  />
-                  <Text style={[styles.barLabel, { color: colors.text }]}>Expense</Text>
-                </View>
-                <View
-                  style={[
-                    styles.barBackground,
-                    { backgroundColor: colors.border },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        backgroundColor: colors.expense,
-                        width:
-                          currentViewData.income > 0
-                            ? `${(currentViewData.expense / currentViewData.income) * 100}%`
-                            : currentViewData.expense > 0
-                            ? '100%'
-                            : '0%',
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={[styles.barAmount, { color: colors.text }]}>
-                  ₹{currentViewData.expense.toLocaleString()}
-                </Text>
-              </View>
-            </View>
-
-            {/* Summary Stats */}
-            <View style={styles.summaryStats}>
-              <View style={[styles.statBox, { borderColor: colors.border }]}>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Net Balance
-                </Text>
-                <Text
-                  style={[
-                    styles.statValue,
-                    {
-                      color:
-                        currentViewData.income - currentViewData.expense >= 0
-                          ? colors.income
-                          : colors.expense,
-                    },
-                  ]}
-                >
-                  ₹{(currentViewData.income - currentViewData.expense).toLocaleString()}
-                </Text>
-              </View>
-
-              <View style={[styles.statBox, { borderColor: colors.border }]}>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  Save Rate
-                </Text>
-                <Text
-                  style={[
-                    styles.statValue,
-                    { color: colors.income },
-                  ]}
-                >
-                  {currentViewData.income > 0
-                    ? Math.round(
-                        ((currentViewData.income - currentViewData.expense) /
-                          currentViewData.income) *
-                          100
-                      )
-                    : 0}
-                  %
-                </Text>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.emptyChart,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="chart-pie"
-              size={64}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-              No data for this period
-            </Text>
-          </View>
-        )}
-      </View>
-      )}
-
-      {/* Category Breakdown */}
-      {showCharts && (
-      <View style={[styles.section, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Category Breakdown
-        </Text>
-
-        {categoryBreakdown.length > 0 ? (
-          <View>
-            {categoryBreakdown.map((category: any, index: number) => {
-              const percentage = getCategoryPercentage(category.amount);
-              return (
-                <View
-                  key={category.id}
-                  style={[
-                    styles.categoryItem,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <View style={styles.categoryHeader}>
-                    <View style={styles.categoryLeft}>
-                      <View
-                        style={[
-                          styles.categoryIcon,
-                          { backgroundColor: category.color || colors.accent },
-                        ]}
-                      >
-                        <MaterialCommunityIcons
-                          name={category.icon}
-                          size={18}
-                          color="#FFFFFF"
-                        />
-                      </View>
-                      <View style={styles.categoryInfo}>
-                        <Text style={[styles.categoryName, { color: colors.text }]}>
-                          {category.name}
-                        </Text>
-                        <Text
-                          style={[styles.categoryMeta, { color: colors.textSecondary }]}
-                        >
-                          {category.count} transaction{category.count !== 1 ? 's' : ''}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.categoryRight}>
-                      <Text style={[styles.categoryAmount, { color: colors.text }]}>
-                        ₹{category.amount.toLocaleString()}
-                      </Text>
-                      <Text
-                        style={[styles.categoryPercent, { color: colors.textSecondary }]}
-                      >
-                        {percentage}%
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Progress Bar */}
-                  <View
-                    style={[
-                      styles.progressBar,
-                      { backgroundColor: colors.border },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          backgroundColor: category.color || colors.accent,
-                          width: `${percentage}%`,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.emptyState,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="inbox"
-              size={48}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-              No expenses in this period
-            </Text>
-          </View>
-        )}
-      </View>
-      )}
-
-      {/* Trends */}
-      {showInsights && (
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Quick Insights
-        </Text>
-
-        {/* Average Spending */}
-        <View
-          style={[
-            styles.insightCard,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <View style={styles.insightIcon}>
-            <MaterialCommunityIcons
-              name="calculator"
-              size={28}
-              color={colors.accent}
-            />
-          </View>
-          <View style={styles.insightContent}>
-            <Text style={[styles.insightTitle, { color: colors.text }]}>
-              Average Transaction
-            </Text>
-            <Text style={[styles.insightValue, { color: colors.accent }]}>
-              ₹
-              {categoryBreakdown.length > 0
-                ? Math.round(
-                    categoryBreakdown.reduce((sum: number, cat: any) => sum + cat.amount, 0) /
-                      categoryBreakdown.reduce((sum: number, cat: any) => sum + cat.count, 0)
-                  ).toLocaleString()
-                : '0'}
-            </Text>
-          </View>
+      <View style={styles.summary}>
+        <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>EXPENSE</Text>
+            <Text style={styles.summaryValueExpense}>₹{currentMonthData.expense.toFixed(2)}</Text>
         </View>
-
-        {/* Top Category */}
-        {categoryBreakdown.length > 0 && categoryBreakdown[0] && (
-          <View
-            style={[
-              styles.insightCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.insightIcon,
-                { backgroundColor: (categoryBreakdown[0] as any).color },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={(categoryBreakdown[0] as any).icon}
-                size={28}
-                color="#FFFFFF"
-              />
-            </View>
-            <View style={styles.insightContent}>
-              <Text style={[styles.insightTitle, { color: colors.text }]}>
-                Top Expense Category
-              </Text>
-              <Text style={[styles.insightValue, { color: colors.text }]}>
-                {(categoryBreakdown[0] as any).name}
-              </Text>
-              <Text style={[styles.insightSubtext, { color: colors.textSecondary }]}>
-                ₹{(categoryBreakdown[0] as any).amount.toLocaleString()} (
-                {getCategoryPercentage((categoryBreakdown[0] as any).amount)}%)
-              </Text>
-            </View>
-          </View>
-        )}
+        <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>INCOME</Text>
+            <Text style={styles.summaryValueIncome}>₹{currentMonthData.income.toFixed(2)}</Text>
+        </View>
+        <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>TOTAL</Text>
+            <Text style={styles.summaryValueTotal}>₹{(currentMonthData.income - currentMonthData.expense).toFixed(2)}</Text>
+        </View>
       </View>
-      )}
-      </ScrollView>
-
-      {/* Display Options Modal */}
-      <DisplayOptionsModal />
-    </>
+      
+      <View style={styles.viewSelector}>
+        <TouchableOpacity onPress={() => setAnalysisView('ACCOUNT_ANALYSIS')} style={[styles.viewButton, analysisView === 'ACCOUNT_ANALYSIS' && styles.viewButtonActive]}>
+          <Text style={styles.viewButtonText}>ACCOUNT ANALYSIS</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setAnalysisView('INCOME_FLOW')} style={[styles.viewButton, analysisView === 'INCOME_FLOW' && styles.viewButtonActive]}>
+          <Text style={styles.viewButtonText}>INCOME FLOW</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setAnalysisView('EXPENSE_FLOW')} style={[styles.viewButton, analysisView === 'EXPENSE_FLOW' && styles.viewButtonActive]}>
+          <Text style={styles.viewButtonText}>EXPENSE FLOW</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setAnalysisView('INCOME_OVERVIEW')} style={[styles.viewButton, analysisView === 'INCOME_OVERVIEW' && styles.viewButtonActive]}>
+          <Text style={styles.viewButtonText}>INCOME OVERVIEW</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setAnalysisView('EXPENSE_OVERVIEW')} style={[styles.viewButton, analysisView === 'EXPENSE_OVERVIEW' && styles.viewButtonActive]}>
+          <Text style={styles.viewButtonText}>EXPENSE OVERVIEW</Text>
+        </TouchableOpacity>
+      </View>
+      
+      {renderAnalysisView()}
+    </ScrollView>
   );
 }
 
-const createAnalysisStyles = (spacing: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingVertical: spacing.lg,
-  },
-  section: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: spacing.lg,
-  },
-  
-  // Chart Styles
-  chartContainer: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    gap: spacing.lg,
-  },
-  barChartWrapper: {
-    gap: spacing.lg,
-  },
-  barGroup: {
-    gap: spacing.xs,
-  },
-  barLabelGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  barLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  barBackground: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  bar: {
-    height: '100%',
-    borderRadius: 4,
-    minWidth: '5%',
-  },
-  barAmount: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  summaryStats: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.xs,
-  },
-  statBox: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginBottom: spacing.xs,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  
-  // Empty States
-  emptyChart: {
-    height: 200,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  emptyState: {
-    paddingVertical: spacing.xxl,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  placeholderText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  
-  // Category Breakdown Styles
-  categoryItem: {
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.xs,
-    gap: spacing.md,
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  categoryLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  categoryInfo: {
-    flex: 1,
-  },
-  categoryName: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  categoryMeta: {
-    fontSize: 12,
-  },
-  categoryRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  categoryAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  categoryPercent: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  progressBar: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  
-  // Insights Styles
-  insightCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.xs,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: spacing.md,
-  },
-  insightIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: 'rgba(2, 132, 199, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  insightContent: {
-    flex: 1,
-    gap: 2,
-  },
-  insightTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  insightValue: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  insightSubtext: {
-    fontSize: 11,
-  },
-  // Header Styles
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.xl,
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  filterButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    marginTop: 4,
-  },
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    paddingTop: 60,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  modalSection: {
-    marginBottom: spacing.lg,
-  },
-  modalSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  modalSectionDescription: {
-    fontSize: 13,
-    marginBottom: spacing.md,
-  },
-  viewModeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  viewModeButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '30%',
-  },
-  viewModeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  modalDivider: {
-    height: 1,
-    marginVertical: spacing.lg,
-  },
-  toggleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  toggleTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  toggleDescription: {
-    fontSize: 12,
-  },
-  toggleSwitch: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    padding: 2,
-    justifyContent: 'center',
-  },
-  toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: spacing.lg,
-  },
-  infoText: {
-    fontSize: 12,
-    flex: 1,
-    lineHeight: 16,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderTopWidth: 1,
-  },
-  footerButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  footerButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+const createAnalysisStyles = (spacing: any, isDark: boolean) => StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: isDark ? '#121212' : '#F5F5F5',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: spacing.lg,
+    },
+    headerText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: isDark ? 'white' : 'black',
+    },
+    summary: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        padding: spacing.lg,
+    },
+    summaryItem: {
+        alignItems: 'center',
+    },
+    summaryLabel: {
+        fontSize: 12,
+        color: isDark ? '#A0A0A0' : '#666666',
+    },
+    summaryValueExpense: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#EF4444',
+    },
+    summaryValueIncome: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#10B981',
+    },
+    summaryValueTotal: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: isDark ? 'white' : 'black',
+    },
+    viewSelector: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingVertical: spacing.md,
+        backgroundColor: isDark ? '#1E1E1E' : '#EEEEEE',
+    },
+    viewButton: {
+        padding: spacing.md,
+    },
+    viewButtonActive: {
+        borderBottomWidth: 2,
+        borderBottomColor: '#0284c7',
+    },
+    viewButtonText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: isDark ? 'white' : 'black',
+    },
+    accountItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: spacing.md,
+        backgroundColor: isDark ? '#1E1E1E' : 'white',
+        borderBottomWidth: 1,
+        borderBottomColor: isDark ? '#404040' : '#E5E5E5',
+    },
+    accountName: {
+        color: isDark ? 'white' : 'black',
+    },
+    accountIncome: {
+        color: '#10B981',
+    },
+    accountExpense: {
+        color: '#EF4444',
+    },
+    categoryItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: spacing.md,
+        backgroundColor: isDark ? '#1E1E1E' : 'white',
+        borderBottomWidth: 1,
+        borderBottomColor: isDark ? '#404040' : '#E5E5E5',
+    }
 });
