@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { VictoryBar, VictoryChart, VictoryTheme, VictoryPie, VictoryLine } from 'victory-native';
+import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import IncomeExpenseCalendar from '@/app/components/IncomeExpenseCalendar';
 
 type AnalysisView =
@@ -111,53 +111,61 @@ export default function AnalysisScreen() {
       const income = accountRecords.filter(r => r.type === 'INCOME').reduce((sum, r) => sum + r.amount, 0);
       const expense = accountRecords.filter(r => r.type === 'EXPENSE').reduce((sum, r) => sum + r.amount, 0);
       return {
-        id: account.id,
-        name: account.name,
+        value: income - expense,
+        label: account.name,
+        frontColor: income > expense ? '#10B981' : '#EF4444',
         income,
         expense,
+        id: account.id
       };
     });
     return data;
   }, [accounts, currentMonthData.records]);
 
   const incomeExpenseFlowData = useMemo(() => {
-    const incomeData: {x: number, y: number}[] = [];
-    const expenseData: {x: number, y: number}[] = [];
-    for (let i = 1; i <= 31; i++) {
-        incomeData.push({x: i, y: 0});
-        expenseData.push({x: i, y: 0});
+    const incomeData: any[] = [];
+    const expenseData: any[] = [];
+    const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+
+
+    for (let i = 1; i <= daysInMonth; i++) {
+        incomeData.push({value: 0, label: i.toString()});
+        expenseData.push({value: 0, label: i.toString()});
     }
 
     currentMonthData.records.forEach(record => {
         const day = record.date.getDate();
         if (record.type === 'INCOME') {
-            incomeData[day - 1].y += record.amount;
+            incomeData[day - 1].value += record.amount;
         } else {
-            expenseData[day - 1].y += record.amount;
+            expenseData[day - 1].value += record.amount;
         }
     });
 
     return {incomeData, expenseData};
-  }, [currentMonthData.records]);
+  }, [currentMonthData.records, selectedDate]);
   
   const incomeExpenseOverviewData = useMemo(() => {
-    const incomeByCategory = categories.filter(c => c.type === 'income').map(category => {
+    const incomeByCategory = categories.filter(c => c.type === 'income').map((category, i) => {
         const categoryRecords = currentMonthData.records.filter(r => r.category_id === category.id && r.type === 'INCOME');
         const total = categoryRecords.reduce((sum, r) => sum + r.amount, 0);
         return {
-            x: category.name,
-            y: total
-        }
-    }).filter(d => d.y > 0);
+            value: total,
+            text: category.name,
+            color: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'][i % 6]
 
-    const expenseByCategory = categories.filter(c => c.type === 'expense').map(category => {
+        }
+    }).filter(d => d.value > 0);
+
+    const expenseByCategory = categories.filter(c => c.type === 'expense').map((category, i) => {
         const categoryRecords = currentMonthData.records.filter(r => r.category_id === category.id && r.type === 'EXPENSE');
         const total = categoryRecords.reduce((sum, r) => sum + r.amount, 0);
         return {
-            x: category.name,
-            y: total
+            value: total,
+            text: category.name,
+            color: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'][i % 6]
         }
-    }).filter(d => d.y > 0);
+    }).filter(d => d.value > 0);
 
     return {incomeByCategory, expenseByCategory};
   }, [categories, currentMonthData.records]);
@@ -176,17 +184,17 @@ export default function AnalysisScreen() {
       case 'ACCOUNT_ANALYSIS':
         return (
             <View>
-                <VictoryChart theme={VictoryTheme.material}>
-                    <VictoryBar
-                        data={accountAnalysisData}
-                        x="name"
-                        y={(d) => d.income - d.expense}
-                        style={{ data: { fill: "#4CAF50" } }}
-                    />
-                </VictoryChart>
+                <BarChart
+                    data={accountAnalysisData}
+                    barWidth={22}
+                    noOfSections={3}
+                    barBorderRadius={4}
+                    yAxisThickness={0}
+                    xAxisThickness={0}
+                />
                  {accountAnalysisData.map(account => (
                     <View key={account.id} style={styles.accountItem}>
-                        <Text style={styles.accountName}>{account.name}</Text>
+                        <Text style={styles.accountName}>{account.label}</Text>
                         <Text style={styles.accountIncome}>+{account.income.toFixed(2)}</Text>
                         <Text style={styles.accountExpense}>-{account.expense.toFixed(2)}</Text>
                     </View>
@@ -196,41 +204,47 @@ export default function AnalysisScreen() {
       case 'INCOME_FLOW':
         return (
           <View>
-            <VictoryChart theme={VictoryTheme.material}>
-              <VictoryLine data={incomeExpenseFlowData.incomeData} />
-            </VictoryChart>
+             <LineChart
+                data={incomeExpenseFlowData.incomeData}
+                color1="#10B981"
+                yAxisThickness={0}
+                xAxisThickness={0}
+                />
             <IncomeExpenseCalendar year={selectedDate.getFullYear()} month={selectedDate.getMonth()} data={calendarData} />
           </View>
         );
       case 'EXPENSE_FLOW':
         return (
           <View>
-            <VictoryChart theme={VictoryTheme.material}>
-              <VictoryLine data={incomeExpenseFlowData.expenseData} style={{data: {stroke: '#EF4444'}}}/>
-            </VictoryChart>
+            <LineChart
+                data={incomeExpenseFlowData.expenseData}
+                color1="#EF4444"
+                yAxisThickness={0}
+                xAxisThickness={0}
+             />
             <IncomeExpenseCalendar year={selectedDate.getFullYear()} month={selectedDate.getMonth()} data={calendarData} />
           </View>
         );
       case 'INCOME_OVERVIEW':
         return (
-          <View>
-             <VictoryPie data={incomeExpenseOverviewData.incomeByCategory} />
+          <View style={{alignItems: 'center'}}>
+             <PieChart data={incomeExpenseOverviewData.incomeByCategory} radius={150} />
              {incomeExpenseOverviewData.incomeByCategory.map(d => (
-                 <View key={d.x} style={styles.categoryItem}>
-                    <Text>{d.x}</Text>
-                    <Text>+{d.y.toFixed(2)}</Text>
+                 <View key={d.text} style={styles.categoryItem}>
+                    <Text>{d.text}</Text>
+                    <Text>+{d.value.toFixed(2)}</Text>
                  </View>
              ))}
           </View>
         );
       case 'EXPENSE_OVERVIEW':
         return (
-            <View>
-                <VictoryPie data={incomeExpenseOverviewData.expenseByCategory} />
+            <View style={{alignItems: 'center'}}>
+                <PieChart data={incomeExpenseOverviewData.expenseByCategory} radius={150}/>
                 {incomeExpenseOverviewData.expenseByCategory.map(d => (
-                    <View key={d.x} style={styles.categoryItem}>
-                        <Text>{d.x}</Text>
-                        <Text>-{d.y.toFixed(2)}</Text>
+                    <View key={d.text} style={styles.categoryItem}>
+                        <Text>{d.text}</Text>
+                        <Text>-{d.value.toFixed(2)}</Text>
                     </View>
                 ))}
             </View>
@@ -373,6 +387,7 @@ const createAnalysisStyles = (spacing: any, isDark: boolean) => StyleSheet.creat
         flexDirection: 'row',
         justifyContent: 'space-between',
         padding: spacing.md,
+        width: '100%',
         backgroundColor: isDark ? '#1E1E1E' : 'white',
         borderBottomWidth: 1,
         borderBottomColor: isDark ? '#404040' : '#E5E5E5',
