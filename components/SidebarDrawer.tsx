@@ -1,17 +1,21 @@
 import { useAuth } from '@/context/Auth';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useGestureDrawer } from '@/hooks/useGestureDrawer';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
-  Animated,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Animated,
+    Dimensions,
+    GestureResponderEvent,
+    Modal,
+    PanResponder,
+    PanResponderGestureState,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -136,24 +140,66 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
   const router = useRouter();
   const { user, signOut } = useAuth();
 
-  // Animated value for slide-in effect
-  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  // Use gesture drawer hook for smooth animation
+  const { translateX, closeDrawer } = useGestureDrawer({
+    drawerWidth: DRAWER_WIDTH,
+    onClose,
+  });
 
+  // Pan responder for swiping drawer closed
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        // Respond to left swipe (closing)
+        return Math.abs(gestureState.dx) > 10 && gestureState.dx < 0;
+      },
+      onPanResponderMove: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        // Allow drawer to follow finger while dragging
+        // Limit movement between -drawerWidth and 0
+        const newValue = Math.min(0, Math.max(-DRAWER_WIDTH, -DRAWER_WIDTH + gestureState.dx));
+        translateX.setValue(newValue);
+      },
+      onPanResponderRelease: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        // Determine if we should close based on velocity and position
+        const threshold = DRAWER_WIDTH * 0.3; // 30% threshold
+        const velocity = gestureState.vx; // Positive = moving right, negative = moving left
+        const currentPosition = (translateX as any)._value;
+
+        // Close if swiped left significantly or dragged left past threshold
+        if (gestureState.dx < -threshold || (velocity < -0.3 && gestureState.dx < -DRAWER_WIDTH * 0.1)) {
+          closeDrawer();
+        } else {
+          // Re-open if didn't swipe far enough
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: false,
+            friction: 8,
+            tension: 40,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  // Update animation when visible prop changes
   useEffect(() => {
     if (visible) {
-      Animated.timing(slideAnim, {
+      Animated.spring(translateX, {
         toValue: 0,
-        duration: 300,
         useNativeDriver: false,
+        friction: 8,    // Smooth deceleration
+        tension: 40,    // Quick initial response
       }).start();
     } else {
-      Animated.timing(slideAnim, {
+      Animated.spring(translateX, {
         toValue: -DRAWER_WIDTH,
-        duration: 300,
         useNativeDriver: false,
+        friction: 8,
+        tension: 40,
       }).start();
     }
-  }, [visible, slideAnim]);
+  }, [visible, translateX]);
 
   const isDark = colorScheme === 'dark';
   const colors = {
@@ -234,12 +280,13 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
       <View style={styles.modalContainer}>
         {/* Drawer on LEFT - slides from left */}
         <Animated.View
+          {...panResponder.panHandlers}
           style={[
             styles.drawer,
             {
               backgroundColor: colors.background,
               width: DRAWER_WIDTH,
-              transform: [{ translateX: slideAnim }],
+              transform: [{ translateX: translateX }],
             },
           ]}>
           {/* Header */}

@@ -5,16 +5,15 @@ import { useUIMode } from '@/hooks/useUIMode';
 import { deleteRecord, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
-  Modal,
-  ScrollView,
+  Alert, Dimensions, ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import IncomeExpenseCalendar from '../components/IncomeExpenseCalendar';
 
 type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY';
 
@@ -28,10 +27,88 @@ export default function RecordsScreen() {
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [records, setRecords] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [displayModalVisible, setDisplayModalVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('MONTHLY');
   const [showTotal, setShowTotal] = useState(true);
   const [carryOver, setCarryOver] = useState(false);
+  const pagerRef = useRef<any>(null);
+  const [pageIndex, setPageIndex] = useState<number>(viewMode === 'MONTHLY' ? 1 : 0);
+
+  // New: explicit date range control (start/end) for calendar view
+  const [startDate, setStartDate] = useState<Date>(new Date(new Date().setDate(new Date().getDate() - 29))); // default 30 days
+  const [endDate, setEndDate] = useState<Date>(new Date());
+
+  // Helper: normalize date to YYYY-MM-DD key
+  const toDateKey = (d: Date) => d.toISOString().slice(0, 10);
+
+  // Shift range by number of days (positive or negative)
+  const shiftRange = (days: number) => {
+    setStartDate((s) => new Date(s.getFullYear(), s.getMonth(), s.getDate() + days));
+    setEndDate((e) => new Date(e.getFullYear(), e.getMonth(), e.getDate() + days));
+  };
+
+  // Set preset ranges: 7, 14, 30, 90 days
+  const setPresetRange = (days: number) => {
+    const end = new Date();
+    const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - (days - 1));
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  // Generate array of days between start and end (inclusive)
+  const getDaysArray = (start: Date, end: Date) => {
+    const arr: Date[] = [];
+    const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    while (cur <= last) {
+      arr.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return arr;
+  };
+
+  // Aggregate records per day within start/end range
+  const dailyData = useMemo(() => {
+    const days = getDaysArray(startDate, endDate);
+    const map: Record<string, { income: number; expense: number; net: number }> = {};
+    days.forEach((d) => {
+      const key = toDateKey(d);
+      map[key] = { income: 0, expense: 0, net: 0 };
+    });
+
+    // Sum records falling inside range
+    (records || []).forEach((r) => {
+      const rDate = new Date(r.date);
+      const key = toDateKey(rDate);
+      if (map[key]) {
+        if (r.type === 'INCOME') map[key].income += r.amount;
+        else if (r.type === 'EXPENSE') map[key].expense += r.amount;
+        else {
+          // transfers treated neutral
+        }
+        map[key].net = map[key].income - map[key].expense;
+      }
+    });
+
+    // Build ordered array with cumulative running total
+    const list: Array<{ date: Date; key: string; income: number; expense: number; net: number; cumulative: number }> = [];
+    let running = 0;
+    days.forEach((d) => {
+      const key = toDateKey(d);
+      const { income, expense, net } = map[key] || { income: 0, expense: 0, net: 0 };
+      running += net;
+      list.push({ date: d, key, income, expense, net, cumulative: running });
+    });
+
+    return list;
+  }, [records, startDate, endDate]);
+
+  // Totals over selected range
+  const rangeTotals = useMemo(() => {
+    const income = dailyData.reduce((s, d) => s + d.income, 0);
+    const expense = dailyData.reduce((s, d) => s + d.expense, 0);
+    const net = income - expense;
+    return { income, expense, net };
+  }, [dailyData]);
 
   // Smart loading hook - only shows loading on first load, not on tab switches
   const { loading, handleLoad } = useSmartLoading(
@@ -268,40 +345,61 @@ export default function RecordsScreen() {
     return { expense, income, total };
   }, [filteredRecords]);
 
-  // Month Navigator Component
-  const MonthNavigator = () => (
-    <View style={[styles.monthNavigator, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <TouchableOpacity
-        style={[styles.navButton, { opacity: selectedDate.getFullYear() === 2020 && selectedDate.getMonth() === 0 ? 0.5 : 1 }]}
-        onPress={goToPreviousMonth}
-        disabled={selectedDate.getFullYear() === 2020 && selectedDate.getMonth() === 0}
-      >
-        <MaterialCommunityIcons name="chevron-left" size={24} color={colors.text} />
-      </TouchableOpacity>
+  // New RangeNavigator - shows different controls depending on which pager page is visible
+  const RangeNavigator = () => {
+    // calendar page (0) vs monthly page (1)
+    if (pageIndex === 1) {
+      // For monthly page reuse MonthNavigator (keeps month navigation controls compact)
+      return <MonthNavigator />;
+    }
 
-      <View style={styles.monthDisplay}>
-        <Text style={[styles.monthText, { color: colors.text }]}>
-          {getCurrentMonthYear()}
-        </Text>
-        {!isCurrentMonth() && (
-          <TouchableOpacity
-            style={[styles.todayButton, { backgroundColor: colors.accent }]}
-            onPress={goToToday}
-          >
-            <Text style={styles.todayButtonText}>Today</Text>
-          </TouchableOpacity>
-        )}
+    // Calendar-specific navigator
+    const rangeDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const currentRangeDays = rangeDays; // normalized helper for comparisons
+
+    return (
+      <View style={[styles.monthNavigator, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <TouchableOpacity onPress={() => shiftRange(-rangeDays)} style={[styles.navButton, styles.iconButton]}>
+          <MaterialCommunityIcons name="chevron-left" size={18} color={colors.text} />
+        </TouchableOpacity>
+
+        <View style={styles.monthDisplay}>
+          <Text numberOfLines={1} style={[styles.monthText, { color: colors.text }]}>
+            {startDate.toLocaleDateString()} — {endDate.toLocaleDateString()}
+          </Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
+            {[7, 14, 30, 90].map((d) => {
+              const isActive = d === currentRangeDays;
+              return (
+                <TouchableOpacity
+                  key={d}
+                  style={[
+                    styles.presetButton,
+                    { backgroundColor: isActive ? colors.accent : colors.surface, borderColor: colors.border },
+                  ]}
+                  onPress={() => {
+                    setPresetRange(d);
+                    // ensure calendar page is visible when a preset is chosen
+                    setPageIndex(0);
+                    setViewMode('DAILY');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.presetText, { color: isActive ? '#fff' : colors.text }]}>{d}d</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+        </View>
+
+        <TouchableOpacity onPress={() => shiftRange(rangeDays)} style={[styles.navButton, styles.iconButton]}>
+          <MaterialCommunityIcons name="chevron-right" size={18} color={colors.text} />
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity
-        style={[styles.navButton, { opacity: isFutureMonth() ? 0.5 : 1 }]}
-        onPress={goToNextMonth}
-        disabled={isFutureMonth()}
-      >
-        <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text} />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   // Helper function to get period label
   const getPeriodLabel = () => {
@@ -350,7 +448,7 @@ export default function RecordsScreen() {
     const expenseHeight = (totals.expense / maxAmount) * 100;
 
     return (
-      <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: pageIndex === 1 ? (spacing?.md ?? 12) : (spacing?.xl ?? 24) }]}>
         <Text style={[styles.chartTitle, { color: colors.text }]}>{getChartTitle()}</Text>
         
         <View style={styles.barChartWrapper}>
@@ -449,30 +547,24 @@ export default function RecordsScreen() {
     const isExpanded = expandedRecordId === record.id;
 
     const handleEdit = () => {
-      Alert.alert(
-        'Edit Record',
-        'Edit functionality coming soon!',
-        [{ text: 'OK', onPress: () => setExpandedRecordId(null) }]
-      );
+      // close expansion and open Add Record modal in edit mode by passing record data
+      setExpandedRecordId(null);
+      const payload = {
+        id: record.id,
+        amount: record.amount,
+        type: record.type.toLowerCase(),
+        account_id: record.account_id,
+        category_id: record.category_id,
+        notes: record.notes || null,
+        transaction_date: record.date instanceof Date ? record.date.toISOString() : new Date(record.date).toISOString(),
+      };
+      router.push(`/add-record-modal?record=${encodeURIComponent(JSON.stringify(payload))}` as any);
     };
 
     const handleDelete = () => {
-      Alert.alert(
-        'Delete Record',
-        'Are you sure you want to delete this transaction?',
-        [
-          { text: 'Cancel', onPress: () => setExpandedRecordId(null), style: 'cancel' },
-          {
-            text: 'Delete',
-            onPress: () => {
-              console.log('Deleting record:', record.id);
-              setExpandedRecordId(null);
-              Alert.alert('Success', 'Record deleted successfully!');
-            },
-            style: 'destructive',
-          },
-        ]
-      );
+      // delegate to existing delete handler which shows confirmation and updates state
+      setExpandedRecordId(null);
+      deleteRecordHandler(record.id, record.amount);
     };
 
     return (
@@ -593,149 +685,48 @@ export default function RecordsScreen() {
     );
   };
 
-  // Display Options Modal Component
-  const DisplayOptionsModal = () => (
-    <Modal
-      visible={displayModalVisible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={() => setDisplayModalVisible(false)}
-    >
-      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-        {/* Modal Header */}
-        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => setDisplayModalVisible(false)}>
-            <MaterialCommunityIcons name="close" size={28} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>Display Options</Text>
-          <View style={{ width: 28 }} />
-        </View>
+  // Range Navigator Component
+  const MonthNavigator = () => (
+    <View style={[styles.monthNavigator, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <TouchableOpacity
+        style={[styles.navButton, { opacity: selectedDate.getFullYear() === 2020 && selectedDate.getMonth() === 0 ? 0.5 : 1 }]}
+        onPress={goToPreviousMonth}
+        disabled={selectedDate.getFullYear() === 2020 && selectedDate.getMonth() === 0}
+      >
+        <MaterialCommunityIcons name="chevron-left" size={24} color={colors.text} />
+      </TouchableOpacity>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-          {/* View Mode Section */}
-          <View style={styles.modalSection}>
-            <Text style={[styles.modalSectionTitle, { color: colors.text }]}>View Mode</Text>
-            <Text style={[styles.modalSectionDescription, { color: colors.textSecondary }]}>
-              Choose how you want to view your transactions
-            </Text>
-
-            <View style={styles.viewModeGrid}>
-              {(['DAILY', 'WEEKLY', 'MONTHLY', '3MONTHS', '6MONTHS', 'YEARLY'] as ViewMode[]).map((mode) => (
-                <TouchableOpacity
-                  key={mode}
-                  style={[
-                    styles.viewModeButton,
-                    {
-                      backgroundColor: viewMode === mode ? colors.accent : colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={() => setViewMode(mode)}
-                >
-                  <Text
-                    style={[
-                      styles.viewModeText,
-                      { color: viewMode === mode ? '#FFFFFF' : colors.text },
-                    ]}
-                  >
-                    {mode === '3MONTHS' ? '3M' : mode === '6MONTHS' ? '6M' : mode.charAt(0) + mode.slice(1).toLowerCase()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Divider */}
-          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
-
-          {/* Show Total Toggle */}
-          <View style={styles.modalSection}>
-            <View style={styles.toggleHeader}>
-              <View>
-                <Text style={[styles.toggleTitle, { color: colors.text }]}>Show Total</Text>
-                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
-                  Display total amount in header
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.toggleSwitch,
-                  { backgroundColor: showTotal ? colors.income : colors.textSecondary },
-                ]}
-                onPress={() => setShowTotal(!showTotal)}
-              >
-                <View
-                  style={[
-                    styles.toggleThumb,
-                    {
-                      transform: [{ translateX: showTotal ? 20 : 0 }],
-                    },
-                  ]}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Divider */}
-          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
-
-          {/* Carry Over Toggle */}
-          <View style={styles.modalSection}>
-            <View style={styles.toggleHeader}>
-              <View>
-                <Text style={[styles.toggleTitle, { color: colors.text }]}>Carry Over</Text>
-                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
-                  Include previous balance
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.toggleSwitch,
-                  { backgroundColor: carryOver ? colors.income : colors.textSecondary },
-                ]}
-                onPress={() => setCarryOver(!carryOver)}
-              >
-                <View
-                  style={[
-                    styles.toggleThumb,
-                    {
-                      transform: [{ translateX: carryOver ? 20 : 0 }],
-                    },
-                  ]}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Additional Info */}
-          <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="information" size={20} color={colors.accent} />
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              These display options help you customize how your financial data is presented
-            </Text>
-          </View>
-
-          <View style={{ height: 20 }} />
-        </ScrollView>
-
-        {/* Action Buttons */}
-        <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
+      <View style={styles.monthDisplay}>
+        <Text style={[styles.monthText, { color: colors.text }]}>
+          {getCurrentMonthYear()}
+        </Text>
+        {!isCurrentMonth() && (
           <TouchableOpacity
-            style={[styles.footerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => setDisplayModalVisible(false)}
+            style={[styles.todayButton, { backgroundColor: colors.accent }]}
+            onPress={goToToday}
           >
-            <Text style={[styles.footerButtonText, { color: colors.text }]}>Cancel</Text>
+            <Text style={styles.todayButtonText}>Today</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.footerButton, { backgroundColor: colors.accent }]}
-            onPress={() => setDisplayModalVisible(false)}
-          >
-            <Text style={[styles.footerButtonText, { color: '#FFFFFF' }]}>Apply</Text>
-          </TouchableOpacity>
-        </View>
+        )}
       </View>
-    </Modal>
+
+      <TouchableOpacity
+        style={[styles.navButton, { opacity: isFutureMonth() ? 0.5 : 1 }]}
+        onPress={goToNextMonth}
+        disabled={isFutureMonth()}
+      >
+        <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text} />
+      </TouchableOpacity>
+    </View>
   );
+
+  // Keep pager in sync when pageIndex changes
+  useEffect(() => {
+    const w = Dimensions.get('window').width;
+    if (pagerRef.current && typeof pagerRef.current.scrollTo === 'function') {
+      pagerRef.current.scrollTo({ x: pageIndex * w, animated: true });
+    }
+  }, [pageIndex]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -747,526 +738,351 @@ export default function RecordsScreen() {
         {/* Header */}
         <View style={[styles.headerContainer, { justifyContent: 'space-between' }]}>
           <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              Financial Overview
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-              {getPeriodLabel()}
-            </Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Financial Overview</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{getPeriodLabel()}</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => setDisplayModalVisible(true)}
-          >
-            <MaterialCommunityIcons name="filter-outline" size={24} color={colors.accent} />
-          </TouchableOpacity>
+          <View style={{ width: 28 }} />
         </View>
 
-        {/* Month Navigator */}
-        <MonthNavigator />
+        {/* Range Navigator (controls) */}
+        <RangeNavigator />
 
-        {/* Monthly Chart */}
-        <MonthlyChart />
+        {/* Pager: swipe horizontally between calendar (index 0) and monthly chart (index 1) */}
+        <ScrollView
+          ref={pagerRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const w = Dimensions.get('window').width;
+            const newIndex = Math.round(e.nativeEvent.contentOffset.x / w);
+            setPageIndex(newIndex);
+            setViewMode(newIndex === 1 ? 'MONTHLY' : 'DAILY');
+          }}
+        >
+          <View style={{ width: Dimensions.get('window').width - 8, paddingRight: 8 }}>
+            <IncomeExpenseCalendar
+              dailyData={dailyData}
+              rangeTotals={rangeTotals}
+              colors={colors}
+              spacing={spacing}
+              onDayPress={(day: any) => {
+                setSelectedDate(new Date(day.date));
+                setViewMode('DAILY');
+              }}
+            />
+          </View>
 
-        {/* Statistics Cards */}
-        <View style={styles.statsContainer}>
-          <StatCard
-            label="Expense"
-            amount={totals.expense}
-            color={colors.expense}
-            icon="trending-down"
-          />
-          <StatCard
-            label="Income"
-            amount={totals.income}
-            color={colors.income}
-            icon="trending-up"
-          />
-          <StatCard
-            label="Total"
-            amount={totals.total}
-            color={colors.accent}
-            icon="wallet"
-          />
-        </View>
+          <View style={{ width: Dimensions.get('window').width - 18, paddingRight: 0, marginRight: 2 }}>
+            <MonthlyChart />
+          </View>
+        </ScrollView>
 
-        {/* Records List */}
-        <View style={styles.recordsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Recent Transactions
-          </Text>
+        {/* Stat Cards - Income, Expense, Total */}
+        {/* Use range totals when calendar page is visible, otherwise use filtered view totals */}
+        {(() => {
+          // Compute display totals in a type-safe way (rangeTotals has {income,expense,net}, totals has {income,expense,total})
+          const display = (pageIndex === 0 ? rangeTotals : totals) as any;
+          const displayIncome: number = Number(display.income ?? 0);
+          const displayExpense: number = Number(display.expense ?? 0);
+          const displayNet: number = typeof display.net === 'number' ? display.net : Number(display.total ?? (displayIncome - displayExpense));
 
-          {filteredRecords.length > 0 ? (
-            <View>
-              {filteredRecords.map((record) => (
-                <RecordItem key={record.id} record={record} />
-              ))}
+          return (
+            <View style={{ flexDirection: 'row', gap: 5, marginVertical: spacing.lg }}>
+              <StatCard
+                label="Total Income"
+                amount={displayIncome}
+                color={colors.income}
+                icon="arrow-up-circle"
+              />
+              <StatCard
+                label="Total Expense"
+                amount={displayExpense}
+                color={colors.expense}
+                icon="arrow-down-circle"
+              />
+              <StatCard
+                label="Net Total"
+                amount={displayNet}
+                color={displayNet >= 0 ? colors.income : colors.expense}
+                icon="currency-rupee"
+              />
+            </View>
+          );
+        })()}
+
+        {/* Records List - show monthRecords directly */}
+        <View style={{ paddingBottom: spacing.xl }}>
+          {monthRecords.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="folder-off" size={48} color={colors.textSecondary} />
+              <Text style={[styles.emptyStateText, { color: colors.text }]}>No records found</Text>
+              <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
+                Try adding some transactions
+              </Text>
             </View>
           ) : (
-            <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
-              <MaterialCommunityIcons
-                name="inbox-multiple"
-                size={48}
-                color={colors.textSecondary}
-              />
-              <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                No records in this period
-              </Text>
-              <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                Add your first transaction to get started
-              </Text>
-            </View>
+            monthRecords.map((record) => <RecordItem key={record.id} record={record} />)
           )}
         </View>
 
-        <View style={{ height: 20 }} />
+        {/* Floating Action Button for adding records */}
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: colors.accent }]}
+          onPress={() => {
+            // Open Add Record modal
+            setExpandedRecordId(null);
+            router.push('/add-record-modal' as any);
+          }}
+        >
+          <MaterialCommunityIcons name="plus" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </ScrollView>
-
-      {/* Display Options Modal */}
-      <DisplayOptionsModal />
-
-      {/* FAB Button */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.accent }]}
-        onPress={() => router.push('/add-record-modal')}
-      >
-        <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 }
 
-// Create a function to generate styles based on spacing
-const createStyles = (spacing: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    flex: 1,
-  },
-  scrollContentInner: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  header: {
-    marginBottom: spacing.xl,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  statCard: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  statCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  statAmount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  recordsSection: {
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: spacing.md,
-  },
-  recordItemWrapper: {
-    marginBottom: spacing.xs,
-  },
-  recordItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  recordLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    flex: 1,
-  },
-  recordIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordCategory: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  recordAccount: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  recordRight: {
-    alignItems: 'flex-end',
-    marginRight: spacing.xs,
-  },
-  recordAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  recordDate: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  recordActions: {
-    borderRadius: 0,
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderBottomWidth: 1,
-    marginBottom: spacing.xs,
-  },
-  actionsDivider: {
-    height: 1,
-    width: '100%',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  notesSection: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-  },
-  notesLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  notesText: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  emptyState: {
-    paddingVertical: spacing.xxl,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: spacing.md,
-  },
-  emptyStateSubtext: {
-    fontSize: 13,
-    marginTop: spacing.sm,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  // Chart styles
-  chartContainer: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: spacing.lg,
-  },
-  barChartWrapper: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: 180,
-    marginBottom: spacing.lg,
-  },
-  barGroup: {
-    flex: 1,
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  barLabelGroup: {
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: spacing.xs,
-  },
-  barLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  barAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  barBackground: {
-    width: '100%',
-    height: 120,
-    borderRadius: 8,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  bar: {
-    width: '100%',
-    borderRadius: 8,
-    minHeight: 10,
-  },
-  chartSummary: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-  },
-  summaryItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  summaryLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  summaryDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  // Month Navigator Styles
-  monthNavigator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: spacing.xl,
-  },
-  navButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-  },
-  monthDisplay: {
-    flex: 1,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  monthText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  todayButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 6,
-  },
-  todayButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  // Header Container
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.xl,
-    gap: spacing.md,
-  },
-  filterButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    marginTop: 4,
-  },
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    paddingTop: 60,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  modalSection: {
-    marginBottom: spacing.lg,
-  },
-  modalSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  modalSectionDescription: {
-    fontSize: 13,
-    marginBottom: spacing.md,
-  },
-  viewModeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  viewModeButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '30%',
-  },
-  viewModeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  modalDivider: {
-    height: 1,
-    marginVertical: spacing.lg,
-  },
-  toggleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  toggleTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  toggleDescription: {
-    fontSize: 12,
-  },
-  toggleSwitch: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    padding: 2,
-    justifyContent: 'center',
-  },
-  toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: spacing.lg,
-  },
-  infoText: {
-    fontSize: 12,
-    flex: 1,
-    lineHeight: 16,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderTopWidth: 1,
-  },
-  footerButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  footerButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+const getStyles = (spacing: any) =>
+  StyleSheet.create({
+    container: { flex: 1, padding: 8 },
+    scrollContent: { flexGrow: 1 },
+    scrollContentInner: { paddingBottom: 80 },
 
-// Create a memoized styles function to prevent unnecessary recalculations
-const getStyles = (spacing: any) => createStyles(spacing);
+    // Header
+    headerContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: spacing?.xl ?? 24,
+      gap: spacing?.md ?? 16,
+      margin: 5,
+    },
+    header: { flex: 1 },
+    headerTitle: { fontSize: 24, fontWeight: '700', marginBottom: 4 },
+    headerSubtitle: { fontSize: 14, color: '#A0A0A0' },
+    filterButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      marginTop: 4,
+    },
+
+    // Range / Month Navigator
+    monthNavigator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing?.md ?? 12,
+      paddingVertical: spacing?.sm ?? 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      marginBottom: spacing?.lg ?? 18,
+      gap: 12,
+    },
+    navButton: {
+      padding: 6,
+      borderRadius: 8,
+    },
+    iconButton: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    monthDisplay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    monthText: { fontSize: 14, fontWeight: '700' },
+    todayButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
+    },
+    todayButtonText: { fontSize: 11, fontWeight: '600', color: '#FFFFFF' },
+    presetRow: { paddingVertical: 8, paddingHorizontal: 4, alignItems: 'center', gap: 8 },
+    presetButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      marginRight: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    presetText: { fontSize: 13, fontWeight: '600' },
+    viewModeButton: {
+      paddingHorizontal: spacing?.lg ?? 12,
+      paddingVertical: spacing?.xs ?? 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 48,
+    },
+    viewModeText: { fontSize: 13, fontWeight: '600' },
+
+    // Charts
+    chartContainer: {
+      borderRadius: 12,
+      borderWidth: 1,
+      paddingHorizontal: spacing?.lg ?? 16,
+      paddingVertical: spacing?.lg ?? 16,
+      marginBottom: spacing?.xl ?? 24,
+    },
+    chartTitle: { fontSize: 16, fontWeight: '600', marginBottom: spacing?.lg ?? 16 },
+
+    // Bar chart
+    barChartWrapper: {
+      flexDirection: 'row',
+      gap: 16,
+      justifyContent: 'space-around',
+      alignItems: 'flex-end',
+      height: 180,
+      marginBottom: 16,
+    },
+    barGroup: { flex: 1, alignItems: 'center', gap: 8 },
+    barLabelGroup: { alignItems: 'center', width: '100%', marginBottom: 4 },
+    barLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4 },
+    barAmount: { fontSize: 14, fontWeight: '700' },
+    barBackground: {
+      width: '100%',
+      height: 120,
+      borderRadius: 8,
+      overflow: 'hidden',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+    },
+    bar: { width: '100%', borderRadius: 8, minHeight: 10 },
+
+    // Chart summary
+    chartSummary: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(0,0,0,0.1)',
+    },
+    summaryItem: { alignItems: 'center', flex: 1 },
+    summaryLabel: { fontSize: 12, marginBottom: 4 },
+    summaryValue: { fontSize: 16, fontWeight: '700' },
+    summaryDivider: { width: 1, height: 40, backgroundColor: 'rgba(0,0,0,0.1)' },
+
+    // Stat Card
+    statCard: {
+      flex: 1,
+      borderRadius: 12,
+      padding: spacing?.md ?? 12,
+      alignItems: 'flex-start',
+      justifyContent: 'space-around',
+    },
+    statCardContent: { flexDirection: 'row', alignItems: 'center', gap: 0, marginLeft: -4 },
+    statLabel: { color: '#FFFFFF', marginLeft: 0 },
+    statAmount: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+
+    // Modal
+    modalContainer: { flex: 1, paddingTop: 60 },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing?.lg ?? 16,
+      paddingVertical: spacing?.lg ?? 16,
+      borderBottomWidth: 1,
+    },
+    modalTitle: { fontSize: 18, fontWeight: '700' },
+    modalContent: { flex: 1, paddingHorizontal: spacing?.lg ?? 16, paddingTop: spacing?.lg ?? 16 },
+    modalSection: { marginBottom: spacing?.lg ?? 16 },
+    modalSectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: spacing?.xs ?? 8 },
+    modalSectionDescription: { fontSize: 13, marginBottom: spacing?.md ?? 12 },
+    modalDivider: { height: 1, marginVertical: spacing?.lg ?? 16 },
+
+    // Toggles
+    toggleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    toggleTitle: { fontSize: 15, fontWeight: '600', marginBottom: spacing?.xs ?? 8 },
+    toggleDescription: { fontSize: 12 },
+    toggleSwitch: { width: 50, height: 28, borderRadius: 14, padding: 2, justifyContent: 'center' },
+    toggleThumb: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: '#FFFFFF',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+      elevation: 3,
+    },
+
+    infoBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing?.md ?? 12,
+      paddingHorizontal: spacing?.md ?? 12,
+      paddingVertical: spacing?.md ?? 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      marginTop: spacing?.lg ?? 16,
+    },
+    infoText: { fontSize: 12, flex: 1, lineHeight: 16 },
+
+    modalFooter: {
+      flexDirection: 'row',
+      gap: spacing?.md ?? 12,
+      paddingHorizontal: spacing?.lg ?? 16,
+      paddingVertical: spacing?.lg ?? 16,
+      borderTopWidth: 1,
+    },
+    footerButton: { flex: 1, paddingVertical: spacing?.md ?? 12, borderRadius: 10, alignItems: 'center', borderWidth: 1 },
+    footerButtonText: { fontSize: 14, fontWeight: '600' },
+
+    // Record item
+    recordItemWrapper: { marginBottom: spacing?.md ?? 12 },
+    recordItem: { flexDirection: 'row', alignItems: 'center', padding: spacing?.md ?? 12, borderRadius: 12, borderWidth: 1 },
+    recordLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing?.md ?? 12, flex: 1 },
+    recordIcon: { width: 44, height: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    recordCategory: { fontSize: 14, fontWeight: '600' },
+    recordAccount: { fontSize: 12, marginTop: 2 },
+    recordRight: { alignItems: 'flex-end', marginRight: spacing?.xs ?? 4 },
+    recordAmount: { fontSize: 14, fontWeight: '700' },
+    recordDate: { fontSize: 12, marginTop: 2 },
+
+    recordActions: {
+      borderRadius: 0,
+      borderBottomLeftRadius: 10,
+      borderBottomRightRadius: 10,
+      borderTopWidth: 1,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderBottomWidth: 1,
+      marginBottom: spacing?.xs ?? 8,
+    },
+    actionsDivider: { height: 1, width: '100%' },
+    actionsContainer: { flexDirection: 'row', gap: spacing?.md ?? 12, paddingHorizontal: spacing?.md ?? 12, paddingVertical: spacing?.md ?? 12 },
+    actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1 },
+    actionButtonText: { fontSize: 12, fontWeight: '600' },
+
+    notesSection: { paddingHorizontal: spacing?.md ?? 12, paddingVertical: spacing?.md ?? 12, borderTopWidth: 1 },
+    notesLabel: { fontSize: 12, fontWeight: '600', marginBottom: 6 },
+    notesText: { fontSize: 13, lineHeight: 18 },
+
+    emptyState: { paddingVertical: spacing?.xxl ?? 48, borderRadius: 12, alignItems: 'center' },
+    emptyStateText: { fontSize: 16, fontWeight: '600', marginTop: spacing?.md ?? 12 },
+    emptyStateSubtext: { fontSize: 13, marginTop: spacing?.sm ?? 8 },
+
+    fab: {
+      position: 'absolute',
+      bottom: spacing?.lg ?? 16,
+      right: spacing?.lg ?? 16,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+  });

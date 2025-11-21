@@ -46,6 +46,7 @@ const InitialLayout = () => {
             'add-budget-modal',
             'add-account-modal',
             'add-category-modal',
+            'edit-category-modal',
             'preferences',
             'passcode-setup',
             'export-records-modal',
@@ -128,6 +129,7 @@ const InitialLayout = () => {
             <Stack.Screen name="add-budget-modal" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="add-account-modal" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="add-category-modal" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="edit-category-modal" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="preferences" options={{ headerShown: false }} />
             <Stack.Screen name="passcode-setup" options={{ headerShown: false }} />
             <Stack.Screen name="export-records-modal" options={{ headerShown: false }} />

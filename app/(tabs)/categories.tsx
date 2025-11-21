@@ -146,8 +146,10 @@ export default function CategoriesScreen() {
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.accent }]}
               onPress={() => {
-                // TODO: Navigate to edit category modal with category data
-                Alert.alert('Edit Category', `Editing "${category.name}"`);
+                router.push({
+                  pathname: '/edit-category-modal',
+                  params: { category: JSON.stringify(category) }
+                });
               }}
             >
               <MaterialCommunityIcons name="pencil" size={16} color="#FFFFFF" />

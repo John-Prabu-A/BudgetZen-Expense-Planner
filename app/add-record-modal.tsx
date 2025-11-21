@@ -1,9 +1,9 @@
 import { useAuth } from '@/context/Auth';
 import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import { useUIMode } from '@/hooks/useUIMode';
-import { createRecord, readAccounts, readCategories } from '@/lib/finance';
+import { createRecord, readAccounts, readCategories, updateRecord } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
@@ -46,6 +46,9 @@ export default function AddRecordModal() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState('09:00');
   const [saving, setSaving] = useState(false);
+  const params = useLocalSearchParams();
+  const incomingRecord = params.record ? JSON.parse(params.record as string) : null;
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
 
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -79,6 +82,24 @@ export default function AddRecordModal() {
       ]);
       setAccounts(accountsData || []);
       setAllCategories(categoriesData || []);
+
+      // If opened in edit mode, prefill selections using loaded data
+      if (incomingRecord) {
+        setEditingRecordId(incomingRecord.id || null);
+        setAmount(String(incomingRecord.amount || ''));
+        setRecordType((incomingRecord.type || 'expense').toUpperCase() as any);
+        setNotes(incomingRecord.notes || '');
+        const txnDate = new Date(incomingRecord.transaction_date || new Date());
+        setSelectedDate(txnDate);
+        const hrs = txnDate.getHours().toString().padStart(2, '0');
+        const mins = txnDate.getMinutes().toString().padStart(2, '0');
+        setSelectedTime(`${hrs}:${mins}`);
+
+        const acct = (accountsData || []).find((a) => a.id === incomingRecord.account_id);
+        if (acct) setSelectedAccount(acct);
+        const cat = (categoriesData || []).find((c) => c.id === incomingRecord.category_id);
+        if (cat) setSelectedCategory(cat);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       Alert.alert('Error', 'Failed to load accounts and categories');
@@ -145,12 +166,20 @@ export default function AddRecordModal() {
         transaction_date: transactionDate.toISOString(),
       };
 
-      const result = await createRecord(recordData);
-      Alert.alert('Success', 'Record saved successfully!');
+      if (editingRecordId) {
+        // Remove user_id when updating (database may not allow changing owner)
+        const updatedData = { ...recordData };
+        delete (updatedData as any).user_id;
+        await updateRecord(editingRecordId, updatedData);
+        Alert.alert('Success', 'Record updated successfully!');
+      } else {
+        await createRecord(recordData);
+        Alert.alert('Success', 'Record saved successfully!');
+      }
       router.back();
     } catch (error) {
       console.error('Error saving record:', error);
-      Alert.alert('Error', 'Failed to save record');
+      Alert.alert('Error', editingRecordId ? 'Failed to update record' : 'Failed to save record');
     } finally {
       setSaving(false);
     }
