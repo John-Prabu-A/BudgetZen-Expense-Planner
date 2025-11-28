@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/Theme';
 import { SPRING_CONFIG, TIMING_CONFIG } from '@/hooks/useAnimations';
 import React, { useEffect } from 'react';
 import {
@@ -28,8 +29,10 @@ export const AnimatedModal = ({
   children,
   style,
   animationType = 'slide',
-  isDark = false,
+  isDark: overrideDark = false,
 }: AnimatedModalProps) => {
+  const { isDark: themeDark, colors } = useTheme();
+  const isDark = overrideDark !== undefined ? overrideDark : themeDark;
   const translateY = useSharedValue(Dimensions.get('window').height);
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
@@ -87,7 +90,7 @@ export const AnimatedModal = ({
         style={[
           styles.backdrop,
           {
-            backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.5)',
+            backgroundColor: colors.overlay,
           },
           backdropAnimatedStyle,
         ]}
@@ -99,7 +102,7 @@ export const AnimatedModal = ({
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+            backgroundColor: colors.surface,
           },
           containerAnimatedStyle,
           style,
@@ -132,7 +135,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     zIndex: 1,
     maxHeight: '90%',
-    shadowColor: '#000',
+    shadowColor: 'rgba(0,0,0,0.15)',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,

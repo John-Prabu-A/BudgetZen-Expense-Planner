@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/Theme';
 import React, { useEffect } from 'react';
 import {
     StyleSheet,
@@ -26,8 +27,10 @@ export const SkeletonLoader = ({
   height = 20,
   borderRadius = 8,
   style,
-  isDark = false,
+  isDark: overrideDark = false,
 }: SkeletonLoaderProps) => {
+  const { isDark: themeDark } = useTheme();
+  const isDark = overrideDark !== undefined ? overrideDark : themeDark;
   const shimmer = useSharedValue(0);
 
   useEffect(() => {
@@ -99,13 +102,16 @@ interface SkeletonCardProps {
   style?: any;
 }
 
-export const SkeletonCard = ({ isDark = false, style }: SkeletonCardProps) => {
+export const SkeletonCard = ({ isDark: overrideDark = false, style }: SkeletonCardProps) => {
+  const { isDark: themeDark, colors } = useTheme();
+  const isDark = overrideDark !== undefined ? overrideDark : themeDark;
+  
   return (
     <View
       style={[
         styles.card,
         {
-          backgroundColor: isDark ? '#262626' : '#f5f5f5',
+          backgroundColor: colors.surfaceLight,
         },
         style,
       ]}

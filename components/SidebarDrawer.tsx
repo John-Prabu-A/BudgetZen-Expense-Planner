@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/Auth';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { useGestureDrawer } from '@/hooks/useGestureDrawer';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -136,7 +136,7 @@ const SectionColors = {
 };
 
 export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) {
-  const colorScheme = useAppColorScheme();
+  const { isDark, colors } = useTheme();
   const router = useRouter();
   const { user, signOut } = useAuth();
 
@@ -200,16 +200,6 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
       }).start();
     }
   }, [visible, translateX]);
-
-  const isDark = colorScheme === 'dark';
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#2A2A2A' : '#F9FAFB',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#6B7280',
-    border: isDark ? '#404040' : '#E5E7EB',
-    overlay: 'rgba(0, 0, 0, 0.5)',
-  };
 
   const handleNavigation = (route: string) => {
     onClose();
@@ -307,7 +297,7 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
               <MaterialCommunityIcons
                 name="account-circle"
                 size={40}
-                color="#0284c7"
+                color={colors.accent}
               />
             </View>
             <View style={styles.headerText}>
@@ -337,16 +327,16 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
           <TouchableOpacity
             style={[
               styles.logoutButton,
-              { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
+              { backgroundColor: colors.danger + '20' },
             ]}
             onPress={handleLogout}>
             <MaterialCommunityIcons
               name="logout"
               size={20}
-              color="#EF4444"
+              color={colors.danger}
               style={styles.logoutIcon}
             />
-            <Text style={styles.logoutText}>Logout</Text>
+            <Text style={[styles.logoutText, { color: colors.danger }]}>Logout</Text>
           </TouchableOpacity>
 
           <Text style={[styles.versionText, { color: colors.textSecondary }]}>
@@ -482,7 +472,6 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#EF4444',
   },
   versionText: {
     fontSize: 11,

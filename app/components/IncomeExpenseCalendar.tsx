@@ -1,34 +1,30 @@
 
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '@/context/Theme';
 import { useUIMode } from '@/hooks/useUIMode';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 type IncomeExpenseCalendarProps = {
   year: number;
   month: number;
   data: { [day: number]: { income?: number; expense?: number } };
+  isDark?: boolean;
+  type?: 'income' | 'expense' | 'both';
 };
 
-const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({ year, month, data }) => {
+const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({ year, month, data, isDark: overrideDark, type = 'both' }) => {
   const spacing = useUIMode();
-  const colorScheme = useAppColorScheme();
-  const isDark = colorScheme === 'dark';
-
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E5E5E5',
-    income: '#10B981',
-    expense: '#EF4444',
-  };
+  const { isDark: themeDark, colors } = useTheme();
+  const isDark = overrideDark !== undefined ? overrideDark : themeDark;
 
   const styles = StyleSheet.create({
     container: {
       padding: spacing.md,
       backgroundColor: colors.background,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginVertical: spacing.md,
     },
     header: {
       flexDirection: 'row',
@@ -48,20 +44,23 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({ year, mon
     },
     dayCell: {
       width: '14.28%',
-      height: 60,
+      minHeight: 70,
       justifyContent: 'flex-start',
       alignItems: 'center',
       borderWidth: 0.5,
       borderColor: colors.border,
-      padding: spacing.xs,
+      paddingVertical: spacing.xs,
+      backgroundColor: colors.surfaceLight,
     },
     dayText: {
-      fontSize: 12,
+      fontSize: 13,
+      fontWeight: '600',
       color: colors.text,
       marginBottom: spacing.xs,
     },
     amountText: {
-      fontSize: 10,
+      fontSize: 11,
+      fontWeight: '600',
     },
   });
 
@@ -78,17 +77,20 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({ year, mon
     // Add cells for each day of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const dayData = data[day];
+      const hasIncome = dayData?.income && dayData.income > 0;
+      const hasExpense = dayData?.expense && dayData.expense > 0;
+
       calendarDays.push(
         <View key={day} style={styles.dayCell}>
           <Text style={styles.dayText}>{day}</Text>
-          {dayData?.income && (
+          {(type === 'income' || type === 'both') && hasIncome && (
             <Text style={[styles.amountText, { color: colors.income }]}>
-              {dayData.income.toFixed(2)}
+              +₹{(dayData?.income ?? 0).toFixed(0)}
             </Text>
           )}
-          {dayData?.expense && (
+          {(type === 'expense' || type === 'both') && hasExpense && (
             <Text style={[styles.amountText, { color: colors.expense }]}>
-              -{dayData.expense.toFixed(2)}
+              -₹{(dayData?.expense ?? 0).toFixed(0)}
             </Text>
           )}
         </View>

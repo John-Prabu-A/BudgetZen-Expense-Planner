@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/Auth';
 import { PreferencesProvider } from '../context/Preferences';
+import { ThemeProvider } from '../context/Theme';
 import { useAppColorScheme } from '../hooks/useAppColorScheme';
 
 const InitialLayout = () => {
@@ -150,7 +151,9 @@ export default function RootLayout() {
     return (
         <AuthProvider>
             <PreferencesProvider>
-                <InitialLayout />
+                <ThemeProvider>
+                    <InitialLayout />
+                </ThemeProvider>
             </PreferencesProvider>
         </AuthProvider>
     );

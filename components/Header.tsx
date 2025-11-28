@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/Theme';
 import { useFadeInAnimation, useSlideInAnimation } from '@/hooks/useAnimations';
 import { useUIMode } from '@/hooks/useUIMode';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -6,7 +7,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -18,7 +18,7 @@ interface HeaderProps {
 
 const Header = ({ onMenuPress }: HeaderProps) => {
   const { lg, md } = useUIMode();
-  const colorScheme = useColorScheme();
+  const { isDark, colors } = useTheme();
 
   // Animation hooks
   const slideAnimation = useSlideInAnimation();
@@ -29,29 +29,15 @@ const Header = ({ onMenuPress }: HeaderProps) => {
     fadeAnimation.startAnimation();
   }, []);
 
-  const colors = {
-    light: {
-      background: '#FFFFFF',
-      text: '#111111',
-      subText: '#6B7280',
-    },
-    dark: {
-      background: '#1A1A1A',
-      text: '#FFFFFF',
-      subText: '#9CA3AF',
-    },
-  };
-
-  const selectedColors = colors[colorScheme || 'light'];
-
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={{ backgroundColor: colors[colorScheme || 'light'].background }}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ backgroundColor: colors.background }}>
       <Animated.View style={[slideAnimation.animatedStyle]}>
         <View
           style={[
             styles.headerContainer,
             {
-              backgroundColor: selectedColors.background,
+              backgroundColor: colors.headerBackground,
+              borderBottomColor: colors.headerBorder,
               paddingVertical: lg + 4,
               paddingHorizontal: md,
             },
@@ -62,21 +48,21 @@ const Header = ({ onMenuPress }: HeaderProps) => {
             <MaterialCommunityIcons
               name="menu"
               size={28}
-              color={selectedColors.text}
+              color={colors.text}
             />
           </TouchableOpacity>
 
           {/* Title */}
           <Animated.View style={[styles.titleContainer, fadeAnimation.animatedStyle]}>
             <Text style={styles.inlineText}>
-              <Text style={[styles.appName, { color: selectedColors.text }]}>
+              <Text style={[styles.appName, { color: colors.text }]}>
                 Budget
               </Text>
-              <Text style={[styles.appNameAccent, { color: selectedColors.text }]}>
+              <Text style={[styles.appNameAccent, { color: colors.accent }]}>
                 Zen
               </Text>
               {"  "}
-              <Text style={[styles.subTitle, { color: selectedColors.subText }]}>
+              <Text style={[styles.subTitle, { color: colors.textSecondary }]}>
                 Expense Planner
               </Text>
             </Text>
@@ -92,7 +78,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     borderBottomWidth: 1,
-    borderBottomColor: '#303030',
   },
   menuButton: {
     padding: 8,
