@@ -4,10 +4,10 @@ import { useUIMode } from '@/hooks/useUIMode';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
 import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,7 +38,7 @@ const Header = ({ onMenuPress }: HeaderProps) => {
             {
               backgroundColor: colors.headerBackground,
               borderBottomColor: colors.headerBorder,
-              paddingVertical: lg + 4,
+              paddingBottom: md,
               paddingHorizontal: md,
             },
           ]}

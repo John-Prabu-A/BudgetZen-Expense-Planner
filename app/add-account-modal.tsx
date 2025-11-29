@@ -1,9 +1,9 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
-import { createAccount } from '@/lib/finance';
+import { createAccount, updateAccount } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     ScrollView,
@@ -28,6 +28,10 @@ export default function AddAccountModal() {
     const router = useRouter();
     const { isDark, colors } = useTheme();
     const { user, session } = useAuth();
+    const params = useLocalSearchParams();
+
+    const isEditMode = params.mode === 'edit';
+    const accountId = params.accountId as string;
 
     const [selectedType, setSelectedType] = useState(accountTypes[0]);
     const [accountName, setAccountName] = useState('');
@@ -35,8 +39,22 @@ export default function AddAccountModal() {
     const [notes, setNotes] = useState('');
     const [saving, setSaving] = useState(false);
 
+    // Initialize form if in edit mode
+    useEffect(() => {
+        if (isEditMode) {
+            setAccountName(params.accountName as string || '');
+            setInitialBalance(params.initialBalance as string || '');
+            
+            // Find and set the account type
+            const type = accountTypes.find(t => t.name === params.accountType);
+            if (type) {
+                setSelectedType(type);
+            }
+        }
+    }, [isEditMode, params]);
+
     const handleSave = async () => {
-        if (!accountName || !initialBalance) {
+        if (!accountName.trim() || !initialBalance.trim()) {
             Alert.alert('Error', 'Please fill in all required fields');
             return;
         }
@@ -49,17 +67,29 @@ export default function AddAccountModal() {
         try {
             setSaving(true);
             const accountData = {
-                user_id: user.id,
-                name: accountName,
+                name: accountName.trim(),
                 type: selectedType.name,
                 initial_balance: parseFloat(initialBalance),
             };
-            await createAccount(accountData);
-            Alert.alert('Success', 'Account created successfully!');
+
+            if (isEditMode && accountId) {
+                // Update existing account
+                await updateAccount(accountId, accountData);
+                Alert.alert('Success', 'Account updated successfully!');
+            } else {
+                // Create new account
+                const newAccountData = {
+                    ...accountData,
+                    user_id: user.id,
+                };
+                await createAccount(newAccountData);
+                Alert.alert('Success', 'Account created successfully!');
+            }
+
             router.back();
         } catch (error) {
             console.error('Error saving account:', error);
-            Alert.alert('Error', 'Failed to save account');
+            Alert.alert('Error', isEditMode ? 'Failed to update account' : 'Failed to create account');
         } finally {
             setSaving(false);
         }
@@ -74,7 +104,9 @@ export default function AddAccountModal() {
                     <TouchableOpacity onPress={() => router.back()}>
                         <MaterialCommunityIcons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Add Account</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>
+                        {isEditMode ? 'Edit Account' : 'Add Account'}
+                    </Text>
                     <View style={{ width: 24 }} />
                 </View>
 
@@ -191,14 +223,24 @@ export default function AddAccountModal() {
                             },
                         ]}
                         onPress={() => router.back()}
+                        disabled={saving}
                     >
                         <Text style={[styles.buttonText, { color: colors.text }]}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={[styles.button, { backgroundColor: colors.accent }]}
+                        style={[
+                            styles.button, 
+                            { 
+                                backgroundColor: colors.accent,
+                                opacity: saving ? 0.6 : 1,
+                            }
+                        ]}
                         onPress={handleSave}
+                        disabled={saving}
                     >
-                        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Save Account</Text>
+                        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                            {saving ? 'Saving...' : (isEditMode ? 'Update Account' : 'Save Account')}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
