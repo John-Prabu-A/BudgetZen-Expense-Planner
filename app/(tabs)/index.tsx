@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/Auth';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { useSmartLoading } from '@/hooks/useSmartLoading';
 import { useUIMode } from '@/hooks/useUIMode';
 import { deleteRecord, readRecords } from '@/lib/finance';
@@ -20,8 +20,7 @@ type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY
 export default function RecordsScreen() {
   const router = useRouter();
   const { user, session } = useAuth();
-  const colorScheme = useAppColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark, colors } = useTheme();
   const spacing = useUIMode();
   const styles = getStyles(spacing);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
@@ -131,18 +130,6 @@ export default function RecordsScreen() {
     },
     [user, session]
   );
-
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#262626' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E5E5E5',
-    accent: '#0284c7',
-    income: '#10B981',
-    expense: '#EF4444',
-    transfer: '#8B5CF6',
-  };
 
   useEffect(() => {
     if (user && session) {

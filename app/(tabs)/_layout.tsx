@@ -1,34 +1,14 @@
 import Header from '@/components/Header';
 import SidebarDrawer from '@/components/SidebarDrawer';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { useUIMode } from '@/hooks/useUIMode';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React, { useState } from 'react';
 
-const Colors = {
-  light: {
-    tint: '#0284c7',
-    tabIconDefault: '#687076',
-    tabIconSelected: '#0284c7',
-    background: '#FFFFFF',
-    border: '#E5E5E5',
-    text: '#000000',
-  },
-  dark: {
-    tint: '#fff',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: '#fff',
-    background: '#1A1A1A',
-    border: '#404040',
-    text: '#FFFFFF',
-  },
-};
-
 export default function TabsLayout() {
-  const colorScheme = useAppColorScheme();
+  const { isDark, colors } = useTheme();
   const { fontMd, md } = useUIMode();
-  const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   return (
@@ -36,12 +16,12 @@ export default function TabsLayout() {
       <SidebarDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: colors.tabIconSelected,
-          tabBarInactiveTintColor: colors.tabIconDefault,
+          tabBarActiveTintColor: colors.tabIconActive,
+          tabBarInactiveTintColor: colors.tabIconInactive,
           header: () => <Header onMenuPress={() => setDrawerVisible(true)} />,
           tabBarLabelStyle: { fontSize: fontMd },
           tabBarStyle: {
-            backgroundColor: colors.background,
+            backgroundColor: colors.tabBarBackground,
             borderTopColor: colors.border,
           },
         }}>

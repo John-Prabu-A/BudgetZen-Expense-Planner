@@ -1,5 +1,5 @@
 import { usePreferences } from '@/context/Preferences';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -13,13 +13,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Screen = 'options' | 'set' | 'confirm' | 'verify';
 
 export default function PasscodeSetupScreen() {
   const router = useRouter();
-  const colorScheme = useAppColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark, colors } = useTheme();
   const { passcodeEnabled, setPasscodeEnabled } = usePreferences();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>(passcodeEnabled ? 'verify' : 'options');
@@ -27,17 +27,6 @@ export default function PasscodeSetupScreen() {
   const [confirmPasscode, setConfirmPasscode] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifyPasscode, setVerifyPasscode] = useState('');
-
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#262626' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E5E5E5',
-    accent: '#0284c7',
-    success: '#10B981',
-    danger: '#EF4444',
-  };
 
   const PASSCODE_KEY = 'app_passcode';
 
@@ -187,7 +176,8 @@ export default function PasscodeSetupScreen() {
 
   if (currentScreen === 'options') {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header title="Passcode Protection" subtitle="Secure your app with a passcode" />
 
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -242,13 +232,15 @@ export default function PasscodeSetupScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (currentScreen === 'verify') {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Header title="Verify Passcode" />
 
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -296,12 +288,14 @@ export default function PasscodeSetupScreen() {
             </View>
           </View>
         </ScrollView>
-      </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header
         title={currentScreen === 'set' ? 'Set Passcode' : 'Confirm Passcode'}
         subtitle={
@@ -382,7 +376,8 @@ export default function PasscodeSetupScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 

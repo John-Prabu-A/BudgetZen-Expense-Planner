@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/Auth';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import {
     BackupFile,
     createBackup,
@@ -23,12 +23,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function BackupRestoreScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const colorScheme = useAppColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark, colors } = useTheme();
 
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,18 +36,6 @@ export default function BackupRestoreScreen() {
   const [selectedBackup, setSelectedBackup] = useState<BackupFile | null>(null);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
-
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#262626' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E5E5E5',
-    accent: '#0284c7',
-    success: '#10B981',
-    danger: '#EF4444',
-    warning: '#F59E0B',
-  };
 
   useEffect(() => {
     if (user?.id) {
@@ -283,7 +271,8 @@ export default function BackupRestoreScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -449,7 +438,8 @@ export default function BackupRestoreScreen() {
 
       {/* Restore Confirmation Modal */}
       <RestoreConfirmModal />
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 

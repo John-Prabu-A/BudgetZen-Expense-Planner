@@ -1,6 +1,6 @@
 import { useAuth } from '@/context/Auth';
 import { usePreferences } from '@/context/Preferences';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -18,8 +18,7 @@ type ModalType = 'theme' | 'uiMode' | 'currencySign' | 'currencyPosition' | 'dec
 
 export default function PreferencesScreen() {
   const router = useRouter();
-  const colorScheme = useAppColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark, colors } = useTheme();
   const { user } = useAuth();
   const {
     theme,
@@ -41,17 +40,6 @@ export default function PreferencesScreen() {
   } = usePreferences();
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
-
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#262626' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E5E5E5',
-    accent: '#0284c7',
-    success: '#10B981',
-    danger: '#EF4444',
-  };
 
   // Theme modal options
   const themeOptions = [

@@ -5,12 +5,11 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/Auth';
 import { PreferencesProvider } from '../context/Preferences';
-import { ThemeProvider } from '../context/Theme';
-import { useAppColorScheme } from '../hooks/useAppColorScheme';
+import { ThemeProvider, useTheme } from '../context/Theme';
 
 const InitialLayout = () => {
     const { session, loading } = useAuth();
-    const colorScheme = useAppColorScheme();
+    const { isDark, colors } = useTheme();
     const router = useRouter();
     const segments = useSegments();
     const navigationReady = useRootNavigationState()?.key;
@@ -118,7 +117,7 @@ const InitialLayout = () => {
         <Stack
             screenOptions={{
                 contentStyle: {
-                    backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
+                    backgroundColor: colors.background,
                 },
                 headerShown: false,
             }}

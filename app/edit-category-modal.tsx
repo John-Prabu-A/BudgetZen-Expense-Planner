@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/Auth';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { updateCategory } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const categoryColors = [
     '#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF',
@@ -28,20 +29,9 @@ const categoryIcons = [
 
 export default function EditCategoryModal() {
     const router = useRouter();
-    const colorScheme = useAppColorScheme();
-    const isDark = colorScheme === 'dark';
-    const { user } = useAuth();
+    const { user, session } = useAuth();
+    const { isDark, colors } = useTheme();
     const params = useLocalSearchParams();
-
-    const colors = {
-        background: isDark ? '#1A1A1A' : '#FFFFFF',
-        surface: isDark ? '#262626' : '#F5F5F5',
-        text: isDark ? '#FFFFFF' : '#000000',
-        textSecondary: isDark ? '#A0A0A0' : '#666666',
-        border: isDark ? '#404040' : '#E5E5E5',
-        accent: '#0284c7',
-        error: '#EF4444',
-    };
 
     // Parse category data from route params
     const categoryData = params.category ? JSON.parse(params.category as string) : null;
@@ -101,7 +91,8 @@ export default function EditCategoryModal() {
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView 
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -288,7 +279,8 @@ export default function EditCategoryModal() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-        </View>
+            </View>
+        </SafeAreaView>
     );
 }
 
@@ -352,7 +344,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         marginBottom: 8,
-        textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     // Input
@@ -370,6 +361,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         gap: 10,
         justifyContent: 'space-between',
+        marginBottom: -30,
     },
     colorOption: {
         width: '22.5%',
@@ -389,6 +381,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         gap: 10,
         justifyContent: 'space-between',
+        marginBottom: -60,
     },
     iconOption: {
         width: '22.5%',

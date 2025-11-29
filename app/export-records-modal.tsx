@@ -1,4 +1,4 @@
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { ExportOptions, exportRecordsToCSV } from '@/lib/dataExport';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -15,11 +15,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ExportRecordsScreen() {
   const router = useRouter();
-  const colorScheme = useAppColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark, colors } = useTheme();
 
   const [dateFrom, setDateFrom] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [dateTo, setDateTo] = useState<Date>(new Date());
@@ -28,17 +28,6 @@ export default function ExportRecordsScreen() {
   const [loading, setLoading] = useState(false);
   const [exportData, setExportData] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
-
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#262626' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E5E5E5',
-    accent: '#0284c7',
-    success: '#10B981',
-    danger: '#EF4444',
-  };
 
   const handleDateChange = (event: any, selectedDate: Date | undefined, isFrom: boolean = true) => {
     if (isFrom) {
@@ -243,7 +232,8 @@ export default function ExportRecordsScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -361,7 +351,8 @@ export default function ExportRecordsScreen() {
 
       {/* Preview Modal */}
       <PreviewModal />
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 

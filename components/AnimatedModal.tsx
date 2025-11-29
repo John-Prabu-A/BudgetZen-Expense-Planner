@@ -2,16 +2,16 @@ import { useTheme } from '@/context/Theme';
 import { SPRING_CONFIG, TIMING_CONFIG } from '@/hooks/useAnimations';
 import React, { useEffect } from 'react';
 import {
-    Dimensions,
-    Modal,
-    StyleSheet,
-    View,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  View,
 } from 'react-native';
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated';
 
 interface AnimatedModalProps {

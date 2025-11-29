@@ -1,4 +1,4 @@
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { ReactNode } from 'react';
 import {
   ScrollView,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 
 interface ParallaxScrollViewProps extends ScrollViewProps {
-  headerBackgroundColor: {
+  headerBackgroundColor?: {
     light: string;
     dark: string;
   };
@@ -24,11 +24,11 @@ export default function ParallaxScrollView({
   children,
   ...scrollViewProps
 }: ParallaxScrollViewProps) {
-  const colorScheme = useAppColorScheme();
-  const headerBackground =
-    colorScheme === 'dark'
-      ? headerBackgroundColor.dark
-      : headerBackgroundColor.light;
+  const { isDark, colors } = useTheme();
+  
+  const headerBackground = headerBackgroundColor
+    ? (isDark ? headerBackgroundColor.dark : headerBackgroundColor.light)
+    : colors.headerBackground;
 
   return (
     <ScrollView

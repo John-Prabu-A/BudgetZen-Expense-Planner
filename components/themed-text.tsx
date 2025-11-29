@@ -1,18 +1,5 @@
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { Text, TextProps } from 'react-native';
-
-const Colors = {
-  light: {
-    text: '#000000',
-    textSecondary: '#666666',
-    accent: '#0284c7',
-  },
-  dark: {
-    text: '#FFFFFF',
-    textSecondary: '#A0A0A0',
-    accent: '#0a7ea4',
-  },
-};
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
@@ -27,11 +14,11 @@ export function ThemedText({
   type = 'default',
   ...rest
 }: ThemedTextProps) {
-  const colorScheme = useAppColorScheme();
-  const color =
-    colorScheme === 'dark'
-      ? darkColor || Colors.dark.text
-      : lightColor || Colors.light.text;
+  const { isDark, colors } = useTheme();
+  
+  const color = isDark
+    ? darkColor || colors.text
+    : lightColor || colors.text;
 
   const fontStyles = {
     default: {

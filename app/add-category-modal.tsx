@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/Auth';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { createCategory } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const categoryColors = [
     '#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF',
@@ -27,17 +28,8 @@ const categoryIcons = [
 
 export default function AddCategoryModal() {
     const router = useRouter();
-    const colorScheme = useAppColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark, colors } = useTheme();
     const { user, session } = useAuth();
-    const colors = {
-        background: isDark ? '#1A1A1A' : '#FFFFFF',
-        surface: isDark ? '#262626' : '#F5F5F5',
-        text: isDark ? '#FFFFFF' : '#000000',
-        textSecondary: isDark ? '#A0A0A0' : '#666666',
-        border: isDark ? '#404040' : '#E5E5E5',
-        accent: '#0284c7',
-    };
 
     const [categoryType, setCategoryType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
     const [categoryName, setCategoryName] = useState('');
@@ -77,7 +69,8 @@ export default function AddCategoryModal() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -137,66 +130,83 @@ export default function AddCategoryModal() {
                         placeholderTextColor={colors.textSecondary}
                         value={categoryName}
                         onChangeText={setCategoryName}
+                        editable={!saving}
+                        maxLength={20}
                     />
                 </View>
 
-                {/* Select Color */}
-                <View style={styles.section}>
-                    <Text style={[styles.label, { color: colors.text }]}>Category Color</Text>
-                    <View style={styles.colorGrid}>
-                        {categoryColors.map((color) => (
-                            <TouchableOpacity
-                                key={color}
-                                style={[
-                                    styles.colorButton,
-                                    {
-                                        backgroundColor: color,
-                                        borderColor: selectedColor === color ? colors.text : 'transparent',
-                                        borderWidth: selectedColor === color ? 3 : 0,
-                                    },
-                                ]}
-                                onPress={() => setSelectedColor(color)}
-                            >
-                                {selectedColor === color && (
-                                    <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
-                                )}
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
+                {/* Color Picker */}
+                                <View style={styles.section}>
+                                    <Text style={[styles.sectionLabel, { color: colors.text }]}>Color</Text>
+                                    <View style={styles.colorGrid}>
+                                        {categoryColors.map((color) => (
+                                            <TouchableOpacity
+                                                key={color}
+                                                style={[
+                                                    styles.colorOption,
+                                                    {
+                                                        backgroundColor: color,
+                                                        borderColor: selectedColor === color ? colors.text : colors.border,
+                                                        borderWidth: 1,
+                                                        // marginBottom: 10,
+                                                    },
+                                                ]}
+                                                onPress={() => setSelectedColor(color)}
+                                                disabled={saving}
+                                                activeOpacity={0.7}
+                                            >
+                                            <MaterialCommunityIcons
+                                                name="check"
+                                                size={24}
+                                                color={selectedColor === color ? "#FFFFFF" : color}
+                                                hidden={selectedColor !== color}
+                                                style={[selectedColor === color ? styles.checkmark : undefined, { paddingBottom: 16 }]}
+                
+                                            />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
 
-                {/* Select Icon */}
-                <View style={styles.section}>
-                    <Text style={[styles.label, { color: colors.text }]}>Category Icon</Text>
-                    <View style={styles.iconGrid}>
-                        {categoryIcons.map((icon) => (
-                            <TouchableOpacity
-                                key={icon}
-                                style={[
-                                    styles.iconButton,
-                                    {
-                                        backgroundColor:
-                                            selectedIcon === icon
-                                                ? selectedColor
-                                                : colors.surface,
-                                        borderColor: colors.border,
-                                    },
-                                ]}
-                                onPress={() => setSelectedIcon(icon)}
-                            >
-                                <MaterialCommunityIcons
-                                    name={icon as any}
-                                    size={24}
-                                    color={
-                                        selectedIcon === icon
-                                            ? '#FFFFFF'
-                                            : colors.accent
-                                    }
-                                />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
+                {/* Icon Picker */}
+                                <View style={styles.section}>
+                                    <Text style={[styles.sectionLabel, { color: colors.text }]}>Icon</Text>
+                                    <View style={styles.iconGrid}>
+                                        {categoryIcons.map((icon) => (
+                                            <TouchableOpacity
+                                                key={icon}
+                                                style={[
+                                                    styles.iconOption,
+                                                    {
+                                                        backgroundColor:
+                                                            selectedIcon === icon
+                                                                ? colors.accent
+                                                                : colors.surface,
+                                                        borderColor: colors.border,
+                                                        // borderWidth: selectedIcon === icon ? 0 : 0.5,
+                                                        paddingBottom: 8,
+                                                    },
+                
+                                                ]}
+                                                onPress={() => setSelectedIcon(icon)}
+                                                disabled={saving}
+                                                activeOpacity={0.7}
+                                            >
+                                                <MaterialCommunityIcons
+                                                    name={icon as any}
+                                                    size={22}
+                                                    // scale 1.5
+                                                    style={{
+                                                        transform: [{ scale: selectedIcon === icon ? 1.3 : 1 }],
+                                                    }}
+                                                    color={
+                                                        selectedIcon === icon ? '#FFFFFF' : colors.text
+                                                    }
+                                                />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
 
                 {/* Preview */}
                 <View style={styles.section}>
@@ -252,7 +262,8 @@ export default function AddCategoryModal() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-        </View>
+            </View>
+        </SafeAreaView>
     );
 }
 
@@ -278,6 +289,12 @@ const styles = StyleSheet.create({
     section: {
         paddingHorizontal: 16,
         paddingVertical: 16,
+    },
+    sectionLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        marginBottom: 8,
+        letterSpacing: 0.5,
     },
     label: {
         fontSize: 14,
@@ -306,30 +323,40 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         fontSize: 14,
     },
+    // Color Grid
     colorGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 10,
+        justifyContent: 'space-evenly',
+        marginBottom: -50,
     },
-    colorButton: {
-        width: '22%',
+    colorOption: {
+        width: '22.5%',
         aspectRatio: 1,
-        borderRadius: 8,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    checkmark: {
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    // Icon Grid
     iconGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 10,
+        marginBottom: -60,
+        justifyContent: 'space-between',
     },
-    iconButton: {
-        width: '22%',
+    iconOption: {
+        width: '22.5%',
         aspectRatio: 1,
-        borderRadius: 8,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
     },
     preview: {
         paddingHorizontal: 16,

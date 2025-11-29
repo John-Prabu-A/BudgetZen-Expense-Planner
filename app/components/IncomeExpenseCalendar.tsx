@@ -1,20 +1,53 @@
 
-import { useTheme } from '@/context/Theme';
+import { ThemeColors, useTheme } from '@/context/Theme';
 import { useUIMode } from '@/hooks/useUIMode';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+type DailyDataItem = {
+  date: Date;
+  key: string;
+  income: number;
+  expense: number;
+  net: number;
+  cumulative: number;
+};
+
+type RangeTotals = {
+  income: number;
+  expense: number;
+  net: number;
+};
 
 type IncomeExpenseCalendarProps = {
-  year: number;
-  month: number;
-  data: { [day: number]: { income?: number; expense?: number } };
+  dailyData?: DailyDataItem[];
+  rangeTotals?: RangeTotals;
+  colors?: ThemeColors;
+  spacing?: any;
+  onDayPress?: (day: DailyDataItem) => void;
+  // Legacy props for backward compatibility
+  year?: number;
+  month?: number;
+  data?: { [day: number]: { income?: number; expense?: number } };
   isDark?: boolean;
   type?: 'income' | 'expense' | 'both';
 };
 
-const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({ year, month, data, isDark: overrideDark, type = 'both' }) => {
-  const spacing = useUIMode();
-  const { isDark: themeDark, colors } = useTheme();
+const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
+  dailyData,
+  rangeTotals,
+  colors: propsColors,
+  spacing: propsSpacing,
+  onDayPress,
+  year,
+  month,
+  data,
+  isDark: overrideDark,
+  type = 'both',
+}) => {
+  const { isDark: themeDark, colors: themeColors } = useTheme();
+  const spacing = propsSpacing || useUIMode();
+  const colors = propsColors || themeColors;
   const isDark = overrideDark !== undefined ? overrideDark : themeDark;
 
   const styles = StyleSheet.create({
@@ -65,36 +98,64 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({ year, mon
   });
 
   const generateCalendar = () => {
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const calendarDays = [];
 
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < firstDay; i++) {
-      calendarDays.push(<View key={`empty-${i}`} style={styles.dayCell} />);
-    }
-
-    // Add cells for each day of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dayData = data[day];
-      const hasIncome = dayData?.income && dayData.income > 0;
-      const hasExpense = dayData?.expense && dayData.expense > 0;
-
+    // Handle new format: dailyData array
+    if (dailyData && dailyData.length > 0) {
       calendarDays.push(
-        <View key={day} style={styles.dayCell}>
-          <Text style={styles.dayText}>{day}</Text>
-          {(type === 'income' || type === 'both') && hasIncome && (
-            <Text style={[styles.amountText, { color: colors.income }]}>
-              +₹{(dayData?.income ?? 0).toFixed(0)}
-            </Text>
-          )}
-          {(type === 'expense' || type === 'both') && hasExpense && (
-            <Text style={[styles.amountText, { color: colors.expense }]}>
-              -₹{(dayData?.expense ?? 0).toFixed(0)}
-            </Text>
-          )}
-        </View>
+        ...dailyData.map((item) => (
+          <TouchableOpacity
+            key={item.key}
+            style={[styles.dayCell, { opacity: 0.9 }]}
+            onPress={() => onDayPress?.(item)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.dayText}>{item.date.getDate()}</Text>
+            {(type === 'income' || type === 'both') && item.income > 0 && (
+              <Text style={[styles.amountText, { color: colors.income }]}>
+                +₹{item.income.toFixed(0)}
+              </Text>
+            )}
+            {(type === 'expense' || type === 'both') && item.expense > 0 && (
+              <Text style={[styles.amountText, { color: colors.expense }]}>
+                -₹{item.expense.toFixed(0)}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ))
       );
+    } else if (year !== undefined && month !== undefined && data) {
+      // Handle legacy format: year/month/data
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      // Add empty cells for days before the first day of the month
+      for (let i = 0; i < firstDay; i++) {
+        calendarDays.push(<View key={`empty-${i}`} style={styles.dayCell} />);
+      }
+
+      // Add cells for each day of the month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayData = data[day];
+        const hasIncome = dayData?.income && dayData.income > 0;
+        const hasExpense = dayData?.expense && dayData.expense > 0;
+
+        calendarDays.push(
+          <View key={day} style={styles.dayCell}>
+            <Text style={styles.dayText}>{day}</Text>
+            {(type === 'income' || type === 'both') && hasIncome && (
+              <Text style={[styles.amountText, { color: colors.income }]}>
+                +₹{(dayData?.income ?? 0).toFixed(0)}
+              </Text>
+            )}
+            {(type === 'expense' || type === 'both') && hasExpense && (
+              <Text style={[styles.amountText, { color: colors.expense }]}>
+                -₹{(dayData?.expense ?? 0).toFixed(0)}
+              </Text>
+            )}
+          </View>
+        );
+      }
     }
 
     return calendarDays;

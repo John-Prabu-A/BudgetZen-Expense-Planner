@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/Auth';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { useUIMode } from '@/hooks/useUIMode';
 import { deleteBudget, readBudgets } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,20 +10,9 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 export default function BudgetsScreen() {
   const router = useRouter();
   const { user, session } = useAuth();
-  const colorScheme = useAppColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark, colors } = useTheme();
   const spacing = useUIMode();
   const styles = createBudgetsStyles(spacing);
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#262626' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E5E5E5',
-    accent: '#0284c7',
-    warning: '#F59E0B',
-    danger: '#EF4444',
-  };
 
   const [budgets, setBudgets] = useState<any[]>([]);
   const [expandedBudgetId, setExpandedBudgetId] = useState<string | null>(null);

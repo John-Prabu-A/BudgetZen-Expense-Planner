@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/Auth';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { createAccount } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const accountTypes = [
     { id: '1', name: 'Bank Account', icon: 'bank' },
@@ -25,17 +26,8 @@ const accountTypes = [
 
 export default function AddAccountModal() {
     const router = useRouter();
-    const colorScheme = useAppColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark, colors } = useTheme();
     const { user, session } = useAuth();
-    const colors = {
-        background: isDark ? '#1A1A1A' : '#FFFFFF',
-        surface: isDark ? '#262626' : '#F5F5F5',
-        text: isDark ? '#FFFFFF' : '#000000',
-        textSecondary: isDark ? '#A0A0A0' : '#666666',
-        border: isDark ? '#404040' : '#E5E5E5',
-        accent: '#0284c7',
-    };
 
     const [selectedType, setSelectedType] = useState(accountTypes[0]);
     const [accountName, setAccountName] = useState('');
@@ -74,7 +66,8 @@ export default function AddAccountModal() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -209,7 +202,8 @@ export default function AddAccountModal() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-        </View>
+            </View>
+        </SafeAreaView>
     );
 }
 

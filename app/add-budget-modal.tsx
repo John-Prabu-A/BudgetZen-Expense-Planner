@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/Auth';
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { createBudget, readCategories } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -13,20 +13,12 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddBudgetModal() {
     const router = useRouter();
-    const colorScheme = useAppColorScheme();
-    const isDark = colorScheme === 'dark';
     const { user, session } = useAuth();
-    const colors = {
-        background: isDark ? '#1A1A1A' : '#FFFFFF',
-        surface: isDark ? '#262626' : '#F5F5F5',
-        text: isDark ? '#FFFFFF' : '#000000',
-        textSecondary: isDark ? '#A0A0A0' : '#666666',
-        border: isDark ? '#404040' : '#E5E5E5',
-        accent: '#0284c7',
-    };
+    const { isDark, colors } = useTheme();
 
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<any>(null);
@@ -95,7 +87,8 @@ export default function AddBudgetModal() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -241,7 +234,8 @@ export default function AddBudgetModal() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-        </View>
+            </View>
+        </SafeAreaView>
     );
 }
 

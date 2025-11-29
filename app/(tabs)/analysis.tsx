@@ -556,15 +556,15 @@ export default function AnalysisScreen() {
           <Picker
             selectedValue={analysisView}
             onValueChange={(itemValue) => setAnalysisView(itemValue)}
-            style={[styles.picker, { color: colors.text }]}
+            style={[styles.picker, { color: colors.text, backgroundColor: colors.surface }]}
             dropdownIconColor={colors.accent}
             mode="dropdown"
           >
-            <Picker.Item label="📊 Account Analysis" value="ACCOUNT_ANALYSIS" color={colors.text} />
-            <Picker.Item label="📈 Income Flow" value="INCOME_FLOW" color={colors.text} />
-            <Picker.Item label="📉 Expense Flow" value="EXPENSE_FLOW" color={colors.text} />
-            <Picker.Item label="💰 Income Overview" value="INCOME_OVERVIEW" color={colors.text} />
-            <Picker.Item label="💸 Expense Overview" value="EXPENSE_OVERVIEW" color={colors.text} />
+            <Picker.Item label="📊 Account Analysis" value="ACCOUNT_ANALYSIS" color={colors.text} style={{ backgroundColor: colors.surface }} />
+            <Picker.Item label="📈 Income Flow" value="INCOME_FLOW" color={colors.text} style={{ backgroundColor: colors.surface }} />
+            <Picker.Item label="📉 Expense Flow" value="EXPENSE_FLOW" color={colors.text} style={{ backgroundColor: colors.surface }} />
+            <Picker.Item label="💰 Income Overview" value="INCOME_OVERVIEW" color={colors.text} style={{ backgroundColor: colors.surface }} />
+            <Picker.Item label="💸 Expense Overview" value="EXPENSE_OVERVIEW" color={colors.text} style={{ backgroundColor: colors.surface }} />
           </Picker>
         </View>
       </View>

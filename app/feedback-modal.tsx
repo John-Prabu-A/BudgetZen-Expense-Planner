@@ -1,37 +1,27 @@
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
+import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function FeedbackModal() {
   const router = useRouter();
-  const colorScheme = useAppColorScheme();
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackText, setFeedbackText] = useState('');
   const [rating, setRating] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const isDark = colorScheme === 'dark';
-  const colors = {
-    background: isDark ? '#1A1A1A' : '#FFFFFF',
-    surface: isDark ? '#2A2A2A' : '#F9FAFB',
-    text: isDark ? '#FFFFFF' : '#000000',
-    textSecondary: isDark ? '#A0A0A0' : '#6B7280',
-    border: isDark ? '#404040' : '#E5E7EB',
-    accent: '#3B82F6',
-    input: isDark ? '#333333' : '#F3F4F6',
-    success: '#10B981',
-  };
+  const { isDark, colors } = useTheme();
 
   const feedbackTypes = [
     { id: 'bug', label: 'Bug Report', icon: 'bug-outline' },
@@ -63,7 +53,8 @@ export default function FeedbackModal() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -180,7 +171,7 @@ export default function FeedbackModal() {
             style={[
               styles.feedbackInput,
               {
-                backgroundColor: colors.input,
+                backgroundColor: colors.inputBackground,
                 borderColor: colors.border,
                 color: colors.text,
               },
@@ -263,7 +254,8 @@ export default function FeedbackModal() {
 
         <View style={{ height: 20 }} />
       </ScrollView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
