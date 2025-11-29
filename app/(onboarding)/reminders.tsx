@@ -1,28 +1,422 @@
-
+import { AnimatedButton } from '@/components/AnimatedButton';
+import { useTheme } from '@/context/Theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Switch, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width } = Dimensions.get('window');
 
 const RemindersScreen = () => {
+  const { isDark, colors } = useTheme();
   const [showReminders, setShowReminders] = useState(false);
+  const [reminderTime, setReminderTime] = useState('09:00 AM');
   const router = useRouter();
 
+  // Animation values
+  const headerOpacity = useSharedValue(0);
+  const headerScale = useSharedValue(0.9);
+  const itemOpacity = useSharedValue(0);
+  const itemTranslateY = useSharedValue(20);
+
+  useState(() => {
+    headerOpacity.value = withTiming(1, {
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+    });
+    headerScale.value = withTiming(1, {
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+    });
+
+    itemOpacity.value = withDelay(300, withTiming(1, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    }));
+    itemTranslateY.value = withDelay(300, withTiming(0, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    }));
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ scale: headerScale.value }],
+  }));
+
+  const itemAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: itemOpacity.value,
+    transform: [{ translateY: itemTranslateY.value }],
+  }));
+
+  const handleNext = () => {
+    router.push('./privacy');
+  };
+
   return (
-    <View style={{ flex: 1, padding: 20, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
-        Reminders
-      </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-        <Text>Show reminder notification</Text>
-        <Switch value={showReminders} onValueChange={setShowReminders} />
-      </View>
-      <TouchableOpacity onPress={() => router.push('./privacy')}>
-        <View style={{ backgroundColor: 'blue', padding: 15, borderRadius: 5 }}>
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>Next</Text>
-        </View>
-      </TouchableOpacity>
-    </View>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top', 'bottom']}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        bounces={false}
+      >
+        {/* Header */}
+        <Animated.View style={headerAnimatedStyle}>
+          <View style={styles.header}>
+            <View
+              style={[
+                styles.stepIndicator,
+                { backgroundColor: colors.accent + '20' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.stepNumber,
+                  { color: colors.accent },
+                ]}
+              >
+                2/4
+              </Text>
+            </View>
+            <Text
+              style={[
+                styles.headerTitle,
+                { color: colors.text },
+              ]}
+            >
+              Reminders
+            </Text>
+            <Text
+              style={[
+                styles.headerSubtitle,
+                { color: colors.textSecondary },
+              ]}
+            >
+              Get daily reminders to track your spending
+            </Text>
+          </View>
+        </Animated.View>
+
+        {/* Content */}
+        <Animated.View style={itemAnimatedStyle}>
+          {/* Main Reminder Toggle */}
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.cardContent}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  { backgroundColor: colors.accent + '15' },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="bell-outline"
+                  size={28}
+                  color={colors.accent}
+                />
+              </View>
+
+              <View style={styles.cardTextContainer}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>
+                  Daily Reminders
+                </Text>
+                <Text
+                  style={[
+                    styles.cardSubtitle,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {showReminders
+                    ? `Enabled at ${reminderTime}`
+                    : 'Get reminders to log your expenses'}
+                </Text>
+              </View>
+
+              <Switch
+                value={showReminders}
+                onValueChange={setShowReminders}
+                trackColor={{ false: colors.border, true: colors.accent + '40' }}
+                thumbColor={showReminders ? colors.accent : colors.textSecondary}
+              />
+            </View>
+          </View>
+
+          {/* Time Selection (if enabled) */}
+          {showReminders && (
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: colors.accent + '08', borderColor: colors.accent + '30' },
+              ]}
+            >
+              <View style={styles.cardContent}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    { backgroundColor: colors.accent + '25' },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="clock-outline"
+                    size={28}
+                    color={colors.accent}
+                  />
+                </View>
+
+                <View style={styles.cardTextContainer}>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>
+                    Reminder Time
+                  </Text>
+                  <Text
+                    style={[
+                      styles.cardSubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {reminderTime}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.timeButton,
+                    { backgroundColor: colors.accent },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.timeButtonText,
+                      { color: colors.textOnAccent },
+                    ]}
+                  >
+                    Change
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Benefits List */}
+          <View style={styles.benefitsContainer}>
+            <Text
+              style={[
+                styles.benefitsTitle,
+                { color: colors.text },
+              ]}
+            >
+              Why reminders?
+            </Text>
+
+            {[
+              { icon: 'target', text: 'Stay focused on your budget goals' },
+              { icon: 'chart-line', text: 'Track spending habits consistently' },
+              { icon: 'lightbulb-outline', text: 'Build better financial habits' },
+            ].map((benefit, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.benefitItem,
+                  { borderBottomColor: colors.border },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={benefit.icon as any}
+                  size={20}
+                  color={colors.accent}
+                  style={{ marginRight: 12 }}
+                />
+                <Text
+                  style={[
+                    styles.benefitText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {benefit.text}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Buttons */}
+          <View style={styles.buttonContainer}>
+            <AnimatedButton
+              onPress={handleNext}
+              style={{ flex: 1 }}
+            >
+              <View
+                style={[
+                  styles.nextButton,
+                  { backgroundColor: colors.accent },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.nextButtonText,
+                    { color: colors.textOnAccent },
+                  ]}
+                >
+                  Next
+                </Text>
+                <MaterialCommunityIcons
+                  name="arrow-right"
+                  size={18}
+                  color={colors.textOnAccent}
+                />
+              </View>
+            </AnimatedButton>
+          </View>
+        </Animated.View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 16,
+    paddingBottom: 30,
+  },
+  header: {
+    marginBottom: 32,
+    gap: 12,
+  },
+  stepIndicator: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  stepNumber: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  card: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardTextContainer: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 16,
+  },
+  timeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  timeButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  benefitsContainer: {
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  benefitsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 14,
+    letterSpacing: 0.3,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+  },
+  benefitText: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 'auto',
+  },
+  nextButton: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  nextButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+});
 
 export default RemindersScreen;

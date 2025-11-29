@@ -831,9 +831,9 @@ export default function RecordsScreen() {
 
 const getStyles = (spacing: any) =>
   StyleSheet.create({
-    container: { flex: 1, padding: 8 },
-    scrollContent: { flexGrow: 1 },
-    scrollContentInner: { paddingBottom: 80 },
+    container: { flex: 1 },
+    scrollContent: { flexGrow: 1, paddingHorizontal: 8 },
+    scrollContentInner: { paddingBottom: 45 },
 
     // Header
     headerContainer: {
