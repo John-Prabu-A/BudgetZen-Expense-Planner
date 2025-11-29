@@ -6,15 +6,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -308,7 +308,7 @@ export default function AddRecordModal() {
                   style={[styles.createButtonModal, { backgroundColor: colors.accent }]}
                   onPress={() => {
                     setShowCategoryModal(false);
-                    router.push('/add-category-modal');
+                    router.push('/(modal)/add-category-modal');
                   }}
                 >
                   <MaterialCommunityIcons name="plus" size={18} color="#FFFFFF" />

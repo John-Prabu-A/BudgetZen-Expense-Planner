@@ -264,7 +264,7 @@ export default function AccountsScreen() {
           ₹{totalBalance.toLocaleString()}
         </Text>
         <View style={styles.totalBalanceFooter}>
-          <TouchableOpacity style={[styles.actionButton, { borderColor: '#FFFFFF' }]} onPress={() => router.push('/add-account-modal')}>
+          <TouchableOpacity style={[styles.actionButton, { borderColor: '#FFFFFF' }]} onPress={() => router.push('/(modal)/add-account-modal')}>
             <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Add Account</Text>
           </TouchableOpacity>

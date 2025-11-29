@@ -410,7 +410,7 @@ export default function PreferencesScreen() {
                 borderBottomColor: colors.border,
               },
             ]}
-            onPress={() => router.push('export-records-modal' as any)}
+            onPress={() => router.push('/(modal)/export-records-modal' as any)}
             activeOpacity={0.7}
           >
             <View style={styles.prefLeft}>
@@ -434,7 +434,7 @@ export default function PreferencesScreen() {
                 borderBottomColor: 'transparent',
               },
             ]}
-            onPress={() => router.push('backup-restore-modal' as any)}
+            onPress={() => router.push('/(modal)/backup-restore-modal' as any)}
             activeOpacity={0.7}
           >
             <View style={styles.prefLeft}>

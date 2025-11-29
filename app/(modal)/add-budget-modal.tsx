@@ -1,8 +1,8 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
-import { createBudget, readCategories } from '@/lib/finance';
+import { createBudget, readCategories, updateBudget } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
@@ -19,6 +19,8 @@ export default function AddBudgetModal() {
     const router = useRouter();
     const { user, session } = useAuth();
     const { isDark, colors } = useTheme();
+    const params = useLocalSearchParams();
+    const incomingBudget = params.budget ? JSON.parse(params.budget as string) : null;
 
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<any>(null);
@@ -26,6 +28,7 @@ export default function AddBudgetModal() {
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
 
     useEffect(() => {
         loadCategories();
@@ -44,7 +47,18 @@ export default function AddBudgetModal() {
             setLoading(true);
             const data = await readCategories();
             setCategories(data || []);
-            if (data && data.length > 0) {
+            
+            if (incomingBudget) {
+                // Edit mode: prefill with existing budget data
+                setEditingBudgetId(incomingBudget.id || null);
+                setBudgetAmount(String(incomingBudget.amount || incomingBudget.limit || ''));
+                setNotes(incomingBudget.notes || '');
+                
+                // Find and select the category
+                const category = (data || []).find((c) => c.id === incomingBudget.category_id);
+                if (category) setSelectedCategory(category);
+            } else if (data && data.length > 0) {
+                // Create mode: set first category as default
                 setSelectedCategory(data[0]);
             }
         } catch (error) {
@@ -69,18 +83,30 @@ export default function AddBudgetModal() {
         try {
             setSaving(true);
             const budgetData = {
-                user_id: user.id,
                 category_id: selectedCategory.id,
                 amount: parseFloat(budgetAmount),
-                start_date: new Date().toISOString().split('T')[0],
-                end_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+                notes: notes || null,
             };
-            await createBudget(budgetData);
-            Alert.alert('Success', 'Budget created successfully!');
+
+            if (editingBudgetId) {
+                // Update existing budget
+                await updateBudget(editingBudgetId, budgetData);
+                Alert.alert('Success', 'Budget updated successfully!');
+            } else {
+                // Create new budget
+                const newBudgetData = {
+                    ...budgetData,
+                    user_id: user.id,
+                    start_date: new Date().toISOString().split('T')[0],
+                    end_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+                };
+                await createBudget(newBudgetData);
+                Alert.alert('Success', 'Budget created successfully!');
+            }
             router.back();
         } catch (error) {
             console.error('Error saving budget:', error);
-            Alert.alert('Error', 'Failed to save budget');
+            Alert.alert('Error', editingBudgetId ? 'Failed to update budget' : 'Failed to save budget');
         } finally {
             setSaving(false);
         }
@@ -95,7 +121,9 @@ export default function AddBudgetModal() {
                     <TouchableOpacity onPress={() => router.back()}>
                         <MaterialCommunityIcons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Add Budget</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>
+                        {editingBudgetId ? 'Edit Budget' : 'Add Budget'}
+                    </Text>
                     <View style={{ width: 24 }} />
                 </View>
 
@@ -122,7 +150,7 @@ export default function AddBudgetModal() {
                             </Text>
                             <TouchableOpacity
                                 style={[styles.createButton, { backgroundColor: colors.accent }]}
-                                onPress={() => router.push('/add-category-modal')}
+                                onPress={() => router.push('/(modal)/add-category-modal')}
                             >
                                 <MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" />
                                 <Text style={styles.createButtonText}>Create Category</Text>
@@ -229,8 +257,11 @@ export default function AddBudgetModal() {
                     <TouchableOpacity
                         style={[styles.button, { backgroundColor: colors.accent }]}
                         onPress={handleSave}
+                        disabled={saving}
                     >
-                        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Save Budget</Text>
+                        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                            {saving ? 'Saving...' : (editingBudgetId ? 'Update Budget' : 'Save Budget')}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>

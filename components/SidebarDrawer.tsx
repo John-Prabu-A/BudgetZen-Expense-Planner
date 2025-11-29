@@ -5,17 +5,17 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
-    Animated,
-    Dimensions,
-    GestureResponderEvent,
-    Modal,
-    PanResponder,
-    PanResponderGestureState,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  GestureResponderEvent,
+  Modal,
+  PanResponder,
+  PanResponderGestureState,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');

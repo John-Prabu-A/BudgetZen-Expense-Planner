@@ -550,7 +550,7 @@ export default function RecordsScreen() {
       notes: record.notes || null,
       transaction_date: record.date instanceof Date ? record.date.toISOString() : new Date(record.date).toISOString(),
     };
-    router.push(`/add-record-modal?record=${encodeURIComponent(JSON.stringify(payload))}` as any);
+    router.push(`/(modal)/add-record-modal?record=${encodeURIComponent(JSON.stringify(payload))}` as any);
   }, [router]);
 
   const handleDeleteRecord = useCallback((record: any) => {
@@ -695,7 +695,7 @@ export default function RecordsScreen() {
             onPress={() => {
               setFabExpanded(false);
               setExpandedRecordId(null);
-              router.push('/add-record-modal?type=income' as any);
+              router.push('/(modal)/add-record-modal?type=income' as any);
             }}
             activeOpacity={0.8}
           >
@@ -709,7 +709,7 @@ export default function RecordsScreen() {
             onPress={() => {
               setFabExpanded(false);
               setExpandedRecordId(null);
-              router.push('/add-record-modal?type=expense' as any);
+              router.push('/(modal)/add-record-modal?type=expense' as any);
             }}
             activeOpacity={0.8}
           >
@@ -723,7 +723,7 @@ export default function RecordsScreen() {
             onPress={() => {
               setFabExpanded(false);
               setExpandedRecordId(null);
-              router.push('/add-record-modal?type=transfer' as any);
+              router.push('/(modal)/add-record-modal?type=transfer' as any);
             }}
             activeOpacity={0.8}
           >

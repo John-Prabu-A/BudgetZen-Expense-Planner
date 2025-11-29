@@ -59,7 +59,7 @@ const InitialLayout = () => {
             'about-modal',
             'help-modal',
             'feedback-modal',
-        ].includes(segments[0]);
+        ].includes(segments[0]) || segments[0] === '(modal)';
 
         console.log('Navigation check:', {
             session: !!session,
@@ -125,23 +125,9 @@ const InitialLayout = () => {
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="add-record-modal" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen name="add-budget-modal" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen name="add-account-modal" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen name="add-category-modal" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen name="edit-category-modal" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="(modal)" options={{ headerShown: false }} />
             <Stack.Screen name="preferences" options={{ headerShown: false }} />
             <Stack.Screen name="passcode-setup" options={{ headerShown: false }} />
-            <Stack.Screen name="export-records-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="backup-restore-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="delete-reset-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="security-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="notifications-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="advanced-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="data-management-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="about-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="help-modal" options={{ headerShown: false }} />
-            <Stack.Screen name="feedback-modal" options={{ headerShown: false }} />
         </Stack>
     );
 };

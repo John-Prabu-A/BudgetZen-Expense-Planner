@@ -176,7 +176,7 @@ export default function CategoriesScreen() {
               styles.addButton,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
-            onPress={() => router.push('/add-category-modal')}
+            onPress={() => router.push('/(modal)/add-category-modal')}
           >
             <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
           </TouchableOpacity>
@@ -217,7 +217,7 @@ export default function CategoriesScreen() {
               styles.addButton,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
-            onPress={() => router.push('/add-category-modal')}
+            onPress={() => router.push('/(modal)/add-category-modal')}
           >
             <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
           </TouchableOpacity>
