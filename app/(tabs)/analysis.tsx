@@ -955,36 +955,38 @@ export default function AnalysisScreen() {
             </View>
 
             {/* Income Distribution Chart */}
-            <View style={styles.chartContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Distribution by Category</Text>
-              {(() => {
-                try {
-                  // eslint-disable-next-line @typescript-eslint/no-var-requires
-                  const { PieChart } = require('react-native-gifted-charts');
-                  return (
-                    <View style={{ width: '100%', alignItems: 'center', paddingVertical: spacing.lg }}>
-                      <PieChart
-                        data={incomeExpenseOverviewData.incomeByCategory}
-                        radius={120}
-                        textSize={12}
-                        textColor={colors.text}
-                        showValuesAsPercentage={true}
-                      />
-                    </View>
-                  );
-                } catch (err) {
-                  console.warn('PieChart not available:', err);
-                  return (
-                    <View style={styles.errorContainer}>
-                      <MaterialCommunityIcons name="chart-pie" size={48} color={colors.textSecondary} />
-                      <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-                        Charts unavailable
-                      </Text>
-                    </View>
-                  );
-                }
-              })()}
-            </View>
+            {incomeExpenseOverviewData.incomeByCategory.length > 0 && (
+              <View style={styles.chartContainer}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Distribution by Category</Text>
+                {(() => {
+                  try {
+                    // eslint-disable-next-line @typescript-eslint/no-var-requires
+                    const { PieChart } = require('react-native-gifted-charts');
+                    return (
+                      <View style={{ width: '100%', alignItems: 'center', paddingVertical: spacing.lg }}>
+                        <PieChart
+                          data={incomeExpenseOverviewData.incomeByCategory}
+                          radius={120}
+                          textSize={12}
+                          textColor={colors.text}
+                          showValuesAsPercentage={true}
+                        />
+                      </View>
+                    );
+                  } catch (err) {
+                    console.warn('PieChart not available:', err);
+                    return (
+                      <View style={styles.errorContainer}>
+                        <MaterialCommunityIcons name="chart-pie" size={48} color={colors.textSecondary} />
+                        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+                          Charts unavailable
+                        </Text>
+                      </View>
+                    );
+                  }
+                })()}
+              </View>
+            )}
 
             {/* Income by Category List */}
             <View style={styles.categoryList}>
@@ -1098,36 +1100,38 @@ export default function AnalysisScreen() {
             </View>
 
             {/* Expense Distribution Chart */}
-            <View style={styles.chartContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Distribution by Category</Text>
-              {(() => {
-                try {
-                  // eslint-disable-next-line @typescript-eslint/no-var-requires
-                  const { PieChart } = require('react-native-gifted-charts');
-                  return (
-                    <View style={{ width: '100%', alignItems: 'center', paddingVertical: spacing.lg }}>
-                      <PieChart
-                        data={incomeExpenseOverviewData.expenseByCategory}
-                        radius={120}
-                        textSize={12}
-                        textColor={colors.text}
-                        showValuesAsPercentage={true}
-                      />
-                    </View>
-                  );
-                } catch (err) {
-                  console.warn('PieChart not available:', err);
-                  return (
-                    <View style={styles.errorContainer}>
-                      <MaterialCommunityIcons name="chart-pie" size={48} color={colors.textSecondary} />
-                      <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-                        Charts unavailable
-                      </Text>
-                    </View>
-                  );
-                }
-              })()}
-            </View>
+            {incomeExpenseOverviewData.expenseByCategory.length > 0 && (
+              <View style={styles.chartContainer}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Distribution by Category</Text>
+                {(() => {
+                  try {
+                    // eslint-disable-next-line @typescript-eslint/no-var-requires
+                    const { PieChart } = require('react-native-gifted-charts');
+                    return (
+                      <View style={{ width: '100%', alignItems: 'center', paddingVertical: spacing.lg }}>
+                        <PieChart
+                          data={incomeExpenseOverviewData.expenseByCategory}
+                          radius={120}
+                          textSize={12}
+                          textColor={colors.text}
+                          showValuesAsPercentage={true}
+                        />
+                      </View>
+                    );
+                  } catch (err) {
+                    console.warn('PieChart not available:', err);
+                    return (
+                      <View style={styles.errorContainer}>
+                        <MaterialCommunityIcons name="chart-pie" size={48} color={colors.textSecondary} />
+                        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+                          Charts unavailable
+                        </Text>
+                      </View>
+                    );
+                  }
+                })()}
+              </View>
+            )}
 
             {/* Expense by Category List */}
             <View style={styles.categoryList}>
