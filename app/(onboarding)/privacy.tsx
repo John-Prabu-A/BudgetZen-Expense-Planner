@@ -1,8 +1,10 @@
 import { AnimatedButton } from '@/components/AnimatedButton';
+import { useOnboarding, OnboardingStep } from '@/context/Onboarding';
+import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dimensions,
   Linking,
@@ -25,6 +27,8 @@ const { width } = Dimensions.get('window');
 
 const PrivacyScreen = () => {
   const { isDark, colors } = useTheme();
+  const { completeStep } = useOnboarding();
+  const { setSendCrashStats } = usePreferences();
   const [sendStats, setSendStats] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const router = useRouter();
@@ -35,7 +39,7 @@ const PrivacyScreen = () => {
   const contentOpacity = useSharedValue(0);
   const contentTranslateY = useSharedValue(20);
 
-  useState(() => {
+  useEffect(() => {
     headerOpacity.value = withTiming(1, {
       duration: 600,
       easing: Easing.out(Easing.cubic),
@@ -53,7 +57,7 @@ const PrivacyScreen = () => {
       duration: 500,
       easing: Easing.out(Easing.cubic),
     }));
-  });
+  }, []);
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
@@ -65,8 +69,18 @@ const PrivacyScreen = () => {
     transform: [{ translateY: contentTranslateY.value }],
   }));
 
-  const handleNext = () => {
-    router.push('./tutorial');
+  const handleNext = async () => {
+    try {
+      console.log('[Privacy] User clicked next');
+      await setSendCrashStats(sendStats);
+      console.log('[Privacy] Saved crash stats:', sendStats);
+      console.log('[Privacy] Completing onboarding step...');
+      await completeStep(OnboardingStep.PRIVACY);
+      console.log('[Privacy] Onboarding step completed, parent layout should navigate');
+      // Navigation is handled automatically by parent layout
+    } catch (error) {
+      console.error('[Privacy] Error completing privacy step:', error);
+    }
   };
 
   return (

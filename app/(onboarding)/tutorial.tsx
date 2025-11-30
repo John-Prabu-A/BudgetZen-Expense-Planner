@@ -1,9 +1,9 @@
 import { AnimatedButton } from '@/components/AnimatedButton';
+import { useOnboarding, OnboardingStep } from '@/context/Onboarding';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
     Alert,
     Dimensions,
@@ -45,6 +45,7 @@ const slides = [
 
 const TutorialScreen = () => {
   const { isDark, colors } = useTheme();
+  const { completeStep } = useOnboarding();
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -57,6 +58,18 @@ const TutorialScreen = () => {
     opacity: contentOpacity.value,
     transform: [{ scale: contentScale.value }],
   }));
+
+  // Initialize animations on mount
+  useEffect(() => {
+    contentOpacity.value = withTiming(1, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    });
+    contentScale.value = withTiming(1, {
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, []);
 
   const updateAnimations = () => {
     contentOpacity.value = withTiming(1, {
@@ -73,22 +86,21 @@ const TutorialScreen = () => {
     const x = e.nativeEvent.contentOffset.x;
     const index = Math.round(x / width);
     setCurrentIndex(index);
-    if (index === 0 || index === slides.length - 1) {
-      updateAnimations();
-    }
+    // Trigger animation update on every slide change
+    updateAnimations();
   };
 
   const handleComplete = async () => {
     try {
-      await SecureStore.setItemAsync('onboarding_complete', 'true');
-      const saved = await SecureStore.getItemAsync('onboarding_complete');
-      
-      if (saved) {
-        router.replace('/(tabs)');
-      }
+      console.log('[Tutorial] User completed onboarding');
+      // Complete the tutorial step - this will mark onboarding as complete
+      console.log('[Tutorial] Completing onboarding step...');
+      await completeStep(OnboardingStep.TUTORIAL);
+      console.log('[Tutorial] Onboarding step completed, parent layout should navigate to main app');
+      // Navigation is handled automatically by parent layout
     } catch (error) {
-      console.error('Error saving onboarding status:', error);
-      Alert.alert('Error', 'Failed to save settings. Please try again.');
+      console.error('[Tutorial] Error completing tutorial:', error);
+      Alert.alert('Error', 'Failed to complete onboarding. Please try again.');
     }
   };
 

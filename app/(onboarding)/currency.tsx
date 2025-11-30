@@ -1,8 +1,10 @@
 import { AnimatedCard } from '@/components/AnimatedCard';
+import { useOnboarding, OnboardingStep } from '@/context/Onboarding';
+import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -22,8 +24,28 @@ import { currencies } from '../../lib/currencies';
 
 const { width } = Dimensions.get('window');
 
+const getCurrencySymbol = (code: string): string => {
+  const symbolMap: Record<string, string> = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'INR': '₹',
+    'AUD': '$',
+    'CAD': '$',
+    'CHF': 'CHF',
+    'CNY': '¥',
+    'SEK': 'kr',
+    'NZD': '$',
+    'MXN': '$',
+  };
+  return symbolMap[code] || code;
+};
+
 const CurrencyScreen = () => {
   const { isDark, colors } = useTheme();
+  const { completeStep } = useOnboarding();
+  const { setCurrencySign } = usePreferences();
   const [search, setSearch] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
   const router = useRouter();
@@ -33,7 +55,7 @@ const CurrencyScreen = () => {
   const headerScale = useSharedValue(0.9);
 
   // Animate header on mount
-  useState(() => {
+  useEffect(() => {
     headerOpacity.value = withTiming(1, {
       duration: 600,
       easing: Easing.out(Easing.cubic),
@@ -42,7 +64,7 @@ const CurrencyScreen = () => {
       duration: 600,
       easing: Easing.out(Easing.cubic),
     });
-  });
+  }, []);
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
@@ -55,10 +77,27 @@ const CurrencyScreen = () => {
       currency.code.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCurrencySelect = (code: string) => {
-    setSelectedCurrency(code);
-    // Could save to context here
-    setTimeout(() => router.push('./reminders'), 200);
+  const handleCurrencySelect = async (code: string) => {
+    try {
+      console.log('[Currency] User selected currency:', code);
+      setSelectedCurrency(code);
+      
+      const symbol = getCurrencySymbol(code);
+      console.log('[Currency] Setting currency symbol:', symbol);
+      
+      // Save to preferences first
+      await setCurrencySign(symbol as any);
+      console.log('[Currency] Saved to preferences');
+      
+      // Complete this onboarding step
+      console.log('[Currency] Completing onboarding step...');
+      await completeStep(OnboardingStep.CURRENCY);
+      console.log('[Currency] Onboarding step completed, parent layout should navigate');
+      
+      // Navigation is handled automatically by parent layout
+    } catch (error) {
+      console.error('[Currency] Error selecting currency:', error);
+    }
   };
 
   const renderCurrencyItem = ({ item, index }: { item: any; index: number }) => (
@@ -92,7 +131,7 @@ const CurrencyScreen = () => {
               },
             ]}
           >
-            {item.symbol}
+            {getCurrencySymbol(item.code)}
           </Text>
         </View>
 

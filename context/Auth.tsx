@@ -25,10 +25,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // Clear onboarding flag if user signs out
+      // Clear onboarding step if user signs out
       if (event === 'SIGNED_OUT') {
-        SecureStore.deleteItemAsync('onboarding_complete').catch(err =>
-          console.error('Error clearing onboarding flag:', err)
+        SecureStore.deleteItemAsync('onboarding_step').catch(err =>
+          console.error('Error clearing onboarding step:', err)
         );
       }
     });
@@ -48,8 +48,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      // Clear onboarding flag
-      await SecureStore.deleteItemAsync('onboarding_complete');
+      // Clear onboarding step
+      await SecureStore.deleteItemAsync('onboarding_step');
       // Sign out from Supabase
       await supabase.auth.signOut();
     } catch (error) {

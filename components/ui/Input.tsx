@@ -1,17 +1,26 @@
+import React from 'react';
+import { StyleSheet, TextInput, TextInputProps } from 'react-native';
 
-import { StyleSheet, TextInput } from 'react-native';
+export const Input = React.forwardRef<TextInput, TextInputProps>((props, ref) => {
+  return (
+    <TextInput
+      ref={ref}
+      {...props}
+      style={[styles.input, props.style]}
+      placeholderTextColor={props.placeholderTextColor || '#999'}
+    />
+  );
+});
 
-export const Input = (props: any) => {
-  return <TextInput {...props} style={styles.input} />;
-};
+Input.displayName = 'Input';
 
 const styles = StyleSheet.create({
   input: {
-    borderWidth: 1,
-    borderColor: 'gray',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 10,
+    padding: 0,
+    margin: 0,
+    color: '#000',
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
 

@@ -1,8 +1,10 @@
 import { AnimatedButton } from '@/components/AnimatedButton';
+import { useOnboarding, OnboardingStep } from '@/context/Onboarding';
+import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dimensions,
   ScrollView,
@@ -25,6 +27,8 @@ const { width } = Dimensions.get('window');
 
 const RemindersScreen = () => {
   const { isDark, colors } = useTheme();
+  const { completeStep } = useOnboarding();
+  const { setRemindDaily } = usePreferences();
   const [showReminders, setShowReminders] = useState(false);
   const [reminderTime, setReminderTime] = useState('09:00 AM');
   const router = useRouter();
@@ -35,7 +39,7 @@ const RemindersScreen = () => {
   const itemOpacity = useSharedValue(0);
   const itemTranslateY = useSharedValue(20);
 
-  useState(() => {
+  useEffect(() => {
     headerOpacity.value = withTiming(1, {
       duration: 600,
       easing: Easing.out(Easing.cubic),
@@ -53,7 +57,7 @@ const RemindersScreen = () => {
       duration: 500,
       easing: Easing.out(Easing.cubic),
     }));
-  });
+  }, []);
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
@@ -65,8 +69,18 @@ const RemindersScreen = () => {
     transform: [{ translateY: itemTranslateY.value }],
   }));
 
-  const handleNext = () => {
-    router.push('./privacy');
+  const handleNext = async () => {
+    try {
+      console.log('[Reminders] User clicked next');
+      await setRemindDaily(showReminders);
+      console.log('[Reminders] Saved reminder setting:', showReminders);
+      console.log('[Reminders] Completing onboarding step...');
+      await completeStep(OnboardingStep.REMINDERS);
+      console.log('[Reminders] Onboarding step completed, parent layout should navigate');
+      // Navigation is handled automatically by parent layout
+    } catch (error) {
+      console.error('[Reminders] Error completing reminders step:', error);
+    }
   };
 
   return (

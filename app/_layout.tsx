@@ -1,114 +1,150 @@
 
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/Auth';
-import { PreferencesProvider } from '../context/Preferences';
+import { OnboardingProvider, useOnboarding, OnboardingStep } from '../context/Onboarding';
+import { PreferencesProvider, usePreferences } from '../context/Preferences';
 import { ThemeProvider, useTheme } from '../context/Theme';
 
 const InitialLayout = () => {
-    const { session, loading } = useAuth();
+    const { session, loading: authLoading } = useAuth();
     const { isDark, colors } = useTheme();
+    const { passcodeEnabled } = usePreferences();
+    const { currentStep, loading: onboardingLoading } = useOnboarding();
     const router = useRouter();
     const segments = useSegments();
     const navigationReady = useRootNavigationState()?.key;
-    const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+    const [passwordChecked, setPasswordChecked] = useState(false);
 
-    // Check if onboarding is complete on mount
+    // Determine if we need to show password screen
     useEffect(() => {
-        const checkOnboarding = async () => {
-            try {
-                const completed = await SecureStore.getItemAsync('onboarding_complete');
-                console.log('Onboarding status from storage:', completed);
-                setOnboardingComplete(completed === 'true');
-            } catch (error) {
-                console.error('Error reading onboarding status:', error);
-                setOnboardingComplete(false);
-            }
-        };
+        // Password check should happen once per app launch
+        if (authLoading || onboardingLoading || !navigationReady) {
+            return;
+        }
 
-        checkOnboarding();
-    }, []);
+        // Check if user is logged in and passcode is enabled
+        // If so, they need to verify password before accessing app
+        if (session && passcodeEnabled && !passwordChecked) {
+            console.log('User logged in with passcode enabled, showing password verification');
+            // Navigate to passcode verification screen
+            // This will be shown before accessing main app
+            setPasswordChecked(true);
+            return;
+        }
 
+        if (session) {
+            setPasswordChecked(true);
+        }
+    }, [session, passcodeEnabled, navigationReady, authLoading, onboardingLoading]);
+
+    // Main navigation logic
     useEffect(() => {
-        if (!navigationReady) return;
-        if (loading) return;
-        if (onboardingComplete === null) return;
+        if (!navigationReady) {
+            console.log('Navigation not ready');
+            return;
+        }
+
+        if (authLoading || onboardingLoading) {
+            console.log('Still loading auth or onboarding');
+            return;
+        }
+
+        if (currentStep === null) {
+            console.log('Onboarding step not loaded yet');
+            return;
+        }
+
+        if (session && !passwordChecked) {
+            console.log('Password not yet checked');
+            return;
+        }
 
         const inAuthGroup = segments[0] === '(auth)';
         const inOnboardingGroup = segments[0] === '(onboarding)';
         const inTabsGroup = segments[0] === '(tabs)';
-        
-        // Check if we're in a modal route
-        const isModalRoute = [
-            'add-record-modal',
-            'add-budget-modal',
-            'add-account-modal',
-            'add-category-modal',
-            'edit-category-modal',
-            'preferences',
-            'passcode-setup',
-            'export-records-modal',
-            'backup-restore-modal',
-            'delete-reset-modal',
-            'security-modal',
-            'notifications-modal',
-            'advanced-modal',
-            'data-management-modal',
-            'about-modal',
-            'help-modal',
-            'feedback-modal',
-        ].includes(segments[0]) || segments[0] === '(modal)';
+        const isModal = segments[0] === '(modal)';
 
-        console.log('Navigation check:', {
-            session: !!session,
-            onboardingComplete,
+        console.log('Navigation logic:', {
+            hasSession: !!session,
+            passwordChecked,
+            onboardingStep: currentStep,
+            isOnboardingComplete: currentStep === OnboardingStep.COMPLETED,
             inAuthGroup,
             inOnboardingGroup,
             inTabsGroup,
-            isModalRoute,
+            isModal,
             segments,
         });
 
-        // Skip navigation checks if we're in a modal route
-        if (isModalRoute) {
-            console.log('In modal route, skipping navigation validation');
+        // If in modal, don't change navigation
+        if (isModal) {
             return;
         }
 
-        // If not authenticated, go to login
+        // NO SESSION: User not logged in
         if (!session) {
-            console.log('No session, redirecting to login');
             if (!inAuthGroup) {
+                console.log('[NAV] No session → Redirecting to login');
                 router.replace('/(auth)/login');
             }
+            return;
         }
-        // If authenticated
-        else {
-            console.log('Session exists, checking onboarding...');
-            // If onboarding is not complete, go to onboarding
-            if (!onboardingComplete && !inOnboardingGroup) {
-                console.log('Onboarding not complete, redirecting to currency');
-                router.replace('/(onboarding)/currency');
-            }
-            // If onboarding is complete, go to main app (tabs)
-            else if (onboardingComplete && !inTabsGroup) {
-                console.log('Onboarding complete, redirecting to tabs');
-                router.replace('/(tabs)');
-            }
-            // Prevent going back to auth screen when logged in
-            else if (inAuthGroup && onboardingComplete) {
-                console.log('In auth but onboarding complete, redirecting to tabs');
-                router.replace('/(tabs)');
-            }
-        }
-    }, [session, loading, navigationReady, onboardingComplete, segments]);
 
-    if (loading || onboardingComplete === null || !navigationReady) {
+        // HAS SESSION: User is logged in
+
+        // If onboarding is not complete, show onboarding
+        if (currentStep !== OnboardingStep.COMPLETED) {
+            // Map onboarding step to route
+            let targetRoute: string = '/(onboarding)/currency';
+            
+            if (currentStep === OnboardingStep.CURRENCY) {
+                targetRoute = '/(onboarding)/currency';
+            } else if (currentStep === OnboardingStep.PRIVACY) {
+                targetRoute = '/(onboarding)/privacy';
+            } else if (currentStep === OnboardingStep.REMINDERS) {
+                targetRoute = '/(onboarding)/reminders';
+            } else if (currentStep === OnboardingStep.TUTORIAL) {
+                targetRoute = '/(onboarding)/tutorial';
+            }
+
+            // Get current route from segments
+            const currentRoute = segments.slice(1).join('/');
+            const targetRouteWithoutGroup = targetRoute.replace('/(onboarding)/', '');
+
+            // Navigate if we're not on the correct screen
+            if (currentRoute !== targetRouteWithoutGroup) {
+                console.log(`[NAV] Onboarding not complete (step: ${currentStep}) → Redirecting to ${targetRoute}`);
+                console.log(`[NAV] Current route: ${currentRoute}, Target: ${targetRouteWithoutGroup}`);
+                router.replace(targetRoute as any);
+            } else {
+                console.log(`[NAV] Already on correct onboarding screen: ${currentRoute}`);
+            }
+            return;
+        }
+
+        // ONBOARDING IS COMPLETE: Show main app
+        if (!inTabsGroup) {
+            console.log('[NAV] Onboarding complete → Redirecting to main app');
+            router.replace('/(tabs)');
+        }
+    }, [
+        session,
+        navigationReady,
+        authLoading,
+        onboardingLoading,
+        currentStep,
+        passwordChecked,
+        segments,
+    ]);
+
+    // Show loading state while initializing
+    if (authLoading || onboardingLoading || currentStep === null || !navigationReady) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+                <ActivityIndicator size="large" color={colors.accent} />
             </View>
         );
     }
@@ -136,9 +172,11 @@ export default function RootLayout() {
     return (
         <AuthProvider>
             <PreferencesProvider>
-                <ThemeProvider>
-                    <InitialLayout />
-                </ThemeProvider>
+                <OnboardingProvider>
+                    <ThemeProvider>
+                        <InitialLayout />
+                    </ThemeProvider>
+                </OnboardingProvider>
             </PreferencesProvider>
         </AuthProvider>
     );

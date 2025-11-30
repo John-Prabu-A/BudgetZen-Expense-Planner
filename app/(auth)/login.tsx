@@ -4,12 +4,14 @@ import { Input } from '@/components/ui/Input';
 import { useTheme } from '@/context/Theme';
 import { supabase } from '@/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   AppState,
   Dimensions,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -42,11 +44,35 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
   const formOpacity = useSharedValue(0);
   const formTranslateY = useSharedValue(30);
+
+  useEffect(() => {
+    // Listen for keyboard events
+    const showListener = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+
+    const hideListener = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
 
   useEffect(() => {
     // Header animation
@@ -119,12 +145,22 @@ export default function Auth() {
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={['top', 'bottom']}
     >
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        bounces={false}
-        onScrollBeginDrag={() => Keyboard.dismiss()}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            keyboardVisible && styles.scrollContentKeyboardOpen,
+          ]}
+          bounces={false}
+          scrollEnabled={keyboardVisible}
+          onScrollBeginDrag={() => Keyboard.dismiss()}
+        >
         {/* Header Section */}
         <Animated.View style={[styles.headerSection, headerAnimatedStyle]}>
           <View
@@ -188,7 +224,7 @@ export default function Auth() {
                 editable={!loading}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                style={styles.input}
+                style={[styles.input, {color: colors.text}]}
                 placeholderTextColor={colors.inputPlaceholder}
               />
             </View>
@@ -218,7 +254,7 @@ export default function Auth() {
                 onChangeText={setPassword}
                 editable={!loading}
                 secureTextEntry={!showPassword}
-                style={styles.input}
+                style={[styles.input, {color: colors.text}]}
                 placeholderTextColor={colors.inputPlaceholder}
               />
               <TouchableOpacity
@@ -323,7 +359,8 @@ export default function Auth() {
             </Text>
           </View>
         </Animated.View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -332,10 +369,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
     padding: 20,
     justifyContent: 'space-between',
+  },
+  scrollContentKeyboardOpen: {
+    justifyContent: 'flex-start',
+    paddingVertical: 16,
   },
   headerSection: {
     alignItems: 'center',

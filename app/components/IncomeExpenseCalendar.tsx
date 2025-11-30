@@ -54,10 +54,9 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
     container: {
       backgroundColor: colors.background,
       borderRadius: 16,
-      marginVertical: spacing.lg,
     },
     monthSection: {
-      marginBottom: spacing.xl,
+      marginBottom: spacing.md,
       backgroundColor: colors.surface,
       borderRadius: 16,
       overflow: 'hidden',
@@ -70,12 +69,12 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
     },
     monthHeader: {
       paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.lg,
+      paddingVertical: spacing.md,
       backgroundColor: colors.accent,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      minHeight: 70,
+      minHeight: 50,
     },
     monthTitle: {
       fontSize: 18,
@@ -94,7 +93,7 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
       alignItems: 'center',
       gap: 6,
       paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingVertical: 4,
       borderRadius: 8,
       backgroundColor: 'rgba(255,255,255,0.25)',
       minWidth: 80,
@@ -102,14 +101,14 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
     },
     statText: {
       fontSize: 13,
-      fontWeight: '700',
+      fontWeight: '900',
       color: '#FFFFFF',
       letterSpacing: 0.2,
     },
     dayHeaders: {
       flexDirection: 'row',
       paddingHorizontal: 0,
-      paddingVertical: spacing.md,
+      paddingVertical: 0,
       borderBottomWidth: 1.5,
       borderBottomColor: colors.border,
       backgroundColor: colors.background,

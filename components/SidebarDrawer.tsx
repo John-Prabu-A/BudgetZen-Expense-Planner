@@ -3,7 +3,7 @@ import { useTheme } from '@/context/Theme';
 import { useGestureDrawer } from '@/hooks/useGestureDrawer';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -15,337 +15,280 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
-const DRAWER_WIDTH = Math.min(screenWidth * 0.75, 300);
+const DRAWER_WIDTH = Math.min(screenWidth * 0.75, 280);
 
-interface SidebarDrawerProps {
-  visible: boolean;
-  onClose: () => void;
-}
+// Animation Config
+const ANIMATION_CONFIG = { friction: 7, tension: 40 };
+const QUICK_ANIMATION_CONFIG = { friction: 8, tension: 50 };
+
+// Spacing
+const SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+};
+
+// Sizes
+const SIZES = {
+  avatar: 56,
+  iconLarge: 24,
+  iconMedium: 20,
+  borderRadiusSmall: 8,
+};
 
 interface MenuItem {
   id: string;
   label: string;
   icon: string;
   route: string;
-  section: 'management' | 'settings' | 'advanced' | 'app';
+  color?: string;
 }
 
-const MENU_ITEMS: MenuItem[] = [
-  // Management Section
-  {
-    id: 'export',
-    label: 'Export Records',
-    icon: 'file-export',
-    route: 'export-records-modal',
-    section: 'management',
-  },
-  {
-    id: 'backup',
-    label: 'Backup & Restore',
-    icon: 'cloud-upload-outline',
-    route: 'backup-restore-modal',
-    section: 'management',
-  },
-  {
-    id: 'delete',
-    label: 'Delete & Reset',
-    icon: 'delete-outline',
-    route: 'delete-reset-modal',
-    section: 'management',
-  },
+interface MenuSection {
+  id: string;
+  title: string;
+  items: MenuItem[];
+}
 
-  // Settings Section
-  {
-    id: 'preferences',
-    label: 'Preferences',
-    icon: 'cog',
-    route: 'preferences',
-    section: 'settings',
-  },
-  {
-    id: 'security',
-    label: 'Security & Privacy',
-    icon: 'lock-outline',
-    route: 'security-modal',
-    section: 'settings',
-  },
-  {
-    id: 'notifications',
-    label: 'Notifications',
-    icon: 'bell-outline',
-    route: 'notifications-modal',
-    section: 'settings',
-  },
+interface SidebarDrawerProps {
+  visible: boolean;
+  onClose: () => void;
+}
 
-  // Advanced Section
+const MENU_SECTIONS: MenuSection[] = [
   {
-    id: 'advanced',
-    label: 'Advanced Settings',
-    icon: 'tools',
-    route: 'advanced-modal',
-    section: 'advanced',
+    id: 'settings',
+    title: 'Settings',
+    items: [
+      { id: 'preferences', label: 'Preferences', icon: 'cog-outline', route: 'preferences', color: '#8B5CF6' },
+      { id: 'security', label: 'Security', icon: 'shield-lock-outline', route: 'security-modal', color: '#EC4899' },
+    ],
   },
   {
-    id: 'data-management',
-    label: 'Data Management',
-    icon: 'database-outline',
-    route: 'data-management-modal',
-    section: 'advanced',
-  },
-
-  // App Section
-  {
-    id: 'about',
-    label: 'About App',
-    icon: 'information-outline',
-    route: 'about-modal',
-    section: 'app',
+    id: 'data',
+    title: 'Data & Backup',
+    items: [
+      { id: 'export', label: 'Export Data', icon: 'file-export-outline', route: 'export-records-modal', color: '#3B82F6' },
+      { id: 'backup', label: 'Backup & Restore', icon: 'cloud-sync-outline', route: 'backup-restore-modal', color: '#10B981' },
+      { id: 'delete', label: 'Reset Data', icon: 'alert-circle-outline', route: 'delete-reset-modal', color: '#EF4444' },
+    ],
   },
   {
-    id: 'help',
-    label: 'Help & Support',
-    icon: 'help-circle-outline',
-    route: 'help-modal',
-    section: 'app',
-  },
-  {
-    id: 'feedback',
-    label: 'Send Feedback',
-    icon: 'email-outline',
-    route: 'feedback-modal',
-    section: 'app',
+    id: 'support',
+    title: 'Support',
+    items: [
+      { id: 'help', label: 'Help & FAQ', icon: 'help-circle-outline', route: 'help-modal', color: '#F59E0B' },
+      { id: 'feedback', label: 'Send Feedback', icon: 'message-square-outline', route: 'feedback-modal', color: '#06B6D4' },
+      { id: 'about', label: 'About', icon: 'information-outline', route: 'about-modal', color: '#6366F1' },
+    ],
   },
 ];
 
-const SectionTitles = {
-  management: 'Management',
-  settings: 'Settings & Customization',
-  advanced: 'Advanced Features',
-  app: 'Application',
-};
+// Modern Menu Item Component
+const ModernMenuItem = React.memo(
+  ({
+    item,
+    colors,
+    onPress,
+  }: {
+    item: MenuItem;
+    colors: any;
+    onPress: (route: string) => void;
+  }) => {
+    const [pressed, setPressed] = useState(false);
 
-const SectionColors = {
-  management: '#EF4444', // Red
-  settings: '#F59E0B', // Amber
-  advanced: '#8B5CF6', // Purple
-  app: '#3B82F6', // Blue
-};
+    return (
+      <TouchableOpacity
+        style={[
+          styles.menuItem,
+          pressed && { backgroundColor: colors.accent + '12' },
+        ]}
+        onPress={() => onPress(item.route)}
+        onPressIn={() => setPressed(true)}
+        onPressOut={() => setPressed(false)}
+        activeOpacity={0.7}>
+        <View style={[styles.colorBar, { backgroundColor: item.color }]} />
+        <MaterialCommunityIcons
+          name={item.icon as any}
+          size={SIZES.iconMedium}
+          color={colors.text}
+          style={styles.menuIcon}
+        />
+        <Text style={[styles.menuLabel, { color: colors.text }]} numberOfLines={1}>
+          {item.label}
+        </Text>
+        <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textSecondary} style={styles.chevron} />
+      </TouchableOpacity>
+    );
+  }
+);
+
+ModernMenuItem.displayName = 'ModernMenuItem';
+
+// Menu Section Component
+const MenuSectionComponent = React.memo(
+  ({
+    section,
+    colors,
+    onNavigate,
+  }: {
+    section: MenuSection;
+    colors: any;
+    onNavigate: (route: string) => void;
+  }) => (
+    <View>
+      <View style={[styles.sectionHeader, { borderTopColor: colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+          {section.title.toUpperCase()}
+        </Text>
+      </View>
+      <View style={styles.sectionItems}>
+        {section.items.map((item) => (
+          <ModernMenuItem key={item.id} item={item} colors={colors} onPress={onNavigate} />
+        ))}
+      </View>
+    </View>
+  )
+);
+
+MenuSectionComponent.displayName = 'MenuSection';
 
 export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) {
-  const { isDark, colors } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
   const { user, signOut } = useAuth();
-
-  // Use gesture drawer hook for smooth animation
   const { translateX, closeDrawer } = useGestureDrawer({
     drawerWidth: DRAWER_WIDTH,
     onClose,
   });
 
-  // Pan responder for swiping drawer closed
+  const isNavigatingRef = useRef(false);
+
+  const handleNavigation = useCallback(
+    (route: string) => {
+      if (isNavigatingRef.current) return;
+      isNavigatingRef.current = true;
+
+      closeDrawer();
+      setTimeout(() => {
+        router.push(route as any);
+        isNavigatingRef.current = false;
+      }, 300);
+    },
+    [closeDrawer, router]
+  );
+
+  const handleLogout = useCallback(() => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+
+    closeDrawer();
+    setTimeout(() => {
+      signOut();
+      isNavigatingRef.current = false;
+    }, 300);
+  }, [closeDrawer, signOut]);
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        // Respond to left swipe (closing)
-        return Math.abs(gestureState.dx) > 10 && gestureState.dx < 0;
+        return Math.abs(gestureState.dx) > SPACING.lg && gestureState.dx < 0;
       },
       onPanResponderMove: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        // Allow drawer to follow finger while dragging
-        // Limit movement between -drawerWidth and 0
         const newValue = Math.min(0, Math.max(-DRAWER_WIDTH, -DRAWER_WIDTH + gestureState.dx));
         translateX.setValue(newValue);
       },
       onPanResponderRelease: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        // Determine if we should close based on velocity and position
-        const threshold = DRAWER_WIDTH * 0.3; // 30% threshold
-        const velocity = gestureState.vx; // Positive = moving right, negative = moving left
-        const currentPosition = (translateX as any)._value;
-
-        // Close if swiped left significantly or dragged left past threshold
-        if (gestureState.dx < -threshold || (velocity < -0.3 && gestureState.dx < -DRAWER_WIDTH * 0.1)) {
+        const shouldClose = gestureState.dx < -DRAWER_WIDTH * 0.3 || (gestureState.vx < -0.3 && gestureState.dx < -DRAWER_WIDTH * 0.1);
+        if (shouldClose) {
           closeDrawer();
         } else {
-          // Re-open if didn't swipe far enough
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: false,
-            friction: 8,
-            tension: 40,
-          }).start();
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: false, ...ANIMATION_CONFIG }).start();
         }
       },
     })
   ).current;
 
-  // Update animation when visible prop changes
   useEffect(() => {
-    if (visible) {
-      Animated.spring(translateX, {
-        toValue: 0,
-        useNativeDriver: false,
-        friction: 8,    // Smooth deceleration
-        tension: 40,    // Quick initial response
-      }).start();
-    } else {
-      Animated.spring(translateX, {
-        toValue: -DRAWER_WIDTH,
-        useNativeDriver: false,
-        friction: 8,
-        tension: 40,
-      }).start();
-    }
+    const targetValue = visible ? 0 : -DRAWER_WIDTH;
+    Animated.spring(translateX, {
+      toValue: targetValue,
+      useNativeDriver: false,
+      ...QUICK_ANIMATION_CONFIG,
+    }).start();
   }, [visible, translateX]);
 
-  const handleNavigation = (route: string) => {
-    onClose();
-    // Use setTimeout to ensure modal closes before navigation
-    setTimeout(() => {
-      router.push(route as any);
-    }, 200);
-  };
-
-  const handleLogout = () => {
-    onClose();
-    setTimeout(() => {
-      signOut();
-    }, 200);
-  };
-
-  const renderSection = (section: 'management' | 'settings' | 'advanced' | 'app') => {
-    const items = MENU_ITEMS.filter((item) => item.section === section);
-    const sectionColor = SectionColors[section];
-    const sectionTitle = SectionTitles[section];
-
-    return (
-      <View key={section}>
-        <View style={styles.sectionHeader}>
-          <View
-            style={[styles.sectionColorBar, { backgroundColor: sectionColor }]}
-          />
-          <Text style={[styles.sectionTitle, { color: sectionColor }]}>
-            {sectionTitle}
-          </Text>
-        </View>
-
-        {items.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={[
-              styles.menuItem,
-              { borderBottomColor: colors.border },
-            ]}
-            onPress={() => handleNavigation(item.route)}>
-            <MaterialCommunityIcons
-              name={item.icon as any}
-              size={22}
-              color={sectionColor}
-              style={styles.menuIcon}
-            />
-            <Text style={[styles.menuLabel, { color: colors.text }]}>
-              {item.label}
-            </Text>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.menuArrow}
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+  const getInitials = (email: string) => email.split('@')[0].split(/[._-]/).slice(0, 2).map((n) => n[0].toUpperCase()).join('');
+  const initials = user?.email ? getInitials(user.email) : 'BZ';
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.modalContainer}>
-        {/* Drawer on LEFT - slides from left */}
         <Animated.View
           {...panResponder.panHandlers}
           style={[
             styles.drawer,
             {
               backgroundColor: colors.background,
-              width: DRAWER_WIDTH,
-              transform: [{ translateX: translateX }],
+              transform: [{ translateX }],
             },
           ]}>
-          {/* Header */}
-        <View style={[styles.drawerHeader, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <MaterialCommunityIcons
-              name="close"
-              size={24}
-              color={colors.text}
-            />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <View
-              style={[
-                styles.avatarPlaceholder,
-                { backgroundColor: colors.surface },
-              ]}>
-              <MaterialCommunityIcons
-                name="account-circle"
-                size={40}
-                color={colors.accent}
-              />
-            </View>
-            <View style={styles.headerText}>
-              <Text style={[styles.appName, { color: colors.text }]}>
-                BudgetZen
-              </Text>
-              <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-                {user?.email || 'User'}
-              </Text>
+          {/* Header Section */}
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={onClose}
+              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+              <MaterialCommunityIcons name="close" size={SIZES.iconLarge} color={colors.text} />
+            </TouchableOpacity>
+
+            <View style={styles.profileSection}>
+              <View style={[styles.avatarCircle, { backgroundColor: colors.accent }]}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={[styles.appTitle, { color: colors.text }]} numberOfLines={1}>
+                  BudgetZen
+                </Text>
+                <Text style={[styles.userEmail, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {user?.email || 'Guest'}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Menu Items */}
-        <ScrollView
-          style={styles.menuScroll}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.menuContent}>
-          {renderSection('management')}
-          {renderSection('settings')}
-          {renderSection('advanced')}
-          {renderSection('app')}
-        </ScrollView>
+          {/* Menu Sections */}
+          <ScrollView
+            style={styles.menuScroll}
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            contentContainerStyle={styles.menuContent}>
+            {MENU_SECTIONS.map((section) => (
+              <MenuSectionComponent key={section.id} section={section} colors={colors} onNavigate={handleNavigation} />
+            ))}
+          </ScrollView>
 
-        {/* Footer */}
-        <View style={[styles.drawerFooter, { borderTopColor: colors.border }]}>
-          <TouchableOpacity
-            style={[
-              styles.logoutButton,
-              { backgroundColor: colors.danger + '20' },
-            ]}
-            onPress={handleLogout}>
-            <MaterialCommunityIcons
-              name="logout"
-              size={20}
-              color={colors.danger}
-              style={styles.logoutIcon}
-            />
-            <Text style={[styles.logoutText, { color: colors.danger }]}>Logout</Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.versionText, { color: colors.textSecondary }]}>
-            BudgetZen v1.0.0
-          </Text>
-        </View>
+          {/* Footer Section */}
+          <View style={[styles.footer, { borderTopColor: colors.border }]}>
+            <TouchableOpacity
+              style={[styles.logoutBtn, { backgroundColor: colors.danger + '15' }]}
+              onPress={handleLogout}
+              activeOpacity={0.7}>
+              <MaterialCommunityIcons name="logout" size={SIZES.iconMedium} color={colors.danger} />
+              <Text style={[styles.logoutText, { color: colors.danger }]}>Logout</Text>
+            </TouchableOpacity>
+            <Text style={[styles.versionText, { color: colors.textSecondary }]}>v1.0.0</Text>
+          </View>
         </Animated.View>
 
-        {/* Overlay on RIGHT - fills remaining space */}
         <TouchableOpacity
           style={[styles.overlay, { backgroundColor: colors.overlay }]}
           activeOpacity={1}
@@ -366,115 +309,130 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   drawer: {
+    width: DRAWER_WIDTH,
     flexDirection: 'column',
-    elevation: 5,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    zIndex: 1000,
+    shadowOffset: { width: 3, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
-  drawerHeader: {
-    padding: 16,
+  header: {
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
     borderBottomWidth: 1,
-    paddingTop: 0,
+    gap: SPACING.md,
   },
-  headerContent: {
+  closeBtn: {
+    alignSelf: 'flex-end',
+    padding: SPACING.sm,
+    borderRadius: SIZES.borderRadiusSmall,
+  },
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
+    gap: SPACING.md,
   },
-  avatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  avatarCircle: {
+    width: SIZES.avatar,
+    height: SIZES.avatar,
+    borderRadius: SIZES.avatar / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerText: {
-    flex: 1,
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.5,
   },
-  appName: {
+  userInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  appTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: 2,
+    letterSpacing: 0.3,
   },
   userEmail: {
     fontSize: 12,
-  },
-  closeButton: {
-    padding: 8,
-    marginRight: -8,
-    paddingBottom: 12,
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
   menuScroll: {
     flex: 1,
   },
   menuContent: {
-    paddingVertical: 8,
+    paddingVertical: SPACING.lg,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 8,
-    gap: 10,
-  },
-  sectionColorBar: {
-    width: 4,
-    height: 20,
-    borderRadius: 2,
+    borderTopWidth: 1,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  sectionItems: {
+    marginHorizontal: SPACING.sm,
+    gap: SPACING.xs,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    marginHorizontal: 8,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    borderRadius: SIZES.borderRadiusSmall,
+    gap: SPACING.md,
+  },
+  colorBar: {
+    width: 3,
+    height: 24,
+    borderRadius: 1.5,
   },
   menuIcon: {
-    marginRight: 12,
-    width: 24,
-    textAlign: 'center',
+    marginRight: SPACING.xs,
   },
   menuLabel: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
+    letterSpacing: 0.2,
   },
-  menuArrow: {
-    marginLeft: 8,
+  chevron: {
+    marginLeft: SPACING.xs,
   },
-  drawerFooter: {
-    padding: 16,
+  footer: {
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
     borderTopWidth: 1,
-    gap: 12,
+    gap: SPACING.md,
   },
-  logoutButton: {
+  logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  logoutIcon: {
-    marginRight: 10,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    borderRadius: SIZES.borderRadiusSmall,
+    justifyContent: 'center',
+    gap: SPACING.sm,
   },
   logoutText: {
     fontSize: 14,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
   versionText: {
     fontSize: 11,
     textAlign: 'center',
+    fontWeight: '500',
+    letterSpacing: 0.1,
   },
 });

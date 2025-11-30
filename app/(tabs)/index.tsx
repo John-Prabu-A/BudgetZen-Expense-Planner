@@ -576,23 +576,14 @@ export default function RecordsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={[styles.headerContainer, { justifyContent: 'space-between' }]}>
-          <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Financial Overview</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{getPeriodLabel(viewMode)}</Text>
-          </View>
-          <View style={{ width: 28 }} />
-        </View>
-
-        {/* View Selector */}
-        <View style={[styles.selectorHeader, { marginBottom: spacing.sm }]}>
+        <View style={[styles.selectorHeader, styles.headerContainer, {justifyContent: 'space-between' },  { marginBottom: spacing.sm }]}>
           <View style={styles.selectorLabel}>
             <View style={[styles.iconBackdrop, { backgroundColor: colors.surfaceLight, borderColor: colors.borderLight }]}>
               <MaterialCommunityIcons name="chart-box-multiple-outline" size={18} color={colors.accent} />
             </View>
             <View>
-              <Text style={[styles.selectorLabelSmall, { color: colors.accent }]}>Financial Charts</Text>
-              <Text style={[styles.selectorLabelText, { color: colors.text }]}>Select your view</Text>
+              <Text style={[styles.headerTitle, { color: colors.accent }]}>Financial Overview</Text>
+              <Text style={[styles.selectorLabelText, { color: colors.textSecondary }]}>{getPeriodLabel(viewMode)}</Text>
             </View>
           </View>
         </View>
@@ -775,6 +766,7 @@ const getStyles = (spacing: any) =>
       marginBottom: spacing?.xl ?? 24,
       gap: spacing?.md ?? 16,
       margin: 5,
+      marginTop: spacing?.lg ?? 16,
     },
     header: { flex: 1 },
     headerTitle: { fontSize: 24, fontWeight: '700', marginBottom: 4 },
