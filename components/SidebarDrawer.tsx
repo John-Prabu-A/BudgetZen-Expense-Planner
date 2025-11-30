@@ -4,17 +4,17 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  InteractionManager,
-  Modal,
-  PanResponder,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Animated,
+    Dimensions,
+    Easing,
+    InteractionManager,
+    Modal,
+    PanResponder,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,17 +35,17 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  { id: 'export', label: 'Export Records', icon: 'file-export', route: 'export-records-modal', section: 'management' },
-  { id: 'backup', label: 'Backup & Restore', icon: 'cloud-upload-outline', route: 'backup-restore-modal', section: 'management' },
-  { id: 'delete', label: 'Delete & Reset', icon: 'delete-outline', route: 'delete-reset-modal', section: 'management' },
+  { id: 'export', label: 'Export Records', icon: 'file-export', route: '/(modal)/export-records-modal', section: 'management' },
+  { id: 'backup', label: 'Backup & Restore', icon: 'cloud-upload-outline', route: '/(modal)/backup-restore-modal', section: 'management' },
+  { id: 'delete', label: 'Delete & Reset', icon: 'delete-outline', route: '/(modal)/delete-reset-modal', section: 'management' },
   { id: 'preferences', label: 'Preferences', icon: 'cog', route: 'preferences', section: 'settings' },
-  { id: 'security', label: 'Security & Privacy', icon: 'lock-outline', route: 'security-modal', section: 'settings' },
-  { id: 'notifications', label: 'Notifications', icon: 'bell-outline', route: 'notifications-modal', section: 'settings' },
-  { id: 'advanced', label: 'Advanced Settings', icon: 'tools', route: 'advanced-modal', section: 'advanced' },
-  { id: 'data-management', label: 'Data Management', icon: 'database-outline', route: 'data-management-modal', section: 'advanced' },
-  { id: 'about', label: 'About App', icon: 'information-outline', route: 'about-modal', section: 'app' },
-  { id: 'help', label: 'Help & Support', icon: 'help-circle-outline', route: 'help-modal', section: 'app' },
-  { id: 'feedback', label: 'Send Feedback', icon: 'email-outline', route: 'feedback-modal', section: 'app' },
+  { id: 'security', label: 'Security & Privacy', icon: 'lock-outline', route: '/(modal)/security-modal', section: 'settings' },
+  { id: 'notifications', label: 'Notifications', icon: 'bell-outline', route: '/(modal)/notifications-modal', section: 'settings' },
+  { id: 'advanced', label: 'Advanced Settings', icon: 'tools', route: '/(modal)/advanced-modal', section: 'advanced' },
+  { id: 'data-management', label: 'Data Management', icon: 'database-outline', route: '/(modal)/data-management-modal', section: 'advanced' },
+  { id: 'about', label: 'About App', icon: 'information-outline', route: '/(modal)/about-modal', section: 'app' },
+  { id: 'help', label: 'Help & Support', icon: 'help-circle-outline', route: '/(modal)/help-modal', section: 'app' },
+  { id: 'feedback', label: 'Send Feedback', icon: 'email-outline', route: '/(modal)/feedback-modal', section: 'app' },
 ];
 
 const SectionTitles = {

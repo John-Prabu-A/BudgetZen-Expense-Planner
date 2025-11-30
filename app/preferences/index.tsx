@@ -322,9 +322,9 @@ export default function PreferencesScreen() {
           <SectionHeader title="Security" />
           <PreferenceRow
             icon="lock"
-            label="Passcode Protection"
+            label="Security Settings"
             value={passcodeEnabled ? 'Enabled' : 'Disabled'}
-            onPress={() => router.push('/passcode-setup')}
+            onPress={() => router.push('/(modal)/security-modal')}
             isLast
           />
         </View>

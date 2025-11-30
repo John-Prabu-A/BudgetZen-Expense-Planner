@@ -23,6 +23,18 @@ interface PreferencesContextType {
   // Security
   passcodeEnabled: boolean;
   setPasscodeEnabled: (enabled: boolean) => Promise<void>;
+  passcodeHash: string | null;
+  setPasscodeHash: (hash: string) => Promise<void>;
+  clearPasscodeHash: () => Promise<void>;
+  passcodeLength: 4 | 6;
+  setPasscodeLength: (length: 4 | 6) => Promise<void>;
+  passwordEnabled: boolean;
+  setPasswordEnabled: (enabled: boolean) => Promise<void>;
+  passwordHash: string | null;
+  setPasswordHash: (hash: string) => Promise<void>;
+  clearPasswordHash: () => Promise<void>;
+  authMethod: 'password' | 'passcode' | 'both' | 'none';
+  setAuthMethod: (method: 'password' | 'passcode' | 'both' | 'none') => Promise<void>;
 
   // Notifications
   remindDaily: boolean;
@@ -48,6 +60,11 @@ const STORAGE_KEYS = {
   CURRENCY_POSITION: 'pref_currency_position',
   DECIMAL_PLACES: 'pref_decimal_places',
   PASSCODE_ENABLED: 'pref_passcode_enabled',
+  PASSCODE_HASH: 'pref_passcode_hash',
+  PASSCODE_LENGTH: 'pref_passcode_length',
+  PASSWORD_ENABLED: 'pref_password_enabled',
+  PASSWORD_HASH: 'pref_password_hash',
+  AUTH_METHOD: 'pref_auth_method',
   REMIND_DAILY: 'pref_remind_daily',
   REMINDER_TIME: 'pref_reminder_time',
   SEND_CRASH_STATS: 'pref_send_crash_stats',
@@ -60,6 +77,11 @@ const DEFAULT_VALUES = {
   currencyPosition: 'before' as CurrencyPosition,
   decimalPlaces: 2 as DecimalPlaces,
   passcodeEnabled: false,
+  passcodeHash: null as string | null,
+  passcodeLength: 4 as 4 | 6,
+  passwordEnabled: false,
+  passwordHash: null as string | null,
+  authMethod: 'none' as 'password' | 'passcode' | 'both' | 'none',
   remindDaily: true,
   reminderTime: '09:00 AM',
   sendCrashStats: true,
@@ -72,12 +94,16 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const [currencyPosition, setCurrencyPositionState] = useState<CurrencyPosition>(DEFAULT_VALUES.currencyPosition);
   const [decimalPlaces, setDecimalPlacesState] = useState<DecimalPlaces>(DEFAULT_VALUES.decimalPlaces);
   const [passcodeEnabled, setPasscodeEnabledState] = useState<boolean>(DEFAULT_VALUES.passcodeEnabled);
+  const [passcodeHash, setPasscodeHashState] = useState<string | null>(DEFAULT_VALUES.passcodeHash);
+  const [passcodeLength, setPasscodeLengthState] = useState<4 | 6>(DEFAULT_VALUES.passcodeLength);
+  const [passwordEnabled, setPasswordEnabledState] = useState<boolean>(DEFAULT_VALUES.passwordEnabled);
+  const [passwordHash, setPasswordHashState] = useState<string | null>(DEFAULT_VALUES.passwordHash);
+  const [authMethod, setAuthMethodState] = useState<'password' | 'passcode' | 'both' | 'none'>(DEFAULT_VALUES.authMethod);
   const [remindDaily, setRemindDailyState] = useState<boolean>(DEFAULT_VALUES.remindDaily);
   const [reminderTime, setReminderTimeState] = useState<string>(DEFAULT_VALUES.reminderTime);
   const [sendCrashStats, setSendCrashStatsState] = useState<boolean>(DEFAULT_VALUES.sendCrashStats);
   const [loading, setLoading] = useState(true);
 
-  // Load preferences from storage on mount
   useEffect(() => {
     loadPreferences();
   }, []);
@@ -90,6 +116,11 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       const storedCurrencyPosition = (await SecureStore.getItemAsync(STORAGE_KEYS.CURRENCY_POSITION)) as CurrencyPosition;
       const storedDecimalPlaces = (await SecureStore.getItemAsync(STORAGE_KEYS.DECIMAL_PLACES)) as unknown as DecimalPlaces;
       const storedPasscodeEnabled = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_ENABLED)) === 'true';
+      const storedPasscodeHash = await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_HASH);
+      const storedPasscodeLength = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_LENGTH)) as '4' | '6' | null;
+      const storedPasswordEnabled = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSWORD_ENABLED)) === 'true';
+      const storedPasswordHash = await SecureStore.getItemAsync(STORAGE_KEYS.PASSWORD_HASH);
+      const storedAuthMethod = (await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_METHOD)) as 'password' | 'passcode' | 'both' | 'none' | null;
       const storedRemindDaily = (await SecureStore.getItemAsync(STORAGE_KEYS.REMIND_DAILY)) !== 'false';
       const storedReminderTime = (await SecureStore.getItemAsync(STORAGE_KEYS.REMINDER_TIME)) || DEFAULT_VALUES.reminderTime;
       const storedSendCrashStats = (await SecureStore.getItemAsync(STORAGE_KEYS.SEND_CRASH_STATS)) !== 'false';
@@ -100,6 +131,11 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       if (storedCurrencyPosition) setCurrencyPositionState(storedCurrencyPosition);
       if (storedDecimalPlaces) setDecimalPlacesState(storedDecimalPlaces);
       setPasscodeEnabledState(storedPasscodeEnabled);
+      if (storedPasscodeHash) setPasscodeHashState(storedPasscodeHash);
+      if (storedPasscodeLength) setPasscodeLengthState(parseInt(storedPasscodeLength) as 4 | 6);
+      setPasswordEnabledState(storedPasswordEnabled);
+      if (storedPasswordHash) setPasswordHashState(storedPasswordHash);
+      if (storedAuthMethod) setAuthMethodState(storedAuthMethod);
       setRemindDailyState(storedRemindDaily);
       setReminderTimeState(storedReminderTime);
       setSendCrashStatsState(storedSendCrashStats);
@@ -164,6 +200,73 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     }
   };
 
+  const setPasswordEnabled = async (enabled: boolean) => {
+    try {
+      setPasswordEnabledState(enabled);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, enabled.toString());
+    } catch (error) {
+      console.error('Error setting password enabled:', error);
+    }
+  };
+
+  const setPasswordHash = async (hash: string) => {
+    try {
+      setPasswordHashState(hash);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_HASH, hash);
+    } catch (error) {
+      console.error('Error setting password hash:', error);
+    }
+  };
+
+  const clearPasswordHash = async () => {
+    try {
+      setPasswordHashState(null);
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.PASSWORD_HASH);
+      setPasswordEnabledState(false);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, 'false');
+    } catch (error) {
+      console.error('Error clearing password hash:', error);
+    }
+  };
+
+  const setPasscodeHash = async (hash: string) => {
+    try {
+      setPasscodeHashState(hash);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_HASH, hash);
+    } catch (error) {
+      console.error('Error setting passcode hash:', error);
+    }
+  };
+
+  const clearPasscodeHash = async () => {
+    try {
+      setPasscodeHashState(null);
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.PASSCODE_HASH);
+      setPasscodeEnabledState(false);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_ENABLED, 'false');
+    } catch (error) {
+      console.error('Error clearing passcode hash:', error);
+    }
+  };
+
+  const setPasscodeLength = async (length: 4 | 6) => {
+    try {
+      setPasscodeLengthState(length);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_LENGTH, length.toString());
+    } catch (error) {
+      console.error('Error setting passcode length:', error);
+    }
+  };
+
+  const setAuthMethod = async (method: 'password' | 'passcode' | 'both' | 'none') => {
+    try {
+      setAuthMethodState(method);
+      await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_METHOD, method);
+    } catch (error) {
+      console.error('Error setting auth method:', error);
+    }
+  };
+
   const setRemindDaily = async (remind: boolean) => {
     try {
       setRemindDailyState(remind);
@@ -204,6 +307,18 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     setDecimalPlaces,
     passcodeEnabled,
     setPasscodeEnabled,
+    passcodeHash,
+    setPasscodeHash,
+    clearPasscodeHash,
+    passcodeLength,
+    setPasscodeLength,
+    passwordEnabled,
+    setPasswordEnabled,
+    passwordHash,
+    setPasswordHash,
+    clearPasswordHash,
+    authMethod,
+    setAuthMethod,
     remindDaily,
     setRemindDaily,
     reminderTime,

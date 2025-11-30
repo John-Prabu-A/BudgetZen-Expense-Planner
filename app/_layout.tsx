@@ -1,6 +1,8 @@
 
+import UnifiedLockScreen from '@/components/UnifiedLockScreen';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/Auth';
 import { OnboardingProvider, OnboardingStep, useOnboarding } from '../context/Onboarding';
@@ -8,36 +10,13 @@ import { PreferencesProvider, usePreferences } from '../context/Preferences';
 import { ThemeProvider, useTheme } from '../context/Theme';
 
 const InitialLayout = () => {
-    const { session, loading: authLoading } = useAuth();
+    const { session, loading: authLoading, isPasswordLocked, unlockPassword } = useAuth();
     const { isDark, colors } = useTheme();
-    const { passcodeEnabled } = usePreferences();
+    const { authMethod, passwordHash, passcodeHash, passcodeLength } = usePreferences();
     const { currentStep, loading: onboardingLoading } = useOnboarding();
     const router = useRouter();
     const segments = useSegments();
     const navigationReady = useRootNavigationState()?.key;
-    const [passwordChecked, setPasswordChecked] = useState(false);
-
-    // Determine if we need to show password screen
-    useEffect(() => {
-        // Password check should happen once per app launch
-        if (authLoading || onboardingLoading || !navigationReady) {
-            return;
-        }
-
-        // Check if user is logged in and passcode is enabled
-        // If so, they need to verify password before accessing app
-        if (session && passcodeEnabled && !passwordChecked) {
-            console.log('User logged in with passcode enabled, showing password verification');
-            // Navigate to passcode verification screen
-            // This will be shown before accessing main app
-            setPasswordChecked(true);
-            return;
-        }
-
-        if (session) {
-            setPasswordChecked(true);
-        }
-    }, [session, passcodeEnabled, navigationReady, authLoading, onboardingLoading]);
 
     // Main navigation logic
     useEffect(() => {
@@ -56,30 +35,33 @@ const InitialLayout = () => {
             return;
         }
 
-        if (session && !passwordChecked) {
-            console.log('Password not yet checked');
+        // If password is locked, don't proceed with navigation
+        if (isPasswordLocked) {
+            console.log('Password locked - showing password screen');
             return;
         }
 
         const inAuthGroup = segments[0] === '(auth)';
         const inOnboardingGroup = segments[0] === '(onboarding)';
         const inTabsGroup = segments[0] === '(tabs)';
+        const inPreferences = segments[0] === 'preferences';
         const isModal = segments[0] === '(modal)';
 
         console.log('Navigation logic:', {
             hasSession: !!session,
-            passwordChecked,
+            isPasswordLocked,
             onboardingStep: currentStep,
             isOnboardingComplete: currentStep === OnboardingStep.COMPLETED,
             inAuthGroup,
             inOnboardingGroup,
             inTabsGroup,
+            inPreferences,
             isModal,
             segments,
         });
 
-        // If in modal, don't change navigation
-        if (isModal) {
+        // If in modal or preferences, don't change navigation
+        if (isModal || inPreferences) {
             return;
         }
 
@@ -135,7 +117,7 @@ const InitialLayout = () => {
         authLoading,
         onboardingLoading,
         currentStep,
-        passwordChecked,
+        isPasswordLocked,
         segments,
     ]);
 
@@ -148,22 +130,57 @@ const InitialLayout = () => {
         );
     }
 
+    // Show password lock screen if password is locked
+    // Show the appropriate lock screen based on authMethod and available credentials
+    if (isPasswordLocked) {
+        // If we have password hash, show password lock screen (fallback/default)
+        if (passwordHash) {
+            return (
+                <UnifiedLockScreen
+                    authMethod={authMethod === 'passcode' ? 'passcode' : authMethod === 'both' ? 'both' : 'password'}
+                    passwordHash={passwordHash}
+                    passcodeHash={passcodeHash}
+                    passcodeLength={passcodeLength}
+                    onUnlock={unlockPassword}
+                />
+            );
+        }
+        // If we have passcode hash but no password, show passcode lock screen
+        else if (passcodeHash) {
+            return (
+                <UnifiedLockScreen
+                    authMethod="passcode"
+                    passcodeHash={passcodeHash}
+                    passcodeLength={passcodeLength}
+                    onUnlock={unlockPassword}
+                />
+            );
+        }
+    }
+
     return (
-        <Stack
-            screenOptions={{
-                contentStyle: {
-                    backgroundColor: colors.background,
-                },
-                headerShown: false,
-            }}
-        >
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(modal)" options={{ headerShown: false }} />
-            <Stack.Screen name="preferences" options={{ headerShown: false }} />
-            <Stack.Screen name="passcode-setup" options={{ headerShown: false }} />
-        </Stack>
+        <>
+            <StatusBar 
+                style={isDark ? 'light' : 'dark'} 
+                backgroundColor={colors.background}
+                translucent={false}
+            />
+            <Stack
+                screenOptions={{
+                    contentStyle: {
+                        backgroundColor: colors.background,
+                    },
+                    headerShown: false,
+                }}
+            >
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(modal)" options={{ headerShown: false }} />
+                <Stack.Screen name="preferences" options={{ headerShown: false }} />
+                <Stack.Screen name="passcode-setup" options={{ headerShown: false }} />
+            </Stack>
+        </>
     );
 };
 
