@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 /**
  * Onboarding Steps in order
@@ -8,8 +8,8 @@ import React, { createContext, useContext, useCallback, useEffect, useState } fr
 export enum OnboardingStep {
   NOT_STARTED = 'not_started',
   CURRENCY = 'currency',
-  PRIVACY = 'privacy',
   REMINDERS = 'reminders',
+  PRIVACY = 'privacy',
   TUTORIAL = 'tutorial',
   COMPLETED = 'completed',
 }

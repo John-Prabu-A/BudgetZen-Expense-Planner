@@ -1,9 +1,9 @@
 import { AnimatedButton } from '@/components/AnimatedButton';
-import { useOnboarding, OnboardingStep } from '@/context/Onboarding';
+import { OnboardingStep, useOnboarding } from '@/context/Onboarding';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useRef, useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Dimensions,

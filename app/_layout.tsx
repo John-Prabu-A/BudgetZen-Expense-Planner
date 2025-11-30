@@ -1,10 +1,9 @@
 
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/Auth';
-import { OnboardingProvider, useOnboarding, OnboardingStep } from '../context/Onboarding';
+import { OnboardingProvider, OnboardingStep, useOnboarding } from '../context/Onboarding';
 import { PreferencesProvider, usePreferences } from '../context/Preferences';
 import { ThemeProvider, useTheme } from '../context/Theme';
 

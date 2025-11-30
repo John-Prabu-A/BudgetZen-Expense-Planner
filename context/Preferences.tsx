@@ -27,6 +27,8 @@ interface PreferencesContextType {
   // Notifications
   remindDaily: boolean;
   setRemindDaily: (remind: boolean) => Promise<void>;
+  reminderTime: string;
+  setReminderTime: (time: string) => Promise<void>;
 
   // About
   sendCrashStats: boolean;
@@ -47,6 +49,7 @@ const STORAGE_KEYS = {
   DECIMAL_PLACES: 'pref_decimal_places',
   PASSCODE_ENABLED: 'pref_passcode_enabled',
   REMIND_DAILY: 'pref_remind_daily',
+  REMINDER_TIME: 'pref_reminder_time',
   SEND_CRASH_STATS: 'pref_send_crash_stats',
 };
 
@@ -58,6 +61,7 @@ const DEFAULT_VALUES = {
   decimalPlaces: 2 as DecimalPlaces,
   passcodeEnabled: false,
   remindDaily: true,
+  reminderTime: '09:00 AM',
   sendCrashStats: true,
 };
 
@@ -69,6 +73,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const [decimalPlaces, setDecimalPlacesState] = useState<DecimalPlaces>(DEFAULT_VALUES.decimalPlaces);
   const [passcodeEnabled, setPasscodeEnabledState] = useState<boolean>(DEFAULT_VALUES.passcodeEnabled);
   const [remindDaily, setRemindDailyState] = useState<boolean>(DEFAULT_VALUES.remindDaily);
+  const [reminderTime, setReminderTimeState] = useState<string>(DEFAULT_VALUES.reminderTime);
   const [sendCrashStats, setSendCrashStatsState] = useState<boolean>(DEFAULT_VALUES.sendCrashStats);
   const [loading, setLoading] = useState(true);
 
@@ -86,6 +91,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       const storedDecimalPlaces = (await SecureStore.getItemAsync(STORAGE_KEYS.DECIMAL_PLACES)) as unknown as DecimalPlaces;
       const storedPasscodeEnabled = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_ENABLED)) === 'true';
       const storedRemindDaily = (await SecureStore.getItemAsync(STORAGE_KEYS.REMIND_DAILY)) !== 'false';
+      const storedReminderTime = (await SecureStore.getItemAsync(STORAGE_KEYS.REMINDER_TIME)) || DEFAULT_VALUES.reminderTime;
       const storedSendCrashStats = (await SecureStore.getItemAsync(STORAGE_KEYS.SEND_CRASH_STATS)) !== 'false';
 
       if (storedTheme) setThemeState(storedTheme);
@@ -95,6 +101,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       if (storedDecimalPlaces) setDecimalPlacesState(storedDecimalPlaces);
       setPasscodeEnabledState(storedPasscodeEnabled);
       setRemindDailyState(storedRemindDaily);
+      setReminderTimeState(storedReminderTime);
       setSendCrashStatsState(storedSendCrashStats);
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -166,6 +173,15 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     }
   };
 
+  const setReminderTime = async (time: string) => {
+    try {
+      setReminderTimeState(time);
+      await SecureStore.setItemAsync(STORAGE_KEYS.REMINDER_TIME, time);
+    } catch (error) {
+      console.error('Error setting reminder time:', error);
+    }
+  };
+
   const setSendCrashStats = async (send: boolean) => {
     try {
       setSendCrashStatsState(send);
@@ -190,6 +206,8 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     setPasscodeEnabled,
     remindDaily,
     setRemindDaily,
+    reminderTime,
+    setReminderTime,
     sendCrashStats,
     setSendCrashStats,
     appVersion: '1.0.0',

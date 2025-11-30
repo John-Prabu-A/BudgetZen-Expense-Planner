@@ -1,236 +1,207 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
-import { useGestureDrawer } from '@/hooks/useGestureDrawer';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Dimensions,
-  GestureResponderEvent,
+  Easing,
+  InteractionManager,
   Modal,
   PanResponder,
-  PanResponderGestureState,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: screenWidth } = Dimensions.get('window');
-const DRAWER_WIDTH = Math.min(screenWidth * 0.75, 280);
-
-// Animation Config
-const ANIMATION_CONFIG = { friction: 7, tension: 40 };
-const QUICK_ANIMATION_CONFIG = { friction: 8, tension: 50 };
-
-// Spacing
-const SPACING = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-};
-
-// Sizes
-const SIZES = {
-  avatar: 56,
-  iconLarge: 24,
-  iconMedium: 20,
-  borderRadiusSmall: 8,
-};
-
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: string;
-  route: string;
-  color?: string;
-}
-
-interface MenuSection {
-  id: string;
-  title: string;
-  items: MenuItem[];
-}
+const DRAWER_WIDTH = Math.min(screenWidth * 0.75, 300);
 
 interface SidebarDrawerProps {
   visible: boolean;
   onClose: () => void;
 }
 
-const MENU_SECTIONS: MenuSection[] = [
-  {
-    id: 'settings',
-    title: 'Settings',
-    items: [
-      { id: 'preferences', label: 'Preferences', icon: 'cog-outline', route: 'preferences', color: '#8B5CF6' },
-      { id: 'security', label: 'Security', icon: 'shield-lock-outline', route: 'security-modal', color: '#EC4899' },
-    ],
-  },
-  {
-    id: 'data',
-    title: 'Data & Backup',
-    items: [
-      { id: 'export', label: 'Export Data', icon: 'file-export-outline', route: 'export-records-modal', color: '#3B82F6' },
-      { id: 'backup', label: 'Backup & Restore', icon: 'cloud-sync-outline', route: 'backup-restore-modal', color: '#10B981' },
-      { id: 'delete', label: 'Reset Data', icon: 'alert-circle-outline', route: 'delete-reset-modal', color: '#EF4444' },
-    ],
-  },
-  {
-    id: 'support',
-    title: 'Support',
-    items: [
-      { id: 'help', label: 'Help & FAQ', icon: 'help-circle-outline', route: 'help-modal', color: '#F59E0B' },
-      { id: 'feedback', label: 'Send Feedback', icon: 'message-square-outline', route: 'feedback-modal', color: '#06B6D4' },
-      { id: 'about', label: 'About', icon: 'information-outline', route: 'about-modal', color: '#6366F1' },
-    ],
-  },
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: string;
+  route: string;
+  section: 'management' | 'settings' | 'advanced' | 'app';
+}
+
+const MENU_ITEMS: MenuItem[] = [
+  { id: 'export', label: 'Export Records', icon: 'file-export', route: 'export-records-modal', section: 'management' },
+  { id: 'backup', label: 'Backup & Restore', icon: 'cloud-upload-outline', route: 'backup-restore-modal', section: 'management' },
+  { id: 'delete', label: 'Delete & Reset', icon: 'delete-outline', route: 'delete-reset-modal', section: 'management' },
+  { id: 'preferences', label: 'Preferences', icon: 'cog', route: 'preferences', section: 'settings' },
+  { id: 'security', label: 'Security & Privacy', icon: 'lock-outline', route: 'security-modal', section: 'settings' },
+  { id: 'notifications', label: 'Notifications', icon: 'bell-outline', route: 'notifications-modal', section: 'settings' },
+  { id: 'advanced', label: 'Advanced Settings', icon: 'tools', route: 'advanced-modal', section: 'advanced' },
+  { id: 'data-management', label: 'Data Management', icon: 'database-outline', route: 'data-management-modal', section: 'advanced' },
+  { id: 'about', label: 'About App', icon: 'information-outline', route: 'about-modal', section: 'app' },
+  { id: 'help', label: 'Help & Support', icon: 'help-circle-outline', route: 'help-modal', section: 'app' },
+  { id: 'feedback', label: 'Send Feedback', icon: 'email-outline', route: 'feedback-modal', section: 'app' },
 ];
 
-// Modern Menu Item Component
-const ModernMenuItem = React.memo(
-  ({
-    item,
-    colors,
-    onPress,
-  }: {
-    item: MenuItem;
-    colors: any;
-    onPress: (route: string) => void;
-  }) => {
-    const [pressed, setPressed] = useState(false);
+const SectionTitles = {
+  management: 'Management',
+  settings: 'Settings & Customization',
+  advanced: 'Advanced Features',
+  app: 'Application',
+};
 
-    return (
-      <TouchableOpacity
-        style={[
-          styles.menuItem,
-          pressed && { backgroundColor: colors.accent + '12' },
-        ]}
-        onPress={() => onPress(item.route)}
-        onPressIn={() => setPressed(true)}
-        onPressOut={() => setPressed(false)}
-        activeOpacity={0.7}>
-        <View style={[styles.colorBar, { backgroundColor: item.color }]} />
-        <MaterialCommunityIcons
-          name={item.icon as any}
-          size={SIZES.iconMedium}
-          color={colors.text}
-          style={styles.menuIcon}
-        />
-        <Text style={[styles.menuLabel, { color: colors.text }]} numberOfLines={1}>
-          {item.label}
-        </Text>
-        <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textSecondary} style={styles.chevron} />
-      </TouchableOpacity>
-    );
-  }
-);
-
-ModernMenuItem.displayName = 'ModernMenuItem';
-
-// Menu Section Component
-const MenuSectionComponent = React.memo(
-  ({
-    section,
-    colors,
-    onNavigate,
-  }: {
-    section: MenuSection;
-    colors: any;
-    onNavigate: (route: string) => void;
-  }) => (
-    <View>
-      <View style={[styles.sectionHeader, { borderTopColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {section.title.toUpperCase()}
-        </Text>
-      </View>
-      <View style={styles.sectionItems}>
-        {section.items.map((item) => (
-          <ModernMenuItem key={item.id} item={item} colors={colors} onPress={onNavigate} />
-        ))}
-      </View>
-    </View>
-  )
-);
-
-MenuSectionComponent.displayName = 'MenuSection';
+const SectionColors = {
+  management: '#EF4444',
+  settings: '#F59E0B',
+  advanced: '#8B5CF6',
+  app: '#3B82F6',
+};
 
 export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) {
-  const { colors } = useTheme();
+  const { isDark, colors } = useTheme();
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { translateX, closeDrawer } = useGestureDrawer({
-    drawerWidth: DRAWER_WIDTH,
-    onClose,
-  });
+  
+  // Safe Area Hook
+  const insets = useSafeAreaInsets();
+  
+  const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
-  const isNavigatingRef = useRef(false);
+  // Optimized Close Action
+  const animateClose = useCallback(() => {
+    Animated.timing(translateX, {
+      toValue: -DRAWER_WIDTH,
+      duration: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        onClose();
+      }
+    });
+  }, [onClose, translateX]);
 
-  const handleNavigation = useCallback(
-    (route: string) => {
-      if (isNavigatingRef.current) return;
-      isNavigatingRef.current = true;
+  // Optimized Open Action
+  const animateOpen = useCallback(() => {
+    translateX.setValue(-DRAWER_WIDTH);
+    Animated.spring(translateX, {
+      toValue: 0,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [translateX]);
 
-      closeDrawer();
-      setTimeout(() => {
-        router.push(route as any);
-        isNavigatingRef.current = false;
-      }, 300);
-    },
-    [closeDrawer, router]
-  );
+  useEffect(() => {
+    if (visible) {
+      animateOpen();
+    } else {
+      translateX.setValue(-DRAWER_WIDTH); 
+    }
+  }, [visible, animateOpen, translateX]);
+
+  const handleNavigation = useCallback((route: string) => {
+    animateClose();
+    InteractionManager.runAfterInteractions(() => {
+      router.push(route as any);
+    });
+  }, [animateClose, router]);
 
   const handleLogout = useCallback(() => {
-    if (isNavigatingRef.current) return;
-    isNavigatingRef.current = true;
-
-    closeDrawer();
-    setTimeout(() => {
+    animateClose();
+    InteractionManager.runAfterInteractions(() => {
       signOut();
-      isNavigatingRef.current = false;
-    }, 300);
-  }, [closeDrawer, signOut]);
+    });
+  }, [animateClose, signOut]);
 
+  // PanResponder with Logic to prevent ScrollView conflict
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        return Math.abs(gestureState.dx) > SPACING.lg && gestureState.dx < 0;
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const { dx, dy } = gestureState;
+        // Only take over if:
+        // 1. Moving Left (closing)
+        // 2. Moved > 10px
+        // 3. Horizontal movement > Vertical movement
+        return dx < 0 && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy);
       },
-      onPanResponderMove: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        const newValue = Math.min(0, Math.max(-DRAWER_WIDTH, -DRAWER_WIDTH + gestureState.dx));
+      onPanResponderMove: (_, gestureState) => {
+        const newValue = Math.min(0, Math.max(-DRAWER_WIDTH, gestureState.dx));
         translateX.setValue(newValue);
       },
-      onPanResponderRelease: (evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        const shouldClose = gestureState.dx < -DRAWER_WIDTH * 0.3 || (gestureState.vx < -0.3 && gestureState.dx < -DRAWER_WIDTH * 0.1);
-        if (shouldClose) {
-          closeDrawer();
+      onPanResponderRelease: (_, gestureState) => {
+        const { dx, vx } = gestureState;
+        if (dx < -DRAWER_WIDTH * 0.3 || (vx < -0.5 && dx < 0)) {
+          animateClose();
         } else {
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: false, ...ANIMATION_CONFIG }).start();
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
         }
       },
     })
   ).current;
 
-  useEffect(() => {
-    const targetValue = visible ? 0 : -DRAWER_WIDTH;
-    Animated.spring(translateX, {
-      toValue: targetValue,
-      useNativeDriver: false,
-      ...QUICK_ANIMATION_CONFIG,
-    }).start();
-  }, [visible, translateX]);
+  const renderSection = useMemo(() => (section: 'management' | 'settings' | 'advanced' | 'app') => {
+    const items = MENU_ITEMS.filter((item) => item.section === section);
+    const sectionColor = SectionColors[section];
+    const sectionTitle = SectionTitles[section];
 
-  const getInitials = (email: string) => email.split('@')[0].split(/[._-]/).slice(0, 2).map((n) => n[0].toUpperCase()).join('');
-  const initials = user?.email ? getInitials(user.email) : 'BZ';
+    return (
+      <View key={section} style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionColorBar, { backgroundColor: sectionColor }]} />
+          <Text style={[styles.sectionTitle, { color: sectionColor }]}>
+            {sectionTitle}
+          </Text>
+        </View>
+
+        {items.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            activeOpacity={0.7}
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => handleNavigation(item.route)}
+          >
+            <MaterialCommunityIcons
+              name={item.icon as any}
+              size={22}
+              color={sectionColor}
+              style={styles.menuIcon}
+            />
+            <Text style={[styles.menuLabel, { color: colors.text }]}>
+              {item.label}
+            </Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.menuArrow}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  }, [colors, handleNavigation]);
+
+  if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={animateClose}
+      statusBarTranslucent
+    >
       <View style={styles.modalContainer}>
         <Animated.View
           {...panResponder.panHandlers}
@@ -238,62 +209,96 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
             styles.drawer,
             {
               backgroundColor: colors.background,
+              width: DRAWER_WIDTH,
               transform: [{ translateX }],
             },
+          ]}
+        >
+          {/* Header with Top Safe Area */}
+          <View style={[
+            styles.drawerHeader, 
+            { 
+              borderBottomColor: colors.border,
+              // Apply safe area padding, with a minimum fall back
+              paddingTop: Math.max(insets.top, 20) 
+            }
           ]}>
-          {/* Header Section */}
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={onClose}
-              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-              <MaterialCommunityIcons name="close" size={SIZES.iconLarge} color={colors.text} />
+            <TouchableOpacity 
+              onPress={animateClose} 
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialCommunityIcons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-
-            <View style={styles.profileSection}>
-              <View style={[styles.avatarCircle, { backgroundColor: colors.accent }]}>
-                <Text style={styles.avatarText}>{initials}</Text>
+            
+            <View style={styles.headerContent}>
+              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.surface }]}>
+                <MaterialCommunityIcons name="account-circle" size={40} color={colors.accent} />
               </View>
-              <View style={styles.userInfo}>
-                <Text style={[styles.appTitle, { color: colors.text }]} numberOfLines={1}>
-                  BudgetZen
-                </Text>
+              <View style={styles.headerText}>
+                <Text style={[styles.appName, { color: colors.text }]}>BudgetZen</Text>
                 <Text style={[styles.userEmail, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {user?.email || 'Guest'}
+                  {user?.email || 'User'}
                 </Text>
               </View>
             </View>
           </View>
 
-          {/* Menu Sections */}
+          {/* Menu Items */}
           <ScrollView
             style={styles.menuScroll}
             showsVerticalScrollIndicator={false}
-            scrollEventThrottle={16}
-            contentContainerStyle={styles.menuContent}>
-            {MENU_SECTIONS.map((section) => (
-              <MenuSectionComponent key={section.id} section={section} colors={colors} onNavigate={handleNavigation} />
-            ))}
+            contentContainerStyle={styles.menuContent}
+            bounces={false}
+          >
+            {renderSection('management')}
+            {renderSection('settings')}
+            {renderSection('advanced')}
+            {renderSection('app')}
           </ScrollView>
 
-          {/* Footer Section */}
-          <View style={[styles.footer, { borderTopColor: colors.border }]}>
+          {/* Footer with Bottom Safe Area */}
+          <View style={[
+            styles.drawerFooter, 
+            { 
+              borderTopColor: colors.border,
+              // Apply safe area padding, plus standard spacing
+              paddingBottom: Math.max(insets.bottom, 20)
+            }
+          ]}>
             <TouchableOpacity
-              style={[styles.logoutBtn, { backgroundColor: colors.danger + '15' }]}
+              style={[styles.logoutButton, { backgroundColor: colors.danger + '20' }]}
               onPress={handleLogout}
-              activeOpacity={0.7}>
-              <MaterialCommunityIcons name="logout" size={SIZES.iconMedium} color={colors.danger} />
+            >
+              <MaterialCommunityIcons name="logout" size={20} color={colors.danger} style={styles.logoutIcon} />
               <Text style={[styles.logoutText, { color: colors.danger }]}>Logout</Text>
             </TouchableOpacity>
-            <Text style={[styles.versionText, { color: colors.textSecondary }]}>v1.0.0</Text>
+            <Text style={[styles.versionText, { color: colors.textSecondary }]}>
+              BudgetZen v1.0.0
+            </Text>
           </View>
         </Animated.View>
 
+        {/* Overlay */}
         <TouchableOpacity
-          style={[styles.overlay, { backgroundColor: colors.overlay }]}
+          style={styles.overlay}
           activeOpacity={1}
-          onPress={onClose}
-        />
+          onPress={animateClose}
+        >
+          <Animated.View 
+            style={[
+              styles.overlayBackground, 
+              { 
+                backgroundColor: colors.overlay,
+                opacity: translateX.interpolate({
+                  inputRange: [-DRAWER_WIDTH, 0],
+                  outputRange: [0, 1],
+                  extrapolate: 'clamp'
+                })
+              }
+            ]} 
+          />
+        </TouchableOpacity>
       </View>
     </Modal>
   );
@@ -303,136 +308,132 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: 'transparent',
   },
   overlay: {
     flex: 1,
   },
+  overlayBackground: {
+    flex: 1,
+  },
   drawer: {
-    width: DRAWER_WIDTH,
     flexDirection: 'column',
-    elevation: 6,
+    height: '100%',
+    elevation: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 3, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    shadowOffset: { width: 5, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    zIndex: 1000,
   },
-  header: {
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
-    paddingHorizontal: SPACING.lg,
+  drawerHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    gap: SPACING.md,
   },
-  closeBtn: {
-    alignSelf: 'flex-end',
-    padding: SPACING.sm,
-    borderRadius: SIZES.borderRadiusSmall,
-  },
-  profileSection: {
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
+    marginBottom: 4,
+    gap: 12,
   },
-  avatarCircle: {
-    width: SIZES.avatar,
-    height: SIZES.avatar,
-    borderRadius: SIZES.avatar / 2,
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFF',
-    letterSpacing: 0.5,
-  },
-  userInfo: {
+  headerText: {
     flex: 1,
-    justifyContent: 'center',
   },
-  appTitle: {
+  appName: {
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 2,
-    letterSpacing: 0.3,
   },
   userEmail: {
     fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.2,
+  },
+  closeButton: {
+    alignSelf: 'flex-start',
+    padding: 8,
+    marginLeft: -8,
+    marginBottom: 10,
   },
   menuScroll: {
     flex: 1,
   },
   menuContent: {
-    paddingVertical: SPACING.lg,
+    paddingVertical: 8,
+    paddingBottom: 20,
+  },
+  sectionContainer: {
+    marginBottom: 8,
   },
   sectionHeader: {
-    borderTopWidth: 1,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    marginTop: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  sectionColorBar: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 1,
-  },
-  sectionItems: {
-    marginHorizontal: SPACING.sm,
-    gap: SPACING.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    borderRadius: SIZES.borderRadiusSmall,
-    gap: SPACING.md,
-  },
-  colorBar: {
-    width: 3,
-    height: 24,
-    borderRadius: 1.5,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: 8,
   },
   menuIcon: {
-    marginRight: SPACING.xs,
+    marginRight: 16,
+    width: 24,
+    textAlign: 'center',
   },
   menuLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
-    letterSpacing: 0.2,
   },
-  chevron: {
-    marginLeft: SPACING.xs,
+  menuArrow: {
+    marginLeft: 8,
+    opacity: 0.5,
   },
-  footer: {
-    paddingVertical: SPACING.lg,
-    paddingHorizontal: SPACING.lg,
+  drawerFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
-    gap: SPACING.md,
+    gap: 16,
   },
-  logoutBtn: {
+  logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    borderRadius: SIZES.borderRadiusSmall,
     justifyContent: 'center',
-    gap: SPACING.sm,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  logoutIcon: {
+    marginRight: 8,
   },
   logoutText: {
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.2,
   },
   versionText: {
     fontSize: 11,
     textAlign: 'center',
-    fontWeight: '500',
-    letterSpacing: 0.1,
+    opacity: 0.6,
   },
 });

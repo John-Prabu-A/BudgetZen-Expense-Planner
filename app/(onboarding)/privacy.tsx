@@ -1,10 +1,10 @@
 import { AnimatedButton } from '@/components/AnimatedButton';
-import { useOnboarding, OnboardingStep } from '@/context/Onboarding';
+import { OnboardingStep, useOnboarding } from '@/context/Onboarding';
 import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dimensions,
   Linking,
@@ -108,7 +108,7 @@ const PrivacyScreen = () => {
                   { color: colors.accent },
                 ]}
               >
-                3/4
+                2/4
               </Text>
             </View>
             <Text
@@ -221,28 +221,6 @@ const PrivacyScreen = () => {
             ]}
           >
             <View style={styles.cardContent}>
-              <View
-                style={[
-                  styles.checkboxContainer,
-                  {
-                    backgroundColor: agreedToTerms
-                      ? colors.success
-                      : colors.background,
-                    borderColor: agreedToTerms
-                      ? colors.success
-                      : colors.border,
-                  },
-                ]}
-              >
-                {agreedToTerms && (
-                  <MaterialCommunityIcons
-                    name="check"
-                    size={16}
-                    color={colors.textOnAccent}
-                  />
-                )}
-              </View>
-
               <View style={styles.termsTextContainer}>
                 <Text
                   style={[
@@ -266,21 +244,28 @@ const PrivacyScreen = () => {
                   </Text>
                 </Text>
               </View>
-
               <View
                 style={[
-                  styles.radioButton,
+                  styles.checkboxContainer,
                   {
                     backgroundColor: agreedToTerms
-                      ? colors.accent
+                      ? colors.success
                       : colors.background,
                     borderColor: agreedToTerms
-                      ? colors.accent
+                      ? colors.success
                       : colors.border,
                   },
                 ]}
                 onTouchEnd={() => setAgreedToTerms(!agreedToTerms)}
-              />
+              >
+                {agreedToTerms && (
+                  <MaterialCommunityIcons
+                    name="check"
+                    size={16}
+                    color={colors.textOnAccent}
+                  />
+                )}
+              </View>
             </View>
           </View>
 

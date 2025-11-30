@@ -1,10 +1,10 @@
 import { AnimatedCard } from '@/components/AnimatedCard';
-import { useOnboarding, OnboardingStep } from '@/context/Onboarding';
+import { OnboardingStep, useOnboarding } from '@/context/Onboarding';
 import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dimensions,
   FlatList,
