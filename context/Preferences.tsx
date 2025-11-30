@@ -21,6 +21,7 @@ interface PreferencesContextType {
   setDecimalPlaces: (places: DecimalPlaces) => Promise<void>;
 
   // Security
+  hasSecurity: boolean;
   passcodeEnabled: boolean;
   setPasscodeEnabled: (enabled: boolean) => Promise<void>;
   passcodeHash: string | null;
@@ -59,6 +60,7 @@ const STORAGE_KEYS = {
   CURRENCY_SIGN: 'pref_currency_sign',
   CURRENCY_POSITION: 'pref_currency_position',
   DECIMAL_PLACES: 'pref_decimal_places',
+  HAS_SECURITY: 'pref_has_security',
   PASSCODE_ENABLED: 'pref_passcode_enabled',
   PASSCODE_HASH: 'pref_passcode_hash',
   PASSCODE_LENGTH: 'pref_passcode_length',
@@ -76,6 +78,7 @@ const DEFAULT_VALUES = {
   currencySign: '₹' as CurrencySign,
   currencyPosition: 'before' as CurrencyPosition,
   decimalPlaces: 2 as DecimalPlaces,
+  hasSecurity: false,
   passcodeEnabled: false,
   passcodeHash: null as string | null,
   passcodeLength: 4 as 4 | 6,
@@ -93,6 +96,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const [currencySign, setCurrencySignState] = useState<CurrencySign>(DEFAULT_VALUES.currencySign);
   const [currencyPosition, setCurrencyPositionState] = useState<CurrencyPosition>(DEFAULT_VALUES.currencyPosition);
   const [decimalPlaces, setDecimalPlacesState] = useState<DecimalPlaces>(DEFAULT_VALUES.decimalPlaces);
+  const [hasSecurity, setHasSecurityState] = useState<boolean>(DEFAULT_VALUES.hasSecurity);
   const [passcodeEnabled, setPasscodeEnabledState] = useState<boolean>(DEFAULT_VALUES.passcodeEnabled);
   const [passcodeHash, setPasscodeHashState] = useState<string | null>(DEFAULT_VALUES.passcodeHash);
   const [passcodeLength, setPasscodeLengthState] = useState<4 | 6>(DEFAULT_VALUES.passcodeLength);
@@ -115,6 +119,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       const storedCurrencySign = (await SecureStore.getItemAsync(STORAGE_KEYS.CURRENCY_SIGN)) as CurrencySign;
       const storedCurrencyPosition = (await SecureStore.getItemAsync(STORAGE_KEYS.CURRENCY_POSITION)) as CurrencyPosition;
       const storedDecimalPlaces = (await SecureStore.getItemAsync(STORAGE_KEYS.DECIMAL_PLACES)) as unknown as DecimalPlaces;
+      const storedHasSecurity = (await SecureStore.getItemAsync(STORAGE_KEYS.HAS_SECURITY)) === 'true';
       const storedPasscodeEnabled = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_ENABLED)) === 'true';
       const storedPasscodeHash = await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_HASH);
       const storedPasscodeLength = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_LENGTH)) as '4' | '6' | null;
@@ -130,6 +135,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       if (storedCurrencySign) setCurrencySignState(storedCurrencySign);
       if (storedCurrencyPosition) setCurrencyPositionState(storedCurrencyPosition);
       if (storedDecimalPlaces) setDecimalPlacesState(storedDecimalPlaces);
+      setHasSecurityState(storedHasSecurity);
       setPasscodeEnabledState(storedPasscodeEnabled);
       if (storedPasscodeHash) setPasscodeHashState(storedPasscodeHash);
       if (storedPasscodeLength) setPasscodeLengthState(parseInt(storedPasscodeLength) as 4 | 6);
@@ -212,7 +218,11 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setPasswordHash = async (hash: string) => {
     try {
       setPasswordHashState(hash);
+      setPasswordEnabledState(true);
+      setHasSecurityState(true);
       await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_HASH, hash);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, 'true');
+      await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, 'true');
     } catch (error) {
       console.error('Error setting password hash:', error);
     }
@@ -224,6 +234,12 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       await SecureStore.deleteItemAsync(STORAGE_KEYS.PASSWORD_HASH);
       setPasswordEnabledState(false);
       await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, 'false');
+      
+      // Update hasSecurity: false only if passcode is also disabled
+      if (!passcodeEnabled) {
+        setHasSecurityState(false);
+        await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, 'false');
+      }
     } catch (error) {
       console.error('Error clearing password hash:', error);
     }
@@ -232,7 +248,11 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setPasscodeHash = async (hash: string) => {
     try {
       setPasscodeHashState(hash);
+      setPasscodeEnabledState(true);
+      setHasSecurityState(true);
       await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_HASH, hash);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_ENABLED, 'true');
+      await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, 'true');
     } catch (error) {
       console.error('Error setting passcode hash:', error);
     }
@@ -244,6 +264,12 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       await SecureStore.deleteItemAsync(STORAGE_KEYS.PASSCODE_HASH);
       setPasscodeEnabledState(false);
       await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_ENABLED, 'false');
+      
+      // Update hasSecurity: false only if password is also disabled
+      if (!passwordEnabled) {
+        setHasSecurityState(false);
+        await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, 'false');
+      }
     } catch (error) {
       console.error('Error clearing passcode hash:', error);
     }
@@ -262,6 +288,27 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     try {
       setAuthMethodState(method);
       await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_METHOD, method);
+
+      // Sync passcodeEnabled and passwordEnabled based on authMethod
+      const isPasscodeActive = method === 'passcode' || method === 'both';
+      const isPasswordActive = method === 'password' || method === 'both';
+
+      if (isPasscodeActive !== passcodeEnabled) {
+        setPasscodeEnabledState(isPasscodeActive);
+        await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_ENABLED, isPasscodeActive.toString());
+      }
+
+      if (isPasswordActive !== passwordEnabled) {
+        setPasswordEnabledState(isPasswordActive);
+        await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, isPasswordActive.toString());
+      }
+
+      // Sync hasSecurity: true if any method is active, false if none
+      const shouldHaveSecurity = method !== 'none';
+      if (shouldHaveSecurity !== hasSecurity) {
+        setHasSecurityState(shouldHaveSecurity);
+        await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, shouldHaveSecurity.toString());
+      }
     } catch (error) {
       console.error('Error setting auth method:', error);
     }
@@ -305,6 +352,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     setCurrencyPosition,
     decimalPlaces,
     setDecimalPlaces,
+    hasSecurity,
     passcodeEnabled,
     setPasscodeEnabled,
     passcodeHash,

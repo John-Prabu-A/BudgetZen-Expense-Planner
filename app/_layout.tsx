@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from '../context/Auth';
 import { OnboardingProvider, OnboardingStep, useOnboarding } from '../context/Onboarding';
 import { PreferencesProvider, usePreferences } from '../context/Preferences';
 import { ThemeProvider, useTheme } from '../context/Theme';
+import { ToastProvider } from '../context/Toast';
 
 const InitialLayout = () => {
     const { session, loading: authLoading, isPasswordLocked, unlockPassword } = useAuth();
@@ -190,7 +191,9 @@ export default function RootLayout() {
             <PreferencesProvider>
                 <OnboardingProvider>
                     <ThemeProvider>
-                        <InitialLayout />
+                        <ToastProvider>
+                            <InitialLayout />
+                        </ToastProvider>
                     </ThemeProvider>
                 </OnboardingProvider>
             </PreferencesProvider>

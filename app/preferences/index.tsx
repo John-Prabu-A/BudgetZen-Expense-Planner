@@ -31,7 +31,7 @@ export default function PreferencesScreen() {
     setCurrencyPosition,
     decimalPlaces,
     setDecimalPlaces,
-    passcodeEnabled,
+    hasSecurity,
     remindDaily,
     setRemindDaily,
     sendCrashStats,
@@ -323,7 +323,7 @@ export default function PreferencesScreen() {
           <PreferenceRow
             icon="lock"
             label="Security Settings"
-            value={passcodeEnabled ? 'Enabled' : 'Disabled'}
+            value={hasSecurity ? 'Enabled' : 'Disabled'}
             onPress={() => router.push('/(modal)/security-modal')}
             isLast
           />
