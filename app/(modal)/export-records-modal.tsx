@@ -59,18 +59,45 @@ export default function ExportRecordsScreen() {
       };
 
       const result = await exportRecordsToCSV(options);
+      
+      if (!result || result.summary.totalRecords === 0) {
+        Alert.alert(
+          'No Data to Export',
+          'There are no records within the selected date range. Please adjust your date range and try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       setExportData(result);
 
       Alert.alert(
         'Export Successful',
-        `Generated CSV file with ${result.summary.totalRecords} records. Total Income: ₹${result.summary.totalIncome.toLocaleString()}, Expense: ₹${result.summary.totalExpense.toLocaleString()}`,
+        `Generated CSV file with ${result.summary.totalRecords} records.\n\nIncome: ₹${result.summary.totalIncome.toLocaleString()}\nExpense: ₹${result.summary.totalExpense.toLocaleString()}\nBalance: ₹${result.summary.netBalance.toLocaleString()}`,
         [
           { text: 'Preview', onPress: () => setShowPreview(true) },
           { text: 'OK' },
         ]
       );
     } catch (error: any) {
-      Alert.alert('Export Error', error.message || 'Failed to export records');
+      const errorMessage = error.message || 'Failed to export records';
+      
+      // Handle specific error cases
+      if (errorMessage.includes('No records found')) {
+        Alert.alert(
+          'No Records Available',
+          'There are no records in your account. Start by creating some income or expense records before exporting.',
+          [{ text: 'OK' }]
+        );
+      } else if (errorMessage.includes('No records match')) {
+        Alert.alert(
+          'No Matching Records',
+          'No records found matching your filters. Try adjusting your date range or filters.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Export Error', errorMessage);
+      }
     } finally {
       setLoading(false);
     }

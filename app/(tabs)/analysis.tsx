@@ -5,7 +5,8 @@ import { useUIMode } from '@/hooks/useUIMode';
 import { readAccounts, readCategories, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { EmptyStateView } from '@/components/EmptyStateView';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import IncomeExpenseCalendar from '../components/IncomeExpenseCalendar';
@@ -21,6 +22,7 @@ export default function AnalysisScreen() {
   const { isDark, colors } = useTheme();
   const spacing = useUIMode();
   const { user, session } = useAuth();
+  const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -190,6 +192,19 @@ export default function AnalysisScreen() {
   const chartWidth = screenWidth - 40;
 
   const renderAnalysisView = () => {
+    // Empty state check - no records at all
+    if (!records || records.length === 0) {
+      return (
+        <EmptyStateView
+          icon="chart-box-outline"
+          title="No Financial Data"
+          subtitle="Start by recording your first income or expense to see your analysis."
+          actionText="Create Record"
+          onAction={() => router.push('/(modal)/add-record-modal')}
+        />
+      );
+    }
+
     switch (analysisView) {
       case 'ACCOUNT_ANALYSIS':
         return (
@@ -1000,7 +1015,7 @@ export default function AnalysisScreen() {
               ) : (
                 incomeExpenseOverviewData.incomeByCategory.map((d, idx) => {
                   const totalIncome = incomeExpenseOverviewData.incomeByCategory.reduce((s, c) => s + c.value, 0);
-                  const percentage = (d.value / totalIncome) * 100;
+                  const percentage = totalIncome > 0 ? (d.value / totalIncome) * 100 : 0;
                   return (
                     <View key={d.text} style={[styles.categoryItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                       <View style={[styles.colorDot, { backgroundColor: d.color }]} />
@@ -1145,7 +1160,7 @@ export default function AnalysisScreen() {
               ) : (
                 incomeExpenseOverviewData.expenseByCategory.map((d, idx) => {
                   const totalExpense = incomeExpenseOverviewData.expenseByCategory.reduce((s, c) => s + c.value, 0);
-                  const percentage = (d.value / totalExpense) * 100;
+                  const percentage = totalExpense > 0 ? (d.value / totalExpense) * 100 : 0;
                   return (
                     <View key={d.text} style={[styles.categoryItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                       <View style={[styles.colorDot, { backgroundColor: d.color }]} />

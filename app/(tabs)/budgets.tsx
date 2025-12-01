@@ -119,7 +119,7 @@ export default function BudgetsScreen() {
   };
 
   const getProgressColor = (spent: number, limit: number) => {
-    const percentage = (spent / limit) * 100;
+    const percentage = limit > 0 ? (spent / limit) * 100 : 0;
     if (percentage >= 100) return colors.expense || '#FF6B6B';
     if (percentage >= 80) return '#FFA500';
     return colors.accent;
@@ -175,7 +175,7 @@ export default function BudgetsScreen() {
     const totalSpent = budgetsWithSpending.reduce((sum, b) => sum + b.spent, 0);
     const totalRemaining = totalBudget - totalSpent;
     const overBudgetCount = budgetsWithSpending.filter((b) => b.spent > b.limit).length;
-    const avgUtilization = budgetsWithSpending.length > 0 
+    const avgUtilization = budgetsWithSpending.length > 0 && totalBudget > 0
       ? (totalSpent / totalBudget) * 100 
       : 0;
 
@@ -189,7 +189,7 @@ export default function BudgetsScreen() {
   }, [budgetsWithSpending]);
 
   const BudgetCard = ({ budget }: any) => {
-    const percentage = (budget.spent / budget.limit) * 100;
+    const percentage = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
     const progressColor = getProgressColor(budget.spent, budget.limit);
     const isExpanded = expandedBudgetId === budget.id;
     const isOverBudget = budget.spent > budget.limit;
@@ -286,7 +286,7 @@ export default function BudgetsScreen() {
                   Daily Avg
                 </Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  ₹{(budget.spent / daysRemaining).toFixed(0)}
+                  ₹{daysRemaining > 0 ? (budget.spent / daysRemaining).toFixed(0) : '0'}
                 </Text>
               </View>
               <View style={styles.statBox}>
@@ -302,7 +302,7 @@ export default function BudgetsScreen() {
                   Daily Budget
                 </Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  ₹{(budget.limit / daysRemaining).toFixed(0)}
+                  ₹{daysRemaining > 0 ? (budget.limit / daysRemaining).toFixed(0) : '0'}
                 </Text>
               </View>
             </View>

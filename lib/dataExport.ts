@@ -53,7 +53,7 @@ export const exportRecordsToCSV = async (options: ExportOptions): Promise<Export
     const records = await readRecords();
     
     if (!records || records.length === 0) {
-      throw new Error('No records found to export');
+      throw new Error('No records found to export. Please create some records first.');
     }
 
     // Filter records by date range
@@ -84,7 +84,7 @@ export const exportRecordsToCSV = async (options: ExportOptions): Promise<Export
     }
 
     if (filtered.length === 0) {
-      throw new Error('No records match the specified filters');
+      throw new Error('No records match the specified date range and filters. Please adjust your selection.');
     }
 
     // Transform records to CSV format
