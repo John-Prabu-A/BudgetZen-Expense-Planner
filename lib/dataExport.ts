@@ -1,6 +1,5 @@
 import * as Sharing from 'expo-sharing';
 import Papa from 'papaparse';
-import { Alert } from 'react-native';
 import { readRecords } from './finance';
 
 /**
@@ -147,11 +146,7 @@ export const shareCSVFile = async (filename: string, csvBase64: string): Promise
     // We'll use the Sharing API with the CSV content
     // Note: On native, this would be written to temp file first
     // For now, we'll show a success alert with download instructions
-    Alert.alert(
-      'Export Ready',
-      `Your export "${filename}" is ready to share. Tap the share button below to save or send it.`,
-      [{ text: 'OK' }]
-    );
+    
   } catch (error) {
     console.error('Error sharing CSV file:', error);
     throw error;

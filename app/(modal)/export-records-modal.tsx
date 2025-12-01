@@ -1,4 +1,5 @@
 import { useTheme } from '@/context/Theme';
+import { useToast } from '@/context/Toast';
 import { ExportOptions, exportRecordsToCSV } from '@/lib/dataExport';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -7,7 +8,6 @@ import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Modal,
     ScrollView,
     StyleSheet,
@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ExportRecordsScreen() {
   const router = useRouter();
   const { isDark, colors } = useTheme();
+  const { success, error, info } = useToast();
 
   const [dateFrom, setDateFrom] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [dateTo, setDateTo] = useState<Date>(new Date());
@@ -47,9 +48,8 @@ export default function ExportRecordsScreen() {
     try {
       setLoading(true);
 
-      // Validate dates
       if (dateFrom > dateTo) {
-        Alert.alert('Invalid Date Range', 'Start date must be before end date');
+        error('Invalid Date Range', 'Start date must be before end date');
         return;
       }
 
@@ -61,42 +61,35 @@ export default function ExportRecordsScreen() {
       const result = await exportRecordsToCSV(options);
       
       if (!result || result.summary.totalRecords === 0) {
-        Alert.alert(
+        info(
           'No Data to Export',
           'There are no records within the selected date range. Please adjust your date range and try again.',
-          [{ text: 'OK' }]
         );
         return;
       }
 
       setExportData(result);
 
-      Alert.alert(
+      success(
         'Export Successful',
-        `Generated CSV file with ${result.summary.totalRecords} records.\n\nIncome: ₹${result.summary.totalIncome.toLocaleString()}\nExpense: ₹${result.summary.totalExpense.toLocaleString()}\nBalance: ₹${result.summary.netBalance.toLocaleString()}`,
-        [
-          { text: 'Preview', onPress: () => setShowPreview(true) },
-          { text: 'OK' },
-        ]
+        `Generated CSV file with ${result.summary.totalRecords} records.`
       );
+      setShowPreview(true);
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to export records';
       
-      // Handle specific error cases
       if (errorMessage.includes('No records found')) {
-        Alert.alert(
+        error(
           'No Records Available',
           'There are no records in your account. Start by creating some income or expense records before exporting.',
-          [{ text: 'OK' }]
         );
       } else if (errorMessage.includes('No records match')) {
-        Alert.alert(
+        error(
           'No Matching Records',
           'No records found matching your filters. Try adjusting your date range or filters.',
-          [{ text: 'OK' }]
         );
       } else {
-        Alert.alert('Export Error', errorMessage);
+        error('Export Error', errorMessage);
       }
     } finally {
       setLoading(false);
@@ -109,48 +102,23 @@ export default function ExportRecordsScreen() {
 
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
-        Alert.alert('Sharing Not Available', 'Sharing is not available on this device');
+        error('Sharing Not Available', 'Sharing is not available on this device');
         return;
       }
 
-      // For now, we'll create a shareable string format
-      // In a real app, you'd write to temp file first
       setLoading(true);
 
-      // Create CSV content
       const csvContent = exportData.csv;
+      const fileUri = Sharing.documentDirectory + exportData.filename;
 
-      // Show options to copy or save
-      Alert.alert(
-        'Export Options',
-        'Choose how you want to use this export:',
-        [
-          {
-            text: 'Copy to Clipboard',
-            onPress: async () => {
-              try {
-                // This would require react-native-clipboard or similar
-                Alert.alert('Info', 'Clipboard copy feature requires additional setup. CSV preview is shown below.');
-              } catch (error) {
-                Alert.alert('Error', 'Failed to copy to clipboard');
-              }
-            },
-          },
-          {
-            text: 'Download as File',
-            onPress: () => {
-              // In a real app with file system access
-              Alert.alert(
-                'Download Ready',
-                `File: ${exportData.filename}\n\nOn native devices, this would be saved to your Downloads folder.`
-              );
-            },
-          },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Share your CSV export',
+        UTI: 'public.comma-separated-values-text',
+      });
+
     } catch (error) {
-      Alert.alert('Share Error', 'Failed to share export');
+      error('Share Error', 'Failed to share export');
     } finally {
       setLoading(false);
     }
