@@ -1,3 +1,4 @@
+import { EmptyStateView } from '@/components/EmptyStateView';
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
 import { useSmartLoading } from '@/hooks/useSmartLoading';
@@ -6,7 +7,6 @@ import { readAccounts, readCategories, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { EmptyStateView } from '@/components/EmptyStateView';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import IncomeExpenseCalendar from '../components/IncomeExpenseCalendar';

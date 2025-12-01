@@ -51,8 +51,34 @@ export const exportRecordsToCSV = async (options: ExportOptions): Promise<Export
     // Fetch all records
     const records = await readRecords();
     
+    // Handle empty records gracefully - return empty export instead of throwing error
     if (!records || records.length === 0) {
-      throw new Error('No records found to export. Please create some records first.');
+      const fromDate = options.dateFrom.toISOString().split('T')[0];
+      const toDate = options.dateTo.toISOString().split('T')[0];
+      const filename = `BudgetZen-Export-${fromDate}-to-${toDate}.csv`;
+      
+      // Return empty CSV with headers only
+      const csv = Papa.unparse([], {
+        header: true,
+        quotes: true,
+      } as any);
+      
+      const csvBase64 = btoa(csv);
+      
+      return {
+        filename,
+        csv,
+        csvBase64,
+        summary: {
+          totalRecords: 0,
+          totalIncome: 0,
+          totalExpense: 0,
+          totalTransfer: 0,
+          netBalance: 0,
+          uniqueCategories: 0,
+          uniqueAccounts: 0,
+        },
+      };
     }
 
     // Filter records by date range
@@ -82,8 +108,34 @@ export const exportRecordsToCSV = async (options: ExportOptions): Promise<Export
       );
     }
 
+    // Return empty export if no records match filters
     if (filtered.length === 0) {
-      throw new Error('No records match the specified date range and filters. Please adjust your selection.');
+      const fromDate = options.dateFrom.toISOString().split('T')[0];
+      const toDate = options.dateTo.toISOString().split('T')[0];
+      const filename = `BudgetZen-Export-${fromDate}-to-${toDate}.csv`;
+      
+      // Return empty CSV with headers only
+      const csv = Papa.unparse([], {
+        header: true,
+        quotes: true,
+      } as any);
+      
+      const csvBase64 = btoa(csv);
+      
+      return {
+        filename,
+        csv,
+        csvBase64,
+        summary: {
+          totalRecords: 0,
+          totalIncome: 0,
+          totalExpense: 0,
+          totalTransfer: 0,
+          netBalance: 0,
+          uniqueCategories: 0,
+          uniqueAccounts: 0,
+        },
+      };
     }
 
     // Transform records to CSV format

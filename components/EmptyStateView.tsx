@@ -2,12 +2,11 @@ import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    ViewStyle
 } from 'react-native';
 
 export interface EmptyStateViewProps {
