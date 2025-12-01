@@ -91,12 +91,15 @@ export default function ExportRecordsScreen() {
         return;
       }
   
-      const fileUri = FileSystem.documentDirectory + exportData.filename;
-      await FileSystem.writeAsStringAsync(fileUri, exportData.csv, {
-        encoding: 'utf8',
-      });
-  
-      await Sharing.shareAsync(fileUri, {
+      // Create a file in the cache directory
+      const { File, Paths } = FileSystem;
+      const file = new File(Paths.cache, exportData.filename);
+      
+      // Write the CSV content to the file
+      await file.write(exportData.csv);
+      
+      // Share the file
+      await Sharing.shareAsync(file.uri, {
         mimeType: 'text/csv',
         dialogTitle: 'Share CSV Export',
         UTI: 'public.comma-separated-values-text',
