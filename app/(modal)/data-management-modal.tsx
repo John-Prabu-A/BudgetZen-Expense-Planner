@@ -330,7 +330,7 @@ export default function DataManagementModal() {
             color={colors.textSecondary}
           />
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            These tools help maintain your data's integrity and optimize
+            These tools help maintain your data&apos;s integrity and optimize
             storage. Regular maintenance improves app performance.
           </Text>
         </View>

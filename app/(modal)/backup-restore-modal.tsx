@@ -355,7 +355,7 @@ export default function BackupRestoreScreen() {
 
         {/* Information Section */}
         <View style={[styles.infoSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.infoSectionTitle, { color: colors.text }]}>What's Included in a Backup?</Text>
+          <Text style={[styles.infoSectionTitle, { color: colors.text }]}>What&apos;s Included in a Backup?</Text>
 
           <View style={styles.infoItem}>
             <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />

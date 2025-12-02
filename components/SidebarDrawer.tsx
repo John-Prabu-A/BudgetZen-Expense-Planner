@@ -150,7 +150,7 @@ export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) 
     })
   ).current;
 
-  const renderSection = useMemo(() => (section: 'management' | 'settings' | 'advanced' | 'app') => {
+  const renderSection = useMemo(() => function renderSectionImpl(section: 'management' | 'settings' | 'advanced' | 'app') {
     const items = MENU_ITEMS.filter((item) => item.section === section);
     const sectionColor = SectionColors[section];
     const sectionTitle = SectionTitles[section];

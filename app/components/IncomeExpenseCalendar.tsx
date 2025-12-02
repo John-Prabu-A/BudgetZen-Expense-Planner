@@ -46,7 +46,8 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
   type = 'both',
 }) => {
   const { isDark: themeDark, colors: themeColors } = useTheme();
-  const spacing = propsSpacing || useUIMode();
+  const themeUIMode = useUIMode();
+  const spacing = propsSpacing || themeUIMode;
   const colors = propsColors || themeColors;
   const isDark = overrideDark !== undefined ? overrideDark : themeDark;
 

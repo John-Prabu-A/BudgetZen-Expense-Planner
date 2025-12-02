@@ -186,7 +186,7 @@ export default function PasscodeSetupScreen() {
               <MaterialCommunityIcons name="lock-outline" size={32} color={colors.accent} />
               <Text style={[styles.infoTitle, { color: colors.text }]}>Enable Passcode Protection</Text>
               <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                Protect your financial data with a 4-digit passcode. You'll be asked to enter it every time you open the app.
+                Protect your financial data with a 4-digit passcode. You&apos;ll be asked to enter it every time you open the app.
               </Text>
             </View>
 
@@ -311,7 +311,7 @@ export default function PasscodeSetupScreen() {
             <>
               <PasscodeInput label="Passcode" value={passcode} onChangeText={setPasscode} />
               <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-                💡 Use a combination of digits you'll remember easily
+                💡 Use a combination of digits you&apos;ll remember easily
               </Text>
             </>
           )}

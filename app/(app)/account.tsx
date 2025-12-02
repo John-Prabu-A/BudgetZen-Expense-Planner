@@ -3,7 +3,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useAuth } from '@/context/Auth';
 import { supabase } from '@/lib/supabase';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
 export default function Account() {
@@ -12,9 +12,13 @@ export default function Account() {
   const [username, setUsername] = useState('');
   const [website, setWebsite] = useState('');
 
+  const getProfileCallback = useCallback(() => {
+    getProfile();
+  }, [session?.user?.id]);
+
   useEffect(() => {
-    if (session) getProfile();
-  }, [session]);
+    if (session) getProfileCallback();
+  }, [session, getProfileCallback]);
 
   async function getProfile() {
     try {
@@ -72,21 +76,22 @@ export default function Account() {
   const handleSignOut = async () => {
     try {
       await signOut();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to sign out');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to sign out';
+      Alert.alert('Error', message);
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Input label="Email" value={session?.user?.email} disabled />
+        <Input value={session?.user?.email} editable={false} placeholder="Email" />
       </View>
       <View style={styles.verticallySpaced}>
-        <Input label="Username" value={username || ''} onChangeText={(text: String) => setUsername(String(text))} />
+        <Input placeholder="Username" value={username || ''} onChangeText={(text: string) => setUsername(text)} />
       </View>
       <View style={styles.verticallySpaced}>
-        <Input label="Website" value={website || ''} onChangeText={(text: String) => setWebsite(String(text))} />
+        <Input placeholder="Website" value={website || ''} onChangeText={(text: string) => setWebsite(text)} />
       </View>
 
       <View style={[styles.verticallySpaced, styles.mt20]}>

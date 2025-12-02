@@ -461,7 +461,7 @@ export default function RecordsScreen() {
   );
 
   // RecordItem as memoized component to avoid re-renders
-  const RecordItem = React.memo(({ record, onEdit, onDelete, isExpandedLocal, toggleExpand }: any) => {
+  const RecordItem = React.memo(function RecordItem({ record, onEdit, onDelete, isExpandedLocal, toggleExpand }: any) {
     const isIncome = record.type === 'INCOME';
     const isTransfer = record.type === 'TRANSFER';
     const isExpanded = isExpandedLocal;

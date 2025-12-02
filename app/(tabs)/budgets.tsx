@@ -316,7 +316,7 @@ export default function BudgetsScreen() {
                   color={colors.expense || '#FF6B6B'} 
                 />
                 <Text style={[styles.warningText, { color: colors.expense || '#FF6B6B' }]}>
-                  You've exceeded this budget by ₹{(budget.spent - budget.limit).toLocaleString()}
+                  You&apos;ve exceeded this budget by ₹{(budget.spent - budget.limit).toLocaleString()}
                 </Text>
               </View>
             )}

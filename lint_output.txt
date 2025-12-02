@@ -1,0 +1,206 @@
+
+> my-money@1.0.0 lint
+> expo lint
+
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(app)\account.tsx
+   2:8   warning  Using exported name 'Button' as identifier for default import                                                  import/no-named-as-default
+   3:8   warning  Using exported name 'Input' as identifier for default import                                                   import/no-named-as-default
+  17:6   warning  React Hook useEffect has a missing dependency: 'getProfile'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  75:14  warning  'error' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  86:83  warning  Prefer using the primitive `string` as a type name, rather than the upper-cased `String`                       @typescript-eslint/no-wrapper-object-types
+  89:81  warning  Prefer using the primitive `string` as a type name, rather than the upper-cased `String`                       @typescript-eslint/no-wrapper-object-types
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(auth)\login.tsx
+  29:16  warning  'height' is assigned a value but never used                                                                                                              @typescript-eslint/no-unused-vars
+  41:11  warning  'isDark' is assigned a value but never used                                                                                                              @typescript-eslint/no-unused-vars
+  94:6   warning  React Hook useEffect has missing dependencies: 'formOpacity', 'formTranslateY', and 'headerOpacity'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\about-modal.tsx
+  17:11  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\add-account-modal.tsx
+  29:13  warning  'isDark' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  30:19  warning  'session' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\add-budget-modal.tsx
+  21:13  warning  'isDark' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+  29:12  warning  'loading' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  35:8   warning  React Hook useEffect has a missing dependency: 'loadCategories'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+  42:12  warning  React Hook useCallback has a missing dependency: 'loadCategories'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\add-category-modal.tsx
+  31:13  warning  'isDark' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  32:19  warning  'session' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\add-record-modal.tsx
+  21:7   warning  'SCREEN_WIDTH' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  26:11  warning  'isDark' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  27:9   warning  'spacing' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  36:10  warning  'saving' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  43:10  warning  'showDateModal' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
+  44:10  warning  'showTimeModal' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
+  49:10  warning  'loading' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  54:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+  61:8   warning  React Hook useCallback has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\advanced-modal.tsx
+  18:11  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\backup-restore-modal.tsx
+  31:11  warning  'isDark' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  44:6   warning  React Hook useEffect has a missing dependency: 'loadBackups'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\data-management-modal.tsx
+  26:11  warning  'isDark' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  28:17  warning  'setStats' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  41:14  warning  'error' is defined but never used              @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\delete-reset-modal.tsx
+  19:11  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  34:22  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+  59:22  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+  83:22  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\edit-category-modal.tsx
+  32:13  warning  'user' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  32:19  warning  'session' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  33:13  warning  'isDark' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+  51:8   warning  React Hook useEffect has a missing dependency: 'categoryData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\feedback-modal.tsx
+  24:11  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  48:14  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\help-modal.tsx
+  23:11  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  69:14  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\notifications-modal.tsx
+  19:11  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(modal)\security-modal.tsx
+   44:9   warning  'passcodeLength' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  100:18  warning  'error' is defined but never used                    @typescript-eslint/no-unused-vars
+  174:18  warning  'e' is defined but never used                        @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(onboarding)\currency.tsx
+  25:9   warning  'width' is assigned a value but never used                                                                                            @typescript-eslint/no-unused-vars
+  46:11  warning  'isDark' is assigned a value but never used                                                                                           @typescript-eslint/no-unused-vars
+  51:9   warning  'router' is assigned a value but never used                                                                                           @typescript-eslint/no-unused-vars
+  67:6   warning  React Hook useEffect has missing dependencies: 'headerOpacity' and 'headerScale'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(onboarding)\privacy.tsx
+  26:9   warning  'width' is assigned a value but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  29:11  warning  'isDark' is assigned a value but never used                                                                                                                                   @typescript-eslint/no-unused-vars
+  34:9   warning  'router' is assigned a value but never used                                                                                                                                   @typescript-eslint/no-unused-vars
+  60:6   warning  React Hook useEffect has missing dependencies: 'contentOpacity', 'contentTranslateY', 'headerOpacity', and 'headerScale'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(onboarding)\reminders.tsx
+  27:9   warning  'width' is assigned a value but never used                                                                                                                              @typescript-eslint/no-unused-vars
+  35:11  warning  'isDark' is assigned a value but never used                                                                                                                             @typescript-eslint/no-unused-vars
+  44:9   warning  'router' is assigned a value but never used                                                                                                                             @typescript-eslint/no-unused-vars
+  59:6   warning  React Hook useEffect has a missing dependency: 'reminderTime'. Either include it or remove the dependency array                                                         react-hooks/exhaustive-deps
+  79:6   warning  React Hook useEffect has missing dependencies: 'headerOpacity', 'headerScale', 'itemOpacity', and 'itemTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(onboarding)\tutorial.tsx
+  23:16  warning  'height' is assigned a value but never used                                                                                             @typescript-eslint/no-unused-vars
+  47:11  warning  'isDark' is assigned a value but never used                                                                                             @typescript-eslint/no-unused-vars
+  49:9   warning  'router' is assigned a value but never used                                                                                             @typescript-eslint/no-unused-vars
+  72:6   warning  React Hook useEffect has missing dependencies: 'contentOpacity' and 'contentScale'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(tabs)\_layout.tsx
+  10:11  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  11:19  warning  'md' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(tabs)\accounts.tsx
+  13:11  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(tabs)\analysis.tsx
+    32:11  warning  'loading' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+    62:6   warning  React Hook useEffect has a missing dependency: 'handleLoad'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+    69:8   warning  React Hook useCallback has a missing dependency: 'handleLoad'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   589:19  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-var-requires')
+   590:41  warning  A `require()` style import is forbidden                                                                          @typescript-eslint/no-require-imports
+   822:19  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-var-requires')
+   823:41  warning  A `require()` style import is forbidden                                                                          @typescript-eslint/no-require-imports
+   978:21  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-var-requires')
+   979:42  warning  A `require()` style import is forbidden                                                                          @typescript-eslint/no-require-imports
+  1123:21  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-var-requires')
+  1124:42  warning  A `require()` style import is forbidden                                                                          @typescript-eslint/no-require-imports
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(tabs)\budgets.tsx
+   13:11  warning  'isDark' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+   36:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+   44:8   warning  React Hook useCallback has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  319:22  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                react/no-unescaped-entities
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(tabs)\categories.tsx
+  13:11  warning  'isDark' is assigned a value but never used                 @typescript-eslint/no-unused-vars
+  22:9   warning  'defaultCategoryColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\(tabs)\index.tsx
+   25:11  warning  'isDark' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+   33:10  warning  'showTotal' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+   34:10  warning  'carryOver' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+   54:5   warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead                                                           @typescript-eslint/array-type
+  125:17  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead                                                           @typescript-eslint/array-type
+  153:11  warning  'loading' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+  343:11  warning  'rangeDays' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  388:6   warning  React Hook useCallback has an unnecessary dependency: 'shiftRange'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  464:22  error    Component definition is missing display name                                                                          react/display-name
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\_layout.tsx
+  115:8  warning  React Hook useEffect has a missing dependency: 'router'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\components\IncomeExpenseCalendar.tsx
+  49:35  error    React Hook "useUIMode" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  51:9   warning  'isDark' is assigned a value but never used                                                                                   @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\passcode-setup.tsx
+   22:11  warning  'isDark' is assigned a value but never used                      @typescript-eslint/no-unused-vars
+   87:24  warning  'error' is defined but never used                                @typescript-eslint/no-unused-vars
+  189:73  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  314:51  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\app\preferences\index.tsx
+   21:11  warning  'isDark' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+  202:14  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\components\AnimatedModal.tsx
+  35:9  warning  'isDark' is assigned a value but never used                                                                                                                 @typescript-eslint/no-unused-vars
+  59:6  warning  React Hook useEffect has missing dependencies: 'backdropOpacity', 'opacity', 'scale', and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\components\EmptyStateView.tsx
+  79:13  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\components\Header.tsx
+  20:11  warning  'lg' is assigned a value but never used                                                                                                  @typescript-eslint/no-unused-vars
+  21:11  warning  'isDark' is assigned a value but never used                                                                                              @typescript-eslint/no-unused-vars
+  30:6   warning  React Hook useEffect has missing dependencies: 'fadeAnimation' and 'slideAnimation'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\components\PasswordLockScreen.tsx
+  23:9   warning  'width' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  23:16  warning  'height' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\components\SidebarDrawer.tsx
+   66:11  warning  'isDark' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  153:39  error    Component definition is missing display name  react/display-name
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\components\SkeletonLoader.tsx
+  33:9  warning  'isDark' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+  45:6  warning  React Hook useEffect has a missing dependency: 'shimmer'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\components\Toast.tsx
+  109:8  warning  React Hook useEffect has missing dependencies: 'dismissToast', 'duration', 'opacityAnim', and 'slideAnim'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+J:\OneDrive\Desktop\BudgetZen – Expense Planner\BudgetZen-Expense-Planner\components\UnifiedLockScreen.tsx
+   62:8   warning  React Hook useEffect has a missing dependency: 'fadeAnim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   92:18  warning  'err' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  110:18  warning  'err' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+
+✖ 120 problems (6 errors, 114 warnings)
+  0 errors and 9 warnings potentially fixable with the `--fix` option.
+
