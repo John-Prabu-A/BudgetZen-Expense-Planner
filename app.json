@@ -9,9 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.budgetzen.app",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.budgetzen.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -44,6 +46,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "05a6caea-ca34-4e6e-ab47-6ddd44d60aba"
+      }
+    },
+    "owner": "john-prabu-a"
   }
 }
