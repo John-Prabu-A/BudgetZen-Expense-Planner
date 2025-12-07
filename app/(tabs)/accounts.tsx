@@ -63,16 +63,36 @@ export default function AccountsScreen() {
 
   // Calculate account balance based on transactions
   const calculateAccountBalance = useCallback((accountId: string): { balance: number; income: number; expense: number } => {
-    const accountRecords = records.filter(r => r.account_id === accountId);
-    const income = accountRecords
-      .filter(r => r.type.toUpperCase() === 'INCOME')
-      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
-    const expense = accountRecords
-      .filter(r => r.type.toUpperCase() === 'EXPENSE')
-      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const account = accounts.find(a => a.id === accountId);
+    const initialBalance = account?.initial_balance || 0;
     
-    const initialBalance = accounts.find(a => a.id === accountId)?.initial_balance || 0;
-    const balance = initialBalance + income - expense;
+    let balance = initialBalance;
+    let income = 0;
+    let expense = 0;
+    
+    // Process each record for this account
+    records.forEach(r => {
+      const recordType = r.type?.toUpperCase() || '';
+      
+      if (recordType === 'INCOME' && r.account_id === accountId) {
+        // Income adds to account
+        income += Number(r.amount || 0);
+        balance += Number(r.amount || 0);
+      } else if (recordType === 'EXPENSE' && r.account_id === accountId) {
+        // Expense deducts from account
+        expense += Number(r.amount || 0);
+        balance -= Number(r.amount || 0);
+      } else if (recordType === 'TRANSFER') {
+        // For transfers, check both directions
+        if (r.account_id === accountId && r.to_account_id) {
+          // This account is SOURCE - money goes OUT (negative)
+          balance -= Number(r.amount || 0);
+        } else if (r.to_account_id === accountId && r.account_id !== accountId) {
+          // This account is DESTINATION - money comes IN (positive)
+          balance += Number(r.amount || 0);
+        }
+      }
+    });
     
     return { balance, income, expense };
   }, [records, accounts]);
@@ -129,7 +149,6 @@ export default function AccountsScreen() {
         accountId: account.id,
         accountName: account.name,
         accountType: account.type,
-        initialBalance: account.initial_balance?.toString(),
       },
     });
   };
@@ -173,13 +192,6 @@ export default function AccountsScreen() {
 
         {/* Balance Summary */}
         <View style={styles.balanceSummary}>
-          <View style={styles.balanceItem}>
-            <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Initial</Text>
-            <Text style={[styles.balanceValue, { color: colors.textSecondary }]}>
-              ₹{(account.initial_balance || 0).toFixed(2)}
-            </Text>
-          </View>
-          <View style={styles.balanceDivider} />
           <View style={styles.balanceItem}>
             <Text style={[styles.balanceLabel, { color: colors.income }]}>+Income</Text>
             <Text style={[styles.balanceValue, { color: colors.income }]}>

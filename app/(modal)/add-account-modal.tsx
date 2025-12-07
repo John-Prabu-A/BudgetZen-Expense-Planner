@@ -1,11 +1,12 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
-import { createAccount, updateAccount } from '@/lib/finance';
+import { useToast } from '@/context/Toast';
+import { createAccount } from '@/lib/finance'; // Assume this exists
+import { TempStore } from '@/lib/tempStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -15,320 +16,103 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const accountTypes = [
-    { id: '1', name: 'Bank Account', icon: 'bank' },
-    { id: '2', name: 'Credit Card', icon: 'credit-card' },
-    { id: '3', name: 'Cash', icon: 'wallet' },
-    { id: '4', name: 'Investment', icon: 'trending-up' },
-    { id: '5', name: 'Savings', icon: 'piggy-bank' },
-    { id: '6', name: 'Loan', icon: 'file-document' },
-];
-
 export default function AddAccountModal() {
-    const router = useRouter();
-    const { isDark, colors } = useTheme();
-    const { user, session } = useAuth();
-    const params = useLocalSearchParams();
+  const router = useRouter();
+  const { user } = useAuth();
+  const { colors } = useTheme();
+  const toast = useToast();
 
-    const isEditMode = params.mode === 'edit';
-    const accountId = params.accountId as string;
+  const [name, setName] = useState('');
+  const [type, setType] = useState('General'); // General, Bank, Cash, etc.
+  const [initialBalance, setInitialBalance] = useState('');
 
-    const [selectedType, setSelectedType] = useState(accountTypes[0]);
-    const [accountName, setAccountName] = useState('');
-    const [initialBalance, setInitialBalance] = useState('');
-    const [notes, setNotes] = useState('');
-    const [saving, setSaving] = useState(false);
+  const handleSave = async () => {
+    if (!name) return toast.error('Name is required');
+    
+    try {
+        const newAcc = await createAccount({
+            user_id: user?.id,
+            name,
+            type,
+            initial_balance: parseFloat(initialBalance) || 0
+        });
 
-    // Initialize form if in edit mode
-    useEffect(() => {
-        if (isEditMode) {
-            setAccountName(params.accountName as string || '');
-            setInitialBalance(params.initialBalance as string || '');
-            
-            // Find and set the account type
-            const type = accountTypes.find(t => t.name === params.accountType);
-            if (type) {
-                setSelectedType(type);
-            }
-        }
-    }, [isEditMode, params]);
-
-    const handleSave = async () => {
-        if (!accountName.trim() || !initialBalance.trim()) {
-            Alert.alert('Error', 'Please fill in all required fields');
-            return;
+        if (newAcc?.id) {
+            TempStore.setNewAccount(newAcc.id);
         }
 
-        if (!user) {
-            Alert.alert('Error', 'User not authenticated');
-            return;
-        }
+        toast.success('Account created');
+        router.back();
 
-        try {
-            setSaving(true);
-            const accountData = {
-                name: accountName.trim(),
-                type: selectedType.name,
-                initial_balance: parseFloat(initialBalance),
-            };
+    } catch (e) {
+        console.error(e);
+        toast.error('Failed to create account');
+    }
+  };
 
-            if (isEditMode && accountId) {
-                // Update existing account
-                await updateAccount(accountId, accountData);
-                Alert.alert('Success', 'Account updated successfully!');
-            } else {
-                // Create new account
-                const newAccountData = {
-                    ...accountData,
-                    user_id: user.id,
-                };
-                await createAccount(newAccountData);
-                Alert.alert('Success', 'Account created successfully!');
-            }
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => router.back()}>
+             <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.text }]}>New Account</Text>
+        <TouchableOpacity onPress={handleSave}>
+             <Text style={{ color: colors.accent, fontWeight: 'bold' }}>SAVE</Text>
+        </TouchableOpacity>
+      </View>
 
-            router.back();
-        } catch (error) {
-            console.error('Error saving account:', error);
-            Alert.alert('Error', isEditMode ? 'Failed to update account' : 'Failed to create account');
-        } finally {
-            setSaving(false);
-        }
-    };
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }}>
+        <View>
+            <Text style={[styles.label, {color: colors.textSecondary}]}>Account Name</Text>
+            <TextInput 
+                style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                value={name}
+                onChangeText={setName}
+                placeholder="e.g. HDFC Bank"
+                placeholderTextColor={colors.textSecondary}
+            />
+        </View>
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
-            <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Header */}
-                <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <MaterialCommunityIcons name="close" size={24} color={colors.text} />
-                    </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>
-                        {isEditMode ? 'Edit Account' : 'Add Account'}
-                    </Text>
-                    <View style={{ width: 24 }} />
-                </View>
-
-                {/* Account Type Selection */}
-                <View style={styles.section}>
-                    <Text style={[styles.label, { color: colors.text }]}>Account Type</Text>
-                    <View style={styles.typeGrid}>
-                        {accountTypes.map((type) => (
-                            <TouchableOpacity
-                                key={type.id}
-                                style={[
-                                    styles.typeButton,
-                                    {
-                                        backgroundColor:
-                                            selectedType.id === type.id ? colors.accent : colors.surface,
-                                        borderColor: colors.border,
-                                    },
-                                ]}
-                                onPress={() => setSelectedType(type)}
-                            >
-                                <MaterialCommunityIcons
-                                    name={type.icon as any}
-                                    size={24}
-                                    color={
-                                        selectedType.id === type.id ? '#FFFFFF' : colors.accent
-                                    }
-                                />
-                                <Text
-                                    style={[
-                                        styles.typeName,
-                                        {
-                                            color:
-                                                selectedType.id === type.id
-                                                    ? '#FFFFFF'
-                                                    : colors.text,
-                                        },
-                                    ]}
-                                >
-                                    {type.name}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                {/* Account Name */}
-                <View style={styles.section}>
-                    <Text style={[styles.label, { color: colors.text }]}>Account Name</Text>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            {
-                                borderColor: colors.border,
-                                backgroundColor: colors.surface,
-                                color: colors.text,
-                            },
-                        ]}
-                        placeholder="e.g., My Savings Account"
-                        placeholderTextColor={colors.textSecondary}
-                        value={accountName}
-                        onChangeText={setAccountName}
-                    />
-                </View>
-
-                {/* Initial Balance */}
-                <View style={styles.section}>
-                    <Text style={[styles.label, { color: colors.text }]}>Initial Balance (₹)</Text>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            {
-                                borderColor: colors.border,
-                                backgroundColor: colors.surface,
-                                color: colors.text,
-                            },
-                        ]}
-                        placeholder="Enter initial balance"
-                        placeholderTextColor={colors.textSecondary}
-                        keyboardType="decimal-pad"
-                        value={initialBalance}
-                        onChangeText={setInitialBalance}
-                    />
-                </View>
-
-                {/* Notes */}
-                <View style={styles.section}>
-                    <Text style={[styles.label, { color: colors.text }]}>Notes (Optional)</Text>
-                    <TextInput
-                        style={[
-                            styles.textArea,
-                            {
-                                borderColor: colors.border,
-                                backgroundColor: colors.surface,
-                                color: colors.text,
-                            },
-                        ]}
-                        placeholder="Add notes about this account"
-                        placeholderTextColor={colors.textSecondary}
-                        multiline
-                        numberOfLines={4}
-                        value={notes}
-                        onChangeText={setNotes}
-                    />
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.buttonContainer}>
+        <View>
+            <Text style={[styles.label, {color: colors.textSecondary}]}>Type</Text>
+            <View style={{flexDirection:'row', gap:10, flexWrap:'wrap'}}>
+                {['General', 'Cash', 'Bank', 'Savings', 'Credit Card'].map(t => (
                     <TouchableOpacity
-                        style={[
-                            styles.button,
-                            {
-                                backgroundColor: colors.surface,
-                                borderColor: colors.border,
-                            },
-                        ]}
-                        onPress={() => router.back()}
-                        disabled={saving}
+                        key={t}
+                        style={[styles.chip, { 
+                            backgroundColor: type === t ? colors.accent : colors.surface,
+                            borderColor: colors.border
+                        }]}
+                        onPress={() => setType(t)}
                     >
-                        <Text style={[styles.buttonText, { color: colors.text }]}>Cancel</Text>
+                        <Text style={{color: type === t ? '#fff' : colors.text}}>{t}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[
-                            styles.button, 
-                            { 
-                                backgroundColor: colors.accent,
-                                opacity: saving ? 0.6 : 1,
-                            }
-                        ]}
-                        onPress={handleSave}
-                        disabled={saving}
-                    >
-                        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
-                            {saving ? 'Saving...' : (isEditMode ? 'Update Account' : 'Save Account')}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+                ))}
             </View>
-        </SafeAreaView>
-    );
+        </View>
+
+        <View>
+            <Text style={[styles.label, {color: colors.textSecondary}]}>Starting Balance (Optional)</Text>
+            <TextInput 
+                style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+                value={initialBalance}
+                onChangeText={setInitialBalance}
+                placeholder="e.g. 5000"
+                placeholderTextColor={colors.textSecondary}
+                keyboardType="decimal-pad"
+            />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 20,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    section: {
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 12,
-    },
-    typeGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    typeButton: {
-        width: '31%',
-        paddingVertical: 12,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        gap: 6,
-    },
-    typeName: {
-        fontSize: 11,
-        fontWeight: '600',
-        textAlign: 'center',
-    },
-    input: {
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        fontSize: 14,
-    },
-    textArea: {
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        minHeight: 100,
-        textAlignVertical: 'top',
-        fontSize: 14,
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 16,
-        gap: 12,
-        marginBottom: 16,
-    },
-    button: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: 'transparent',
-    },
-    buttonText: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, alignItems: 'center' },
+  title: { fontSize: 18, fontWeight: '600' },
+  label: { marginBottom: 8, fontSize: 14, fontWeight: '600' },
+  input: { padding: 12, borderRadius: 8, borderWidth: 1, fontSize: 16 },
+  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 }
 });

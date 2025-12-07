@@ -107,27 +107,46 @@ export default function AnalysisScreen() {
 
   const accountAnalysisData = useMemo(() => {
     const data = accounts.map(account => {
-      const accountRecords = currentMonthData.records.filter(r => r.account_id === account.id);
-      const income = accountRecords.filter(r => r.type === 'INCOME').reduce((sum, r) => sum + r.amount, 0);
-      const expense = accountRecords.filter(r => r.type === 'EXPENSE').reduce((sum, r) => sum + r.amount, 0);
-      const monthlyNet = income - expense;
+      const initialBalance = account?.initial_balance || 0;
+      let balance = initialBalance;
+      let income = 0;
+      let expense = 0;
       
-      // Account balance = initial balance + monthly net change
-      const initialBalance = account.initial_balance || 0;
-      const currentBalance = initialBalance + monthlyNet;
+      // Process all records to calculate balance for this account
+      records.forEach(r => {
+        const recordType = r.type?.toUpperCase() || '';
+        
+        if (recordType === 'INCOME' && r.account_id === account.id) {
+          // Income adds to account
+          income += r.amount;
+          balance += r.amount;
+        } else if (recordType === 'EXPENSE' && r.account_id === account.id) {
+          // Expense deducts from account
+          expense += r.amount;
+          balance -= r.amount;
+        } else if (recordType === 'TRANSFER') {
+          // For transfers, check both directions
+          if (r.account_id === account.id && r.to_account_id) {
+            // This account is SOURCE - money goes OUT (negative)
+            balance -= r.amount;
+          } else if (r.to_account_id === account.id && r.account_id !== account.id) {
+            // This account is DESTINATION - money comes IN (positive)
+            balance += r.amount;
+          }
+        }
+      });
       
       return {
-        value: currentBalance,
+        value: balance,
         label: account.name,
-        frontColor: currentBalance >= 0 ? colors.income : colors.expense,
+        frontColor: balance >= 0 ? colors.income : colors.expense,
         income,
         expense,
-        initialBalance,
         id: account.id
       };
     });
     return data;
-  }, [accounts, currentMonthData.records, colors]);
+  }, [accounts, records, colors]);
 
   const incomeExpenseFlowData = useMemo(() => {
     const incomeData: any[] = [];
@@ -320,9 +339,6 @@ export default function AnalysisScreen() {
                 </View>
               ) : (
                 accountAnalysisData.map(account => {
-                  const growthPercent = account.initialBalance > 0 
-                    ? ((account.value - account.initialBalance) / account.initialBalance) * 100 
-                    : 0;
                   const totalTransactions = account.income + account.expense;
                   const activityPercent = totalTransactions > 0 
                     ? (account.income / totalTransactions) * 100 
@@ -345,38 +361,18 @@ export default function AnalysisScreen() {
                           <Text style={[styles.accountTitleLarge, { color: colors.text }]}>
                             {account.label}
                           </Text>
-                          <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
-                            Initial: ₹{account.initialBalance.toFixed(2)}
-                          </Text>
                         </View>
                       </View>
 
-                      {/* Current Balance and Growth */}
+                      {/* Current Balance */}
                       <View style={{ gap: 12, marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <View>
-                            <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
-                              Current Balance
-                            </Text>
-                            <Text style={[styles.breakdownValue, { color: account.value >= 0 ? colors.income : colors.expense, fontSize: 18, fontWeight: '800' }]}>
-                              ₹{account.value.toFixed(2)}
-                            </Text>
-                          </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <View style={{
-                              backgroundColor: growthPercent >= 0 ? colors.income + '15' : colors.expense + '15',
-                              paddingVertical: 6,
-                              paddingHorizontal: 10,
-                              borderRadius: 8,
-                            }}>
-                              <Text style={{ color: growthPercent >= 0 ? colors.income : colors.expense, fontSize: 14, fontWeight: '700' }}>
-                                {growthPercent >= 0 ? '+' : ''}{growthPercent.toFixed(1)}%
-                              </Text>
-                            </View>
-                            <Text style={[styles.breakdownLabel, { color: colors.textSecondary, marginTop: 6 }]}>
-                              Growth
-                            </Text>
-                          </View>
+                        <View>
+                          <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
+                            Current Balance
+                          </Text>
+                          <Text style={[styles.breakdownValue, { color: account.value >= 0 ? colors.income : colors.expense, fontSize: 18, fontWeight: '800' }]}>
+                            ₹{account.value.toFixed(2)}
+                          </Text>
                         </View>
                       </View>
 

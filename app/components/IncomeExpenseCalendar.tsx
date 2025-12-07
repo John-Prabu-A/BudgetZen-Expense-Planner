@@ -1,10 +1,10 @@
-
 import { ThemeColors, useTheme } from '@/context/Theme';
 import { useUIMode } from '@/hooks/useUIMode';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-type DailyDataItem = {
+// Exporting types for use in parent component
+export type DailyDataItem = {
   date: Date;
   key: string;
   income: number;
@@ -13,7 +13,7 @@ type DailyDataItem = {
   cumulative: number;
 };
 
-type RangeTotals = {
+export type RangeTotals = {
   income: number;
   expense: number;
   net: number;
@@ -25,7 +25,7 @@ type IncomeExpenseCalendarProps = {
   colors?: ThemeColors;
   spacing?: any;
   onDayPress?: (day: DailyDataItem) => void;
-  // Legacy props for backward compatibility
+  // Legacy props
   year?: number;
   month?: number;
   data?: { [day: number]: { income?: number; expense?: number } };
@@ -394,11 +394,11 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.income }]} />
-            <Text style={styles.legendText}>Zero spending</Text>
+            <Text style={styles.legendText}>Income</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-            <Text style={styles.legendText}>Active day</Text>
+            <View style={[styles.legendDot, { backgroundColor: colors.expense }]} />
+            <Text style={styles.legendText}>Expense</Text>
           </View>
         </View>
       </View>

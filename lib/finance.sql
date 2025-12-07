@@ -32,10 +32,12 @@ CREATE TABLE records (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
   category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  to_account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
   amount DECIMAL(10, 2) NOT NULL,
   type TEXT NOT NULL, -- 'expense', 'income', or 'transfer'
   notes TEXT,
   transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  transfer_group_id UUID, -- Links paired transfer records
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 ALTER TABLE records ENABLE ROW LEVEL SECURITY;

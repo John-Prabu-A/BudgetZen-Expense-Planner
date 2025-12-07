@@ -30,7 +30,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     const showToast = useCallback(
-        (message: string, type: ToastType, duration: number = 3000) => {
+        (message: string, type: ToastType, duration: number = 1500) => {
             const id = generateId();
             const toastConfig: ToastConfig = {
                 id,

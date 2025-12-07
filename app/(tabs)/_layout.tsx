@@ -19,10 +19,12 @@ export default function TabsLayout() {
           tabBarActiveTintColor: colors.tabIconActive,
           tabBarInactiveTintColor: colors.tabIconInactive,
           header: () => <Header onMenuPress={() => setDrawerVisible(true)} />,
-          tabBarLabelStyle: { fontSize: fontMd },
+          tabBarLabelStyle: { fontSize: fontMd * 0.75, marginBottom: 8 }, // Smaller text with bottom margin
           tabBarStyle: {
             backgroundColor: colors.tabBarBackground,
             borderTopColor: colors.border,
+            paddingBottom: 12, // Increased padding at bottom
+            height: 70, // Slightly taller to accommodate spacing
           },
         }}>
         <Tabs.Screen
@@ -30,7 +32,7 @@ export default function TabsLayout() {
           options={{
             title: 'Records',
             tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="receipt" size={24} color={color} />
+              <MaterialCommunityIcons name="receipt" size={20} color={color} />
             ),
           }}
         />
@@ -39,7 +41,7 @@ export default function TabsLayout() {
           options={{
             title: 'Analysis',
             tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="chart-line" size={24} color={color} />
+              <MaterialCommunityIcons name="chart-line" size={20} color={color} />
             ),
           }}
         />
@@ -48,7 +50,7 @@ export default function TabsLayout() {
           options={{
             title: 'Budgets',
             tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="wallet" size={24} color={color} />
+              <MaterialCommunityIcons name="wallet" size={20} color={color} />
             ),
           }}
         />
@@ -57,7 +59,7 @@ export default function TabsLayout() {
           options={{
             title: 'Accounts',
             tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="bank" size={24} color={color} />
+              <MaterialCommunityIcons name="bank" size={20} color={color} />
             ),
           }}
         />
@@ -68,6 +70,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="tag-multiple" size={24} color={color} />
             ),
+            href: null, // Hide from tab bar completely
           }}
         />
       </Tabs>

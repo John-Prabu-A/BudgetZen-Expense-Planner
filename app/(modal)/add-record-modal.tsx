@@ -1,789 +1,446 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
-import { useUIMode } from '@/hooks/useUIMode';
 import { createRecord, readAccounts, readCategories, updateRecord } from '@/lib/finance';
+import { TempStore } from '@/lib/tempStore'; // Make sure to create this file
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
 export default function AddRecordModal() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { user } = useAuth();
-  const { isDark, colors } = useTheme();
-  const spacing = useUIMode();
+  const { colors } = useTheme();
+  const params = useLocalSearchParams();
 
-  const [recordType, setRecordType] = useState<'INCOME' | 'EXPENSE' | 'TRANSFER'>('EXPENSE');
-  const [amount, setAmount] = useState('');
+  // Parse incoming params once
+  const incomingRecord = params.record ? JSON.parse(params.record as string) : null;
+  const initialType = params.type ? (params.type as string).toUpperCase() : 'EXPENSE';
+  
+  // State
+  const [recordType, setRecordType] = useState<'INCOME' | 'EXPENSE' | 'TRANSFER'>(
+    incomingRecord ? incomingRecord.type.toUpperCase() : (initialType as any)
+  );
+  
+  // If type was passed via FAB, we lock the tabs
+  const typeLocked = !!params.type && !incomingRecord; 
+
+  const [amount, setAmount] = useState(incomingRecord ? String(incomingRecord.amount) : '');
+  const [notes, setNotes] = useState(incomingRecord ? incomingRecord.notes : '');
+  const [date, setDate] = useState(incomingRecord ? new Date(incomingRecord.transaction_date) : new Date());
+  
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
-  const [notes, setNotes] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTime, setSelectedTime] = useState('09:00');
-  const [saving, setSaving] = useState(false);
-  const params = useLocalSearchParams();
-  const incomingRecord = params.record ? JSON.parse(params.record as string) : null;
-  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [selectedToAccount, setSelectedToAccount] = useState<any>(null); // For transfers
 
-  const [showAccountModal, setShowAccountModal] = useState(false);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showDateModal, setShowDateModal] = useState(false);
-  const [showTimeModal, setShowTimeModal] = useState(false);
+  // Modals for selection
+  const [modalType, setModalType] = useState<'NONE' | 'ACCOUNT' | 'CATEGORY' | 'TO_ACCOUNT'>('NONE');
 
-  // State for Supabase data
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [allCategories, setAllCategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Load accounts and categories from Supabase
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (user) {
-        loadData();
-      }
-    }, [user])
-  );
-
+  // Load Data
   const loadData = async () => {
     try {
-      setLoading(true);
-      const [accountsData, categoriesData] = await Promise.all([
-        readAccounts(),
-        readCategories(),
-      ]);
-      setAccounts(accountsData || []);
-      setAllCategories(categoriesData || []);
+      const [accData, catData] = await Promise.all([readAccounts(), readCategories()]);
+      setAccounts(accData || []);
+      setCategories(catData || []);
 
-      // If opened in edit mode, prefill selections using loaded data
+      // If editing, set selections
       if (incomingRecord) {
-        setEditingRecordId(incomingRecord.id || null);
-        setAmount(String(incomingRecord.amount || ''));
-        setRecordType((incomingRecord.type || 'expense').toUpperCase() as any);
-        setNotes(incomingRecord.notes || '');
-        const txnDate = new Date(incomingRecord.transaction_date || new Date());
-        setSelectedDate(txnDate);
-        const hrs = txnDate.getHours().toString().padStart(2, '0');
-        const mins = txnDate.getMinutes().toString().padStart(2, '0');
-        setSelectedTime(`${hrs}:${mins}`);
-
-        const acct = (accountsData || []).find((a) => a.id === incomingRecord.account_id);
-        if (acct) setSelectedAccount(acct);
-        const cat = (categoriesData || []).find((c) => c.id === incomingRecord.category_id);
-        if (cat) setSelectedCategory(cat);
+        setSelectedAccount(accData?.find((a) => a.id === incomingRecord.account_id) || null);
+        setSelectedCategory(catData?.find((c) => c.id === incomingRecord.category_id) || null);
+        // For transfer records, also set the destination account
+        if (incomingRecord.type.toUpperCase() === 'TRANSFER' && incomingRecord.to_account_id) {
+          setSelectedToAccount(accData?.find((a) => a.id === incomingRecord.to_account_id) || null);
+        }
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
-      Alert.alert('Error', 'Failed to load accounts and categories');
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const expenseCategories = allCategories.filter((c) => !c.type || c.type === 'expense');
-  const incomeCategories = allCategories.filter((c) => c.type === 'income');
-  const categories = recordType === 'EXPENSE' ? expenseCategories : incomeCategories;
+  // Focus Effect: Reload data and check for newly created items
+  useFocusEffect(
+    useCallback(() => {
+      // 1. Reload list in case a new item was added
+      loadData().then(() => {
+        // 2. Check TempStore for newly created IDs
+        const newAccId = TempStore.getNewAccount();
+        const newCatId = TempStore.getNewCategory();
 
-  const handleNumberPress = (num: string) => {
-    if (num === '.') {
-      if (!amount.includes('.')) {
-        setAmount(amount + num);
-      }
-    } else if (num === 'DEL') {
-      setAmount(amount.slice(0, -1));
-    } else {
-      setAmount(amount + num);
-    }
-  };
+        if (newAccId) {
+            // We need to find it in the refreshed list. 
+            // Since setState is async, we do this inside the promise chain or use a ref.
+            // For simplicity, we re-read the updated state in a separate effect or just read from source here.
+            readAccounts().then(updated => {
+                setAccounts(updated || []);
+                const match = updated?.find(a => a.id === newAccId);
+                if (match) setSelectedAccount(match);
+            });
+        }
 
-  const getTypeColor = () => {
-    switch (recordType) {
-      case 'INCOME':
-        return colors.income;
-      case 'EXPENSE':
-        return colors.expense;
-      case 'TRANSFER':
-        return colors.transfer;
-      default:
-        return colors.accent;
-    }
-  };
+        if (newCatId) {
+            readCategories().then(updated => {
+                setCategories(updated || []);
+                const match = updated?.find(c => c.id === newCatId);
+                if (match) setSelectedCategory(match);
+            });
+        }
+      });
+    }, [])
+  );
 
   const handleSave = async () => {
-    if (!amount || !selectedAccount || !selectedCategory) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
+    if (!amount || parseFloat(amount) === 0) return Alert.alert('Error', 'Enter a valid amount');
+    if (!selectedAccount) return Alert.alert('Error', 'Select an account');
+    
+    // Validate category for non-transfer records
+    if (recordType !== 'TRANSFER' && !selectedCategory) {
+      return Alert.alert('Error', 'Select a category');
     }
-
-    if (!user) {
-      Alert.alert('Error', 'User not authenticated');
-      return;
+    
+    // Validate destination account for transfers
+    if (recordType === 'TRANSFER' && !selectedToAccount) {
+      return Alert.alert('Error', 'Select destination account');
+    }
+    
+    // Prevent transfer to same account
+    if (recordType === 'TRANSFER' && selectedAccount.id === selectedToAccount.id) {
+      return Alert.alert('Error', 'Cannot transfer to the same account');
     }
 
     try {
-      setSaving(true);
-
-      // Combine date and time for transaction_date
-      const [hours, minutes] = selectedTime.split(':').map(Number);
-      const transactionDate = new Date(selectedDate);
-      transactionDate.setHours(hours, minutes, 0, 0);
-
-      const recordData = {
-        user_id: user.id,
-        account_id: selectedAccount.id,
-        category_id: selectedCategory.id,
+      const payload: any = {
+        user_id: user?.id,
         amount: parseFloat(amount),
         type: recordType.toLowerCase(),
-        notes: notes || null,
-        transaction_date: transactionDate.toISOString(),
+        account_id: selectedAccount.id,
+        notes,
+        transaction_date: date.toISOString(),
       };
 
-      if (editingRecordId) {
-        // Remove user_id when updating (database may not allow changing owner)
-        const updatedData = { ...recordData };
-        delete (updatedData as any).user_id;
-        await updateRecord(editingRecordId, updatedData);
-        Alert.alert('Success', 'Record updated successfully!');
+      // Add category only for non-transfer records
+      if (recordType !== 'TRANSFER') {
+        payload.category_id = selectedCategory?.id;
       } else {
-        await createRecord(recordData);
-        Alert.alert('Success', 'Record saved successfully!');
+        // For transfers, add the destination account
+        payload.to_account_id = selectedToAccount.id;
       }
-      router.back();
-    } catch (error) {
-      console.error('Error saving record:', error);
-      Alert.alert('Error', editingRecordId ? 'Failed to update record' : 'Failed to save record');
-    } finally {
-      setSaving(false);
+
+      // LOGGING: Before save
+      console.log('💾 [handleSave] Saving record with payload:', {
+        type: payload.type,
+        amount: payload.amount,
+        account: selectedAccount?.name,
+        category: selectedCategory?.name,
+        to_account: selectedToAccount?.name,
+        has_to_account_id: !!payload.to_account_id,
+      });
+
+      if (incomingRecord?.id) {
+         delete (payload as any).user_id; // Don't update user_id
+         await updateRecord(incomingRecord.id, payload);
+         console.log('✏️ [handleSave] Record updated successfully:', incomingRecord.id);
+      } else {
+         const result = await createRecord(payload);
+         console.log('✅ [handleSave] Record created successfully:', result?.id);
+      }
+      
+      // Navigate back
+      if (navigation.canGoBack()) router.back();
+      else router.replace('/(tabs)');
+      
+    } catch (e) {
+      console.error('❌ [handleSave] Error saving record:', e);
+      Alert.alert('Error', 'Failed to save record');
     }
   };
 
-  // NumericKeypad Component
-  const NumericKeypad = () => (
-    <View style={styles.keypadContainer}>
-      <View style={styles.keypadRow}>
-        {['1', '2', '3'].map((num) => (
-          <TouchableOpacity
-            key={num}
-            style={[styles.keypadButton, { borderColor: colors.border }]}
-            onPress={() => handleNumberPress(num)}
-          >
-            <Text style={[styles.keypadButtonText, { color: colors.text }]}>{num}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <View style={styles.keypadRow}>
-        {['4', '5', '6'].map((num) => (
-          <TouchableOpacity
-            key={num}
-            style={[styles.keypadButton, { borderColor: colors.border }]}
-            onPress={() => handleNumberPress(num)}
-          >
-            <Text style={[styles.keypadButtonText, { color: colors.text }]}>{num}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <View style={styles.keypadRow}>
-        {['7', '8', '9'].map((num) => (
-          <TouchableOpacity
-            key={num}
-            style={[styles.keypadButton, { borderColor: colors.border }]}
-            onPress={() => handleNumberPress(num)}
-          >
-            <Text style={[styles.keypadButtonText, { color: colors.text }]}>{num}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <View style={styles.keypadRow}>
-        <TouchableOpacity
-          style={[styles.keypadButton, { borderColor: colors.border }]}
-          onPress={() => handleNumberPress('.')}
-        >
-          <Text style={[styles.keypadButtonText, { color: colors.text }]}>.</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.keypadButton, { borderColor: colors.border }]}
-          onPress={() => handleNumberPress('0')}
-        >
-          <Text style={[styles.keypadButtonText, { color: colors.text }]}>0</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.keypadButton, { backgroundColor: colors.accent }]}
-          onPress={() => handleNumberPress('DEL')}
-        >
-          <MaterialCommunityIcons name="backspace" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-    </View>
+  // Filter categories based on type
+  const currentCategories = categories.filter(c => 
+    c.type === recordType.toLowerCase() || !c.type
   );
 
-  // Modal for Account Selection
-  const AccountSelectionModal = () => (
-    <Modal visible={showAccountModal} transparent animationType="slide">
-      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-        <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Select Account</Text>
-            <TouchableOpacity onPress={() => setShowAccountModal(false)}>
-              <MaterialCommunityIcons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+  const getTypeColor = () => {
+    if (recordType === 'INCOME') return colors.income;
+    if (recordType === 'EXPENSE') return colors.expense;
+    return colors.transfer;
+  };
 
-          <ScrollView style={styles.modalList}>
-            {accounts.map((account) => (
-              <TouchableOpacity
-                key={account.id}
-                style={[
-                  styles.selectItem,
-                  {
-                    backgroundColor:
-                      selectedAccount?.id === account.id ? colors.surface : 'transparent',
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => {
-                  setSelectedAccount(account);
-                  setShowAccountModal(false);
-                }}
-              >
-                <MaterialCommunityIcons name="bank" size={20} color={colors.accent} />
-                <View style={styles.selectItemText}>
-                  <Text style={[styles.selectItemName, { color: colors.text }]}>
-                    {account.name}
-                  </Text>
-                  <Text style={[styles.selectItemType, { color: colors.textSecondary }]}>
-                    {account.type}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  // Modal for Category Selection
-  const CategorySelectionModal = () => (
-    <Modal visible={showCategoryModal} transparent animationType="slide">
-      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-        <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Select Category</Text>
-            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-              <MaterialCommunityIcons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalList}>
-            {categories.length === 0 ? (
-              <View style={[styles.emptyStateModal, { backgroundColor: colors.surface }]}>
-                <MaterialCommunityIcons
-                  name="folder-open"
-                  size={48}
-                  color={colors.textSecondary}
-                />
-                <Text style={[styles.emptyStateText, { color: colors.text }]}>
-                  No {recordType.toLowerCase()} categories
-                </Text>
-                <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                  Create a category to add {recordType.toLowerCase()} records
-                </Text>
-                <TouchableOpacity
-                  style={[styles.createButtonModal, { backgroundColor: colors.accent }]}
-                  onPress={() => {
-                    setShowCategoryModal(false);
-                    router.push('/(modal)/add-category-modal');
-                  }}
-                >
-                  <MaterialCommunityIcons name="plus" size={18} color="#FFFFFF" />
-                  <Text style={styles.createButtonText}>Create Category</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              categories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.selectItem,
-                    {
-                      backgroundColor:
-                        selectedCategory?.id === category.id ? colors.surface : 'transparent',
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    setSelectedCategory(category);
-                    setShowCategoryModal(false);
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name={category.icon as any}
-                    size={20}
-                    color={category.color}
-                  />
-                  <Text style={[styles.selectItemName, { color: colors.text }]}>
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
+  const handleNumberPress = (val: string) => {
+    if (val === 'DEL') setAmount(prev => prev.slice(0, -1));
+    else if (val === '.' && amount.includes('.')) return;
+    else setAmount(prev => prev + val);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialCommunityIcons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Add Record</Text>
-        <View style={{ width: 24 }} />
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {incomingRecord ? 'Edit Record' : 'Add Record'}
+        </Text>
+        <TouchableOpacity onPress={handleSave}>
+          <Text style={{ color: getTypeColor(), fontWeight: 'bold', fontSize: 16 }}>SAVE</Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Type Tabs */}
-        <View style={styles.typeTabs}>
-          {(['INCOME', 'EXPENSE', 'TRANSFER'] as const).map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.typeTab,
-                {
-                  backgroundColor:
-                    recordType === type
-                      ? type === 'INCOME'
-                        ? colors.income
-                        : type === 'EXPENSE'
-                        ? colors.expense
-                        : colors.transfer
-                      : colors.surface,
-                  borderColor:
-                    recordType === type
-                      ? type === 'INCOME'
-                        ? colors.income
-                        : type === 'EXPENSE'
-                        ? colors.expense
-                        : colors.transfer
-                      : colors.border,
-                },
-              ]}
-              onPress={() => {
-                setRecordType(type);
-                setSelectedCategory(null);
-              }}
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        
+        {/* Type Selector */}
+        <View style={styles.typeRow}>
+            {['INCOME', 'EXPENSE', 'TRANSFER'].map((t) => (
+                <TouchableOpacity
+                    key={t}
+                    disabled={typeLocked}
+                    style={[
+                        styles.typeBtn, 
+                        { 
+                            backgroundColor: recordType === t ? getTypeColor() : colors.surface,
+                            opacity: (typeLocked && recordType !== t) ? 0.3 : 1
+                        }
+                    ]}
+                    onPress={() => {
+                        setRecordType(t as any);
+                        setSelectedCategory(null); // Reset category on type change
+                        setSelectedToAccount(null); // Reset destination account on type change
+                    }}
+                >
+                    <Text style={{ color: recordType === t ? '#fff' : colors.text, fontWeight:'600' }}>{t}</Text>
+                </TouchableOpacity>
+            ))}
+        </View>
+
+        {/* Amount */}
+        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+            <Text style={{ fontSize: 16, color: colors.textSecondary }}>Amount</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 32, color: getTypeColor(), fontWeight: 'bold' }}>₹</Text>
+                <Text style={{ fontSize: 48, color: colors.text, fontWeight: 'bold' }}>
+                    {amount || '0'}
+                </Text>
+            </View>
+        </View>
+
+        {/* Custom Keypad (Simplified) */}
+        <View style={styles.keypad}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, 'DEL'].map((k) => (
+                <TouchableOpacity 
+                    key={k} 
+                    style={[styles.key, { borderColor: colors.border }]} 
+                    onPress={() => handleNumberPress(String(k))}
+                >
+                    {k === 'DEL' ? (
+                        <MaterialCommunityIcons name="backspace-outline" size={24} color={colors.text} />
+                    ) : (
+                        <Text style={{ fontSize: 24, color: colors.text }}>{k}</Text>
+                    )}
+                </TouchableOpacity>
+            ))}
+        </View>
+
+        {/* Selections */}
+        <View style={{ gap: 16, marginTop: 20 }}>
+            {/* Account Selector */}
+            <TouchableOpacity 
+                style={[styles.selector, { backgroundColor: colors.surface }]}
+                onPress={() => setModalType('ACCOUNT')}
             >
-              <Text
-                style={[
-                  styles.typeTabText,
-                  {
-                    color: recordType === type ? '#FFFFFF' : colors.text,
-                    fontWeight: recordType === type ? '600' : '400',
-                  },
-                ]}
+                <Text style={{ color: colors.textSecondary }}>
+                  {recordType === 'TRANSFER' ? 'From Account' : 'Account'}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
+                        {selectedAccount ? selectedAccount.name : 'Select Account'}
+                    </Text>
+                    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+                </View>
+            </TouchableOpacity>
+
+            {/* Transfer To Account Selector - Only for transfers */}
+            {recordType === 'TRANSFER' && (
+              <TouchableOpacity 
+                  style={[styles.selector, { backgroundColor: colors.surface }]}
+                  onPress={() => setModalType('TO_ACCOUNT')}
               >
-                {type}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Amount Display */}
-        <View style={[styles.amountDisplay, { backgroundColor: getTypeColor() }]}>
-          <Text style={styles.amountCurrency}>₹</Text>
-          <Text style={styles.amountText}>{amount || '0'}</Text>
-        </View>
-
-        {/* Numeric Keypad */}
-        <NumericKeypad />
-
-        {/* Account Selection */}
-        <View style={[styles.section, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.label, { color: colors.text }]}>Account</Text>
-          <TouchableOpacity
-            style={[styles.selectButton, { borderColor: colors.border }]}
-            onPress={() => setShowAccountModal(true)}
-          >
-            <View style={styles.selectButtonContent}>
-              {selectedAccount ? (
-                <>
-                  <MaterialCommunityIcons name="bank" size={20} color={colors.accent} />
-                  <View>
-                    <Text style={[styles.selectButtonText, { color: colors.text }]}>
-                      {selectedAccount.name}
-                    </Text>
-                    <Text style={[styles.selectButtonSubtext, { color: colors.textSecondary }]}>
-                      {selectedAccount.type}
-                    </Text>
+                  <Text style={{ color: colors.textSecondary }}>To Account</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
+                          {selectedToAccount ? selectedToAccount.name : 'Select Account'}
+                      </Text>
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
                   </View>
-                </>
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
-                  <Text style={[styles.selectButtonText, { color: colors.textSecondary }]}>
-                    Select Account
-                  </Text>
-                </>
-              )}
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+              </TouchableOpacity>
+            )}
 
-        {/* Category Selection */}
-        <View style={[styles.section, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.label, { color: colors.text }]}>Category</Text>
-          <TouchableOpacity
-            style={[styles.selectButton, { borderColor: colors.border }]}
-            onPress={() => setShowCategoryModal(true)}
-          >
-            <View style={styles.selectButtonContent}>
-              {selectedCategory ? (
-                <>
-                  <MaterialCommunityIcons
-                    name={selectedCategory.icon as any}
-                    size={20}
-                    color={selectedCategory.color}
-                  />
-                  <Text style={[styles.selectButtonText, { color: colors.text }]}>
-                    {selectedCategory.name}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
-                  <Text style={[styles.selectButtonText, { color: colors.textSecondary }]}>
-                    Select Category
-                  </Text>
-                </>
-              )}
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+            {/* Category Selector - Only for income/expense */}
+            {recordType !== 'TRANSFER' && (
+              <TouchableOpacity 
+                  style={[styles.selector, { backgroundColor: colors.surface }]}
+                  onPress={() => setModalType('CATEGORY')}
+              >
+                  <Text style={{ color: colors.textSecondary }}>Category</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
+                          {selectedCategory ? selectedCategory.name : 'Select Category'}
+                      </Text>
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+                  </View>
+              </TouchableOpacity>
+            )}
 
-        {/* Date & Time Selection */}
-        <View style={[styles.section, { borderBottomColor: colors.border }]}>
-          <View style={styles.dateTimeContainer}>
-            <TouchableOpacity
-              style={[styles.dateTimeButton, { borderColor: colors.border }]}
-              onPress={() => setShowDateModal(true)}
-            >
-              <MaterialCommunityIcons name="calendar" size={20} color={colors.accent} />
-              <Text style={[styles.dateTimeText, { color: colors.text }]}>
-                {selectedDate.toLocaleDateString()}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.dateTimeButton, { borderColor: colors.border }]}
-              onPress={() => setShowTimeModal(true)}
-            >
-              <MaterialCommunityIcons name="clock-outline" size={20} color={colors.accent} />
-              <Text style={[styles.dateTimeText, { color: colors.text }]}>{selectedTime}</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Notes */}
+            <TextInput
+                style={[styles.input, { backgroundColor: colors.surface, color: colors.text }]}
+                placeholder="Add a note..."
+                placeholderTextColor={colors.textSecondary}
+                value={notes}
+                onChangeText={setNotes}
+                multiline
+            />
         </View>
-
-        {/* Notes */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.text }]}>Notes (Optional)</Text>
-          <TextInput
-            style={[
-              styles.notesInput,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                color: colors.text,
-              },
-            ]}
-            placeholder="Add notes..."
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            numberOfLines={4}
-            value={notes}
-            onChangeText={setNotes}
-          />
-        </View>
-
-        <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* Action Buttons */}
-      <View style={[styles.buttonContainer, { borderTopColor: colors.border }]}>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.back()}
-        >
-          <Text style={[styles.buttonText, { color: colors.text }]}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: getTypeColor() }]}
-          onPress={handleSave}
-        >
-          <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Save Record</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Internal Selection Modal (Replaces external navigation loops for better UX) */}
+      <Modal visible={modalType !== 'NONE'} animationType="slide" transparent>
+        <TouchableWithoutFeedback onPress={() => setModalType('NONE')}>
+            <View style={styles.modalOverlay}>
+                <TouchableWithoutFeedback>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.headerTitle, {color: colors.text}]}>
+                                {modalType === 'ACCOUNT' && 'Select Account'}
+                                {modalType === 'TO_ACCOUNT' && 'Select Destination Account'}
+                                {modalType === 'CATEGORY' && 'Select Category'}
+                            </Text>
+                            <TouchableOpacity onPress={() => setModalType('NONE')}>
+                                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <ScrollView contentContainerStyle={{ padding: 16 }}>
+                            {/* Accounts List */}
+                            {(modalType === 'ACCOUNT' || modalType === 'TO_ACCOUNT') && accounts.map(item => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={[styles.listItem, { borderBottomColor: colors.border }]}
+                                    onPress={() => {
+                                        if (modalType === 'ACCOUNT') {
+                                          setSelectedAccount(item);
+                                        } else if (modalType === 'TO_ACCOUNT') {
+                                          setSelectedToAccount(item);
+                                        }
+                                        setModalType('NONE');
+                                    }}
+                                >
+                                    <View style={[styles.iconDot, { backgroundColor: item.color || colors.accent }]}>
+                                        <MaterialCommunityIcons name="bank" size={16} color="#fff" />
+                                    </View>
+                                    <Text style={{ color: colors.text, fontSize: 16, flex: 1 }}>{item.name}</Text>
+                                    {((modalType === 'ACCOUNT' && selectedAccount?.id === item.id) || 
+                                      (modalType === 'TO_ACCOUNT' && selectedToAccount?.id === item.id)) && (
+                                        <MaterialCommunityIcons name="check" size={20} color={colors.accent} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                            
+                            {/* Categories List */}
+                            {modalType === 'CATEGORY' && currentCategories.map(item => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={[styles.listItem, { borderBottomColor: colors.border }]}
+                                    onPress={() => {
+                                        setSelectedCategory(item);
+                                        setModalType('NONE');
+                                    }}
+                                >
+                                    <View style={[styles.iconDot, { backgroundColor: item.color || colors.accent }]}>
+                                        <MaterialCommunityIcons name={item.icon || 'circle'} size={16} color="#fff" />
+                                    </View>
+                                    <Text style={{ color: colors.text, fontSize: 16, flex: 1 }}>{item.name}</Text>
+                                    {selectedCategory?.id === item.id && (
+                                        <MaterialCommunityIcons name="check" size={20} color={colors.accent} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                            
+                            {/* Add New Button - Only for categories */}
+                            {modalType === 'CATEGORY' && (
+                              <TouchableOpacity 
+                                  style={[styles.addNewBtn, { borderColor: colors.accent }]}
+                                  onPress={() => {
+                                      setModalType('NONE');
+                                      router.push({
+                                          pathname: '/(modal)/add-category-modal',
+                                          params: { type: recordType }
+                                      });
+                                  }}
+                              >
+                                  <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
+                                  <Text style={{ color: colors.accent, fontWeight: 'bold' }}>
+                                      Create New Category
+                                  </Text>
+                              </TouchableOpacity>
+                            )}
 
-      {/* Modals */}
-      <AccountSelectionModal />
-      <CategorySelectionModal />
-      </View>
+                            {/* Add New Account Button - Only for accounts */}
+                            {(modalType === 'ACCOUNT' || modalType === 'TO_ACCOUNT') && (
+                              <TouchableOpacity 
+                                  style={[styles.addNewBtn, { borderColor: colors.accent }]}
+                                  onPress={() => {
+                                      setModalType('NONE');
+                                      router.push('/(modal)/add-account-modal');
+                                  }}
+                              >
+                                  <MaterialCommunityIcons name="plus" size={20} color={colors.accent} />
+                                  <Text style={{ color: colors.accent, fontWeight: 'bold' }}>
+                                      Create New Account
+                                  </Text>
+                              </TouchableOpacity>
+                            )}
+                        </ScrollView>
+                    </View>
+                </TouchableWithoutFeedback>
+            </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  typeTabs: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  typeTab: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    alignItems: 'center',
-  },
-  typeTabText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  amountDisplay: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    paddingVertical: 30,
-    borderRadius: 12,
-  },
-  amountCurrency: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  amountText: {
-    fontSize: 42,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 4,
-  },
-  keypadContainer: {
-    marginBottom: 20,
-  },
-  keypadRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  keypadButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  keypadButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  selectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  selectButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  selectButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  selectButtonSubtext: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  dateTimeContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  dateTimeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  dateTimeText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  notesInput: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    fontSize: 14,
-    textAlignVertical: 'top',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    maxHeight: '80%',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalList: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  selectItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderBottomWidth: 1,
-    marginBottom: 8,
-  },
-  selectItemText: {
-    flex: 1,
-  },
-  selectItemName: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  selectItemType: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyStateModal: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
-    marginHorizontal: 16,
-    marginVertical: 20,
-    borderRadius: 12,
-    gap: 12,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  emptyStateSubtext: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  createButtonModal: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 8,
-  },
-  createButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, alignItems:'center' },
+  headerTitle: { fontSize: 18, fontWeight: '600' },
+  typeRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  typeBtn: { flex: 1, padding: 10, borderRadius: 8, alignItems: 'center' },
+  keypad: { flexDirection: 'row', flexWrap: 'wrap' },
+  key: { width: '33.33%', height: 60, justifyContent: 'center', alignItems: 'center', borderWidth: 0.5, borderColor: '#ccc' },
+  selector: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderRadius: 12, alignItems: 'center' },
+  input: { padding: 16, borderRadius: 12, minHeight: 100, textAlignVertical: 'top' },
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { height: '70%', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderColor: '#eee' },
+  listItem: { flexDirection: 'row', padding: 16, alignItems: 'center', gap: 12, borderBottomWidth: 0.5 },
+  iconDot: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  addNewBtn: { flexDirection: 'row', padding: 16, justifyContent: 'center', alignItems: 'center', gap: 8, borderWidth: 1, borderStyle: 'dashed', borderRadius: 8, marginTop: 16 }
 });

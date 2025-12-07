@@ -26,76 +26,70 @@ interface ToastProps extends ToastConfig {
 }
 
 const getToastConfig = (type: ToastType, isDark: boolean) => {
+    // Professional minimal design with accent colored left border and subtle icons
+    // Maintains dark theme elegance with functional differentiation
     const configs = {
         success: {
             icon: 'check-circle',
-            lightBg: '#ecfdf5',
-            darkBg: 'rgba(16, 185, 129, 0.15)',
-            lightText: '#065f46',
-            darkText: '#86efac',
-            lightBorder: '#d1fae5',
-            darkBorder: 'rgba(16, 185, 129, 0.3)',
-            iconColor: '#10b981',
+            lightBg: '#323232',
+            darkBg: '#212121',
+            accentColor: '#10b981',  // Green
+            lightText: '#ffffff',
+            darkText: '#ffffff',
         },
         error: {
             icon: 'alert-circle',
-            lightBg: '#fef2f2',
-            darkBg: 'rgba(239, 68, 68, 0.15)',
-            lightText: '#7f1d1d',
-            darkText: '#fca5a5',
-            lightBorder: '#fee2e2',
-            darkBorder: 'rgba(239, 68, 68, 0.3)',
-            iconColor: '#ef4444',
+            lightBg: '#323232',
+            darkBg: '#212121',
+            accentColor: '#ef4444',  // Red
+            lightText: '#ffffff',
+            darkText: '#ffffff',
         },
         warning: {
             icon: 'alert',
-            lightBg: '#fffbeb',
-            darkBg: 'rgba(245, 158, 11, 0.15)',
-            lightText: '#78350f',
-            darkText: '#fcd34d',
-            lightBorder: '#fef3c7',
-            darkBorder: 'rgba(245, 158, 11, 0.3)',
-            iconColor: '#f59e0b',
+            lightBg: '#323232',
+            darkBg: '#212121',
+            accentColor: '#f59e0b',  // Amber
+            lightText: '#ffffff',
+            darkText: '#ffffff',
         },
         info: {
             icon: 'information',
-            lightBg: '#eff6ff',
-            darkBg: 'rgba(59, 130, 246, 0.15)',
-            lightText: '#1e3a8a',
-            darkText: '#93c5fd',
-            lightBorder: '#dbeafe',
-            darkBorder: 'rgba(59, 130, 246, 0.3)',
-            iconColor: '#3b82f6',
+            lightBg: '#323232',
+            darkBg: '#212121',
+            accentColor: '#3b82f6',  // Blue
+            lightText: '#ffffff',
+            darkText: '#ffffff',
         },
     };
 
     const config = configs[type];
     return {
-        ...config,
+        icon: config.icon,
         bgColor: isDark ? config.darkBg : config.lightBg,
         textColor: isDark ? config.darkText : config.lightText,
-        borderColor: isDark ? config.darkBorder : config.lightBorder,
+        accentColor: config.accentColor,
     };
 };
 
-function Toast({ id, message, type, duration = 3000, onDismiss }: ToastProps) {
+function Toast({ id, message, type, duration = 2500, onDismiss }: ToastProps) {
     const { isDark } = useTheme();
-    const slideAnim = useRef(new Animated.Value(300)).current;
+    const slideAnim = useRef(new Animated.Value(100)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
 
     const config = getToastConfig(type, isDark);
 
     useEffect(() => {
-        // Slide in and fade in
+        // Slide in and fade in from bottom
         Animated.parallel([
             Animated.timing(slideAnim, {
                 toValue: 0,
-                duration: 300,
+                duration: 250,
                 useNativeDriver: true,
             }),
             Animated.timing(opacityAnim, {
                 toValue: 1,
-                duration: 300,
+                duration: 250,
                 useNativeDriver: true,
             }),
         ]).start();
@@ -111,13 +105,13 @@ function Toast({ id, message, type, duration = 3000, onDismiss }: ToastProps) {
     const dismissToast = () => {
         Animated.parallel([
             Animated.timing(slideAnim, {
-                toValue: 300,
-                duration: 300,
+                toValue: 100,
+                duration: 250,
                 useNativeDriver: true,
             }),
             Animated.timing(opacityAnim, {
                 toValue: 0,
-                duration: 300,
+                duration: 250,
                 useNativeDriver: true,
             }),
         ]).start(() => {
@@ -140,16 +134,19 @@ function Toast({ id, message, type, duration = 3000, onDismiss }: ToastProps) {
                     styles.toast,
                     {
                         backgroundColor: config.bgColor,
-                        borderColor: config.borderColor,
+                        borderLeftColor: config.accentColor,
                     },
                 ]}
             >
+                {/* Colored accent icon */}
                 <MaterialCommunityIcons
                     name={config.icon as any}
-                    size={20}
-                    color={config.iconColor}
+                    size={18}
+                    color={config.accentColor}
                     style={styles.icon}
                 />
+                
+                {/* Message text */}
                 <Text
                     style={[
                         styles.message,
@@ -172,31 +169,35 @@ const styles = StyleSheet.create({
         right: 0,
         alignItems: 'center',
         zIndex: 9999,
-        paddingBottom: 24,
+        paddingBottom: 20,
     },
     toast: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 10,
-        borderWidth: 1,
-        maxWidth: width - 32,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 8,
+        borderLeftWidth: 3,
+        maxWidth: width - 48,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        elevation: 4,
     },
     icon: {
-        marginRight: 12,
-        minWidth: 20,
+        marginRight: 10,
+        minWidth: 18,
     },
     message: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '500',
+        textAlign: 'left',
+        lineHeight: 18,
         flex: 1,
     },
 });
 
 export default Toast;
+
+
