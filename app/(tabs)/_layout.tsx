@@ -5,10 +5,12 @@ import { useUIMode } from '@/hooks/useUIMode';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React, { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabsLayout() {
   const { isDark, colors } = useTheme();
   const { fontMd, md } = useUIMode();
+  const insets = useSafeAreaInsets();
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   return (
@@ -19,12 +21,14 @@ export default function TabsLayout() {
           tabBarActiveTintColor: colors.tabIconActive,
           tabBarInactiveTintColor: colors.tabIconInactive,
           header: () => <Header onMenuPress={() => setDrawerVisible(true)} />,
-          tabBarLabelStyle: { fontSize: fontMd * 0.75, marginBottom: 8 }, // Smaller text with bottom margin
+          tabBarLabelStyle: { fontSize: fontMd * 0.75, marginBottom: 8 },
           tabBarStyle: {
             backgroundColor: colors.tabBarBackground,
             borderTopColor: colors.border,
-            paddingBottom: 12, // Increased padding at bottom
-            height: 70, // Slightly taller to accommodate spacing
+            paddingBottom: Math.max(insets.bottom, 12),
+            paddingHorizontal: 0,
+            paddingTop: 8,
+            height: 70 + Math.max(insets.bottom, 0),
           },
         }}>
         <Tabs.Screen

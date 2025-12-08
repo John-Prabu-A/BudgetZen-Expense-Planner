@@ -1,9 +1,9 @@
-
 import UnifiedLockScreen from '@/components/UnifiedLockScreen';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../context/Auth';
 import { OnboardingProvider, OnboardingStep, useOnboarding } from '../context/Onboarding';
 import { PreferencesProvider, usePreferences } from '../context/Preferences';
@@ -187,16 +187,18 @@ const InitialLayout = () => {
 
 export default function RootLayout() {
     return (
-        <AuthProvider>
-            <PreferencesProvider>
-                <OnboardingProvider>
-                    <ThemeProvider>
-                        <ToastProvider>
-                            <InitialLayout />
-                        </ToastProvider>
-                    </ThemeProvider>
-                </OnboardingProvider>
-            </PreferencesProvider>
-        </AuthProvider>
+        <SafeAreaProvider>
+            <AuthProvider>
+                <PreferencesProvider>
+                    <OnboardingProvider>
+                        <ThemeProvider>
+                            <ToastProvider>
+                                <InitialLayout />
+                            </ToastProvider>
+                        </ThemeProvider>
+                    </OnboardingProvider>
+                </PreferencesProvider>
+            </AuthProvider>
+        </SafeAreaProvider>
     );
 }

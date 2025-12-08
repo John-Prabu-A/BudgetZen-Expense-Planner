@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import IncomeExpenseCalendar, { DailyDataItem } from '../components/IncomeExpenseCalendar';
 
 type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY' | 'CALENDAR' | 'CHART';
@@ -27,6 +28,7 @@ export default function RecordsScreen() {
   const spacing = useUIMode();
   const styles = getStyles(spacing);
   const toast = useToast();
+  const insets = useSafeAreaInsets();
 
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [records, setRecords] = useState<any[]>([]);
@@ -450,7 +452,7 @@ export default function RecordsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollContent}
-        contentContainerStyle={styles.scrollContentInner}
+        contentContainerStyle={[styles.scrollContentInner, { paddingBottom: Math.max(insets.bottom + spacing.xl, spacing.xl * 2) + 45 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -546,7 +548,7 @@ export default function RecordsScreen() {
 
       {/* FAB Menu Items */}
       {fabExpanded && (
-        <View style={styles.fabMenu}>
+        <View style={[styles.fabMenu, { bottom: Math.max(insets.bottom, 0) + (spacing?.xl ?? 24) + 70 }]}>
           <TouchableOpacity
             style={[styles.fabMenuItem, { backgroundColor: colors.income }]}
             onPress={() => openAddModal('INCOME')}
@@ -575,7 +577,7 @@ export default function RecordsScreen() {
 
       {/* Main FAB Button */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.accent }]}
+        style={[styles.fab, { backgroundColor: colors.accent, bottom: Math.max(insets.bottom, 0) + (spacing?.xl ?? 24) }]}
         onPress={() => setFabExpanded(!fabExpanded)}
         activeOpacity={0.8}
       >
@@ -889,7 +891,6 @@ const getStyles = (spacing: any) =>
 
     fab: {
       position: 'absolute',
-      bottom: spacing?.xl ?? 24,
       right: spacing?.xl ?? 24,
       width: 60,
       height: 60,
@@ -916,7 +917,6 @@ const getStyles = (spacing: any) =>
 
     fabMenu: {
       position: 'absolute',
-      bottom: 100,
       right: spacing?.xl ?? 24,
       gap: 12,
       zIndex: 950,
