@@ -6,22 +6,34 @@
   "build": {
     "preview": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "env": {
+          "NODE_ENV": "development"
+        }
       }
     },
     "preview2": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "env": {
+          "NODE_ENV": "development"
+        }
       }
     },
     "preview3": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "env": {
+          "NODE_ENV": "development"
+        }
       }
     },
     "production": {
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "env": {
+          "NODE_ENV": "production"
+        }
       }
     }
   },
