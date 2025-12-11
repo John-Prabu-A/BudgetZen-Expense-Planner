@@ -2,6 +2,8 @@ import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
 import { createRecord, readAccounts, readCategories, updateRecord } from '@/lib/finance';
 import { TempStore } from '@/lib/tempStore'; // Make sure to create this file
+import { supabase } from '@/lib/supabase';
+import useNotifications from '@/hooks/useNotifications';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -150,13 +152,106 @@ export default function AddRecordModal() {
         has_to_account_id: !!payload.to_account_id,
       });
 
+      let savedRecord: any;
       if (incomingRecord?.id) {
          delete (payload as any).user_id; // Don't update user_id
          await updateRecord(incomingRecord.id, payload);
          console.log('✏️ [handleSave] Record updated successfully:', incomingRecord.id);
+         savedRecord = { ...incomingRecord, ...payload };
       } else {
          const result = await createRecord(payload);
          console.log('✅ [handleSave] Record created successfully:', result?.id);
+         savedRecord = result;
+      }
+
+      // ✨ TIER 1: Real-Time Alerts - Check for notifications
+      if (recordType === 'EXPENSE' && savedRecord) {
+        const { sendLargeTransactionAlert, sendBudgetExceededAlert, sendUnusualSpendingAlert } = useNotifications();
+
+        // ALERT 1: Large Transaction Alert
+        try {
+          const { data: allRecords } = await supabase
+            .from('records')
+            .select('amount')
+            .eq('user_id', user?.id)
+            .eq('type', 'expense');
+
+          if (allRecords && allRecords.length > 0) {
+            const monthlyAverage = allRecords.reduce((sum: number, r: any) => sum + (r.amount || 0), 0) / (allRecords.length / 30);
+            const largeTransactionThreshold = Math.max(monthlyAverage * 0.5, 10000);
+
+            if (parseFloat(amount) > largeTransactionThreshold) {
+              console.log('💰 Sending large transaction alert');
+              await sendLargeTransactionAlert(parseFloat(amount), selectedCategory?.name || 'Unknown');
+            }
+          }
+        } catch (error) {
+          console.warn('❌ Large transaction alert check failed:', error);
+        }
+
+        // ALERT 2: Budget Exceeded Alert
+        try {
+          if (selectedCategory?.id) {
+            const { data: budget } = await supabase
+              .from('budgets')
+              .select('amount')
+              .eq('category_id', selectedCategory.id)
+              .eq('user_id', user?.id)
+              .single();
+
+            if (budget) {
+              // Get total spent this month for category
+              const monthStart = new Date();
+              monthStart.setDate(1);
+              monthStart.setHours(0, 0, 0, 0);
+
+              const { data: categoryRecords } = await supabase
+                .from('records')
+                .select('amount')
+                .eq('category_id', selectedCategory.id)
+                .eq('user_id', user?.id)
+                .eq('type', 'expense')
+                .gte('transaction_date', monthStart.toISOString());
+
+              const totalSpent = (categoryRecords || []).reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
+
+              if (totalSpent > budget.amount) {
+                console.log('❌ Sending budget exceeded alert');
+                await sendBudgetExceededAlert(selectedCategory.name, totalSpent, budget.amount);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('❌ Budget exceeded alert check failed:', error);
+        }
+
+        // ALERT 3: Unusual Spending Alert
+        try {
+          if (selectedCategory?.id) {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const { data: categoryRecords } = await supabase
+              .from('records')
+              .select('amount')
+              .eq('category_id', selectedCategory.id)
+              .eq('user_id', user?.id)
+              .eq('type', 'expense')
+              .gte('transaction_date', thirtyDaysAgo.toISOString());
+
+            if (categoryRecords && categoryRecords.length > 5) {
+              const total = categoryRecords.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
+              const average = total / categoryRecords.length;
+
+              if (parseFloat(amount) > average * 2) {
+                console.log('📈 Sending unusual spending alert');
+                await sendUnusualSpendingAlert(selectedCategory.name, parseFloat(amount), average);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('❌ Unusual spending alert check failed:', error);
+        }
       }
       
       // Navigate back

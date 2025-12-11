@@ -13,6 +13,7 @@ import { ToastProvider } from '../context/Toast';
 import { setupDeepLinking } from '../lib/deepLinking';
 import { setupNotificationCategories } from '../lib/notifications/notificationCategories';
 import { setupNotificationChannels } from '../lib/notifications/notificationChannels';
+import { jobScheduler } from '../lib/notifications/jobScheduler';
 
 const InitialLayout = () => {
     const { session, loading: authLoading, isPasswordLocked, unlockPassword } = useAuth();
@@ -38,6 +39,9 @@ const InitialLayout = () => {
                 // Setup deep linking
                 setupDeepLinking();
                 
+                // Start job scheduler for daily/weekly batch notifications
+                await jobScheduler.start();
+                
                 console.log('✅ Notifications initialized');
             } catch (error) {
                 console.error('❌ Error initializing notifications:', error);
@@ -45,6 +49,13 @@ const InitialLayout = () => {
         };
 
         initializeNotifications();
+
+        // Cleanup on unmount
+        return () => {
+            jobScheduler.stop().catch(error => {
+                console.warn('Error stopping scheduler:', error);
+            });
+        };
     }, []);
 
     // When a user session is available, register the device for push, sync token with backend and load user notification prefs

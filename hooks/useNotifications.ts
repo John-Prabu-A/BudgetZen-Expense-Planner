@@ -160,6 +160,78 @@ export const useNotifications = (listeners?: NotificationListeners) => {
   );
 
   /**
+   * Send large transaction alert (Real-time Tier 1)
+   */
+  const sendLargeTransactionAlert = useCallback(
+    async (amount: number, categoryName: string) => {
+      if (!context.isNotificationAllowed()) {
+        console.log('⚠️ Notifications disabled');
+        return;
+      }
+      const payload: NotificationPayload = {
+        type: 'large_transaction' as any,
+        title: `💰 Large transaction: ₹${amount.toLocaleString('en-IN')}`,
+        body: `[${categoryName}] Consider reviewing this spending.`,
+        data: {
+          screen: 'records',
+          category: categoryName,
+        },
+      };
+      return notificationService.sendNotification(payload);
+    },
+    [context]
+  );
+
+  /**
+   * Send budget exceeded alert (Real-time Tier 1)
+   */
+  const sendBudgetExceededAlert = useCallback(
+    async (categoryName: string, spent: number, budget: number) => {
+      if (!context.preferences?.budgetAlerts.enabled || !context.isNotificationAllowed()) {
+        console.log('⚠️ Budget alerts disabled');
+        return;
+      }
+      const exceeded = spent - budget;
+      const percentage = Math.round((spent / budget) * 100);
+      const payload: NotificationPayload = {
+        type: 'budget_exceeded' as any,
+        title: `❌ Budget exceeded: ${categoryName}`,
+        body: `You've exceeded by ₹${exceeded.toLocaleString('en-IN')} (${percentage}%)`,
+        data: {
+          screen: 'analysis',
+          category: categoryName,
+        },
+      };
+      return notificationService.sendNotification(payload);
+    },
+    [context]
+  );
+
+  /**
+   * Send unusual spending alert (Real-time Tier 1)
+   */
+  const sendUnusualSpendingAlert = useCallback(
+    async (categoryName: string, amount: number, average: number) => {
+      if (!context.preferences?.spendingAnomalies.enabled || !context.isNotificationAllowed()) {
+        console.log('⚠️ Anomaly detection disabled');
+        return;
+      }
+      const percentage = Math.round((amount / average) * 100);
+      const payload: NotificationPayload = {
+        type: 'unusual_spending' as any,
+        title: `📈 Unusual spending: ${categoryName}`,
+        body: `₹${amount.toLocaleString('en-IN')} is ${percentage}% above your average`,
+        data: {
+          screen: 'records',
+          category: categoryName,
+        },
+      };
+      return notificationService.sendNotification(payload);
+    },
+    [context]
+  );
+
+  /**
    * Cancel notification
    */
   const cancelNotification = useCallback((notificationId: string) => {
@@ -228,6 +300,9 @@ export const useNotifications = (listeners?: NotificationListeners) => {
     sendSavingsGoalProgress,
     sendUnusualSpending,
     sendLowBalance,
+    sendLargeTransactionAlert,
+    sendBudgetExceededAlert,
+    sendUnusualSpendingAlert,
     cancelNotification,
     cancelAllNotifications,
     getScheduledNotifications,

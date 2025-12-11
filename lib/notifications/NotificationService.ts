@@ -7,7 +7,9 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { getCategoryForNotificationType } from './notificationCategories';
 import { getChannelForNotificationType } from './notificationChannels';
-import { NotificationPayload, NotificationResult } from './types';
+import { NotificationPayload, NotificationResult, NotificationType, NOTIFICATION_PRIORITIES } from './types';
+import { notificationThrottler } from './notificationThrottler';
+import { smartTimingEngine } from './smartTimingEngine';
 
 /**
  * Main Notification Service Class
@@ -347,6 +349,110 @@ export class NotificationService {
       console.log(`📌 Badge count set to: ${count}`);
     } catch (error) {
       console.error('❌ Error setting badge count:', error);
+    }
+  }
+
+  /**
+   * Send notification with smart filtering and throttling
+   * Respects user preferences, DND hours, and prevents spam
+   */
+  async sendWithSmartFilters(
+    userId: string,
+    payload: NotificationPayload
+  ): Promise<NotificationResult> {
+    try {
+      const type = payload.type as NotificationType;
+      const priority = NOTIFICATION_PRIORITIES[type];
+
+      // Step 1: Check throttling
+      const shouldSend = await notificationThrottler.shouldSend(userId, type);
+      if (!shouldSend) {
+        console.log(`⏭️ Notification throttled: ${type}`);
+        return {
+          success: false,
+          message: 'Notification throttled - too frequent',
+        };
+      }
+
+      // Step 2: Check DND hours (except for critical alerts)
+      if (priority !== 'critical') {
+        const inDND = await smartTimingEngine.isInDNDHours(userId);
+        if (inDND) {
+          console.log(`🌙 In DND hours, notification queued for later`);
+          // In production, queue for later instead of dropping
+          return {
+            success: false,
+            message: 'In DND hours, queued for later',
+          };
+        }
+      }
+
+      // Step 3: Check if user is actively using app (skip push, use in-app instead)
+      if (priority === 'medium' || priority === 'low') {
+        const shouldSkip = await smartTimingEngine.shouldSkipBasedOnBehavior(userId);
+        if (shouldSkip) {
+          console.log(`📱 User in app, in-app message recommended`);
+          return {
+            success: false,
+            message: 'User in app, recommend in-app messaging',
+          };
+        }
+      }
+
+      // Step 4: Check daily limit
+      const maxPerDay = 5;
+      const exceededLimit = await notificationThrottler.isExceededDailyLimit(userId, maxPerDay);
+      if (exceededLimit && priority === 'low') {
+        console.log(`📊 Daily limit exceeded, queuing low-priority notification`);
+        return {
+          success: false,
+          message: 'Daily notification limit exceeded',
+        };
+      }
+
+      // Step 5: Send notification
+      const result = await this.sendNotification(payload);
+
+      // Step 6: Record metrics if successful
+      if (result.success) {
+        await notificationThrottler.recordSent(userId, type);
+        await this.recordAnalytics(userId, payload, result.notificationId!);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Error in sendWithSmartFilters:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to send notification',
+      };
+    }
+  }
+
+  /**
+   * Record notification analytics for tracking
+   */
+  private async recordAnalytics(
+    userId: string,
+    payload: NotificationPayload,
+    notificationId: string
+  ): Promise<void> {
+    try {
+      const { error } = await (await import('@/lib/supabase')).supabase
+        .from('notification_analytics')
+        .insert({
+          user_id: userId,
+          notification_id: notificationId,
+          notification_type: payload.type,
+          sent_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.warn('Error recording notification analytics:', error);
+      }
+    } catch (error) {
+      console.warn('Error recording analytics', error);
     }
   }
 

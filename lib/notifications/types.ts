@@ -4,24 +4,110 @@
  */
 
 export enum NotificationType {
+  // Tier 1: Real-time Critical Alerts
+  LARGE_TRANSACTION = 'large_transaction',
+  BUDGET_EXCEEDED = 'budget_exceeded',
+  UNUSUAL_SPENDING = 'unusual_spending',
+
+  // Tier 2: Daily Scheduled Batch
   DAILY_REMINDER = 'daily_reminder',
+  BUDGET_WARNING = 'budget_warning',
+  DAILY_ANOMALY = 'daily_anomaly',
+
+  // Tier 3: Weekly Scheduled Batch
+  WEEKLY_SUMMARY = 'weekly_summary',
+  BUDGET_COMPLIANCE = 'budget_compliance',
+  SPENDING_TRENDS = 'spending_trends',
+
+  // Tier 4: User-Controlled Optional
+  GOAL_PROGRESS = 'goal_progress',
+  ACHIEVEMENT = 'achievement',
+
+  // Legacy types (kept for backward compatibility)
   WEEKLY_REPORT = 'weekly_report',
   MONTHLY_REPORT = 'monthly_report',
-  BUDGET_WARNING = 'budget_warning',
-  BUDGET_EXCEEDED = 'budget_exceeded',
   DAILY_BUDGET = 'daily_budget',
-  ACHIEVEMENT = 'achievement',
   SAVINGS_GOAL = 'savings_goal',
-  UNUSUAL_SPENDING = 'unusual_spending',
   LOW_BALANCE = 'low_balance',
 }
 
 export enum NotificationPriority {
+  // Professional tier system
+  CRITICAL = 'critical',      // Real-time, ignore DND, no throttling
+  HIGH = 'high',              // Real-time, respect DND, light throttling
+  MEDIUM = 'medium',          // Daily batch, respect DND
+  LOW = 'low',                // Weekly batch, optional
+
+  // Legacy priorities (for backward compatibility)
   PASSIVE = 'passive',        // Informational
   ACTIVE = 'active',          // Regular engagement
   TIME_SENSITIVE = 'time_sensitive', // Urgent attention
 }
 
+/**
+ * Professional Notification Priority Mapping
+ * Maps each notification type to its appropriate priority tier
+ */
+export const NOTIFICATION_PRIORITIES: Record<NotificationType, NotificationPriority> = {
+  // Tier 1: Real-time Critical Alerts
+  [NotificationType.LARGE_TRANSACTION]: NotificationPriority.HIGH,
+  [NotificationType.BUDGET_EXCEEDED]: NotificationPriority.CRITICAL,
+  [NotificationType.UNUSUAL_SPENDING]: NotificationPriority.HIGH,
+
+  // Tier 2: Daily Scheduled Batch
+  [NotificationType.DAILY_REMINDER]: NotificationPriority.MEDIUM,
+  [NotificationType.BUDGET_WARNING]: NotificationPriority.MEDIUM,
+  [NotificationType.DAILY_ANOMALY]: NotificationPriority.MEDIUM,
+
+  // Tier 3: Weekly Scheduled Batch
+  [NotificationType.WEEKLY_SUMMARY]: NotificationPriority.LOW,
+  [NotificationType.BUDGET_COMPLIANCE]: NotificationPriority.LOW,
+  [NotificationType.SPENDING_TRENDS]: NotificationPriority.LOW,
+
+  // Tier 4: User-Controlled Optional
+  [NotificationType.GOAL_PROGRESS]: NotificationPriority.LOW,
+  [NotificationType.ACHIEVEMENT]: NotificationPriority.LOW,
+
+  // Legacy types
+  [NotificationType.WEEKLY_REPORT]: NotificationPriority.LOW,
+  [NotificationType.MONTHLY_REPORT]: NotificationPriority.LOW,
+  [NotificationType.DAILY_BUDGET]: NotificationPriority.MEDIUM,
+  [NotificationType.SAVINGS_GOAL]: NotificationPriority.LOW,
+  [NotificationType.LOW_BALANCE]: NotificationPriority.HIGH,
+};
+
+/**
+ * Minimum Interval Between Notifications (in milliseconds)
+ * Prevents spam by enforcing minimum time between same notification types
+ */
+export const MIN_INTERVAL_BETWEEN_NOTIFICATIONS: Record<NotificationType, number> = {
+  // Tier 1: No throttling for real-time alerts
+  [NotificationType.LARGE_TRANSACTION]: 0,        // No throttling
+  [NotificationType.BUDGET_EXCEEDED]: 3600000,    // 1 hour per category
+  [NotificationType.UNUSUAL_SPENDING]: 3600000,   // 1 hour per category
+
+  // Tier 2: Daily batch
+  [NotificationType.DAILY_REMINDER]: 86400000,    // 1 per day
+  [NotificationType.BUDGET_WARNING]: 86400000,    // 1 per day per category
+  [NotificationType.DAILY_ANOMALY]: 86400000,     // 1 per day
+
+  // Tier 3: Weekly batch
+  [NotificationType.WEEKLY_SUMMARY]: 604800000,   // 1 per week
+  [NotificationType.BUDGET_COMPLIANCE]: 604800000,// 1 per week
+  [NotificationType.SPENDING_TRENDS]: 604800000,  // 1 per week
+
+  // Tier 4: Per milestone
+  [NotificationType.GOAL_PROGRESS]: 0,            // Per milestone
+  [NotificationType.ACHIEVEMENT]: 0,              // Per milestone
+
+  // Legacy
+  [NotificationType.WEEKLY_REPORT]: 604800000,
+  [NotificationType.MONTHLY_REPORT]: 2592000000, // 30 days
+  [NotificationType.DAILY_BUDGET]: 86400000,
+  [NotificationType.SAVINGS_GOAL]: 0,
+  [NotificationType.LOW_BALANCE]: 3600000,
+};
+  
 export interface NotificationPayload {
   type: NotificationType;
   title: string;
