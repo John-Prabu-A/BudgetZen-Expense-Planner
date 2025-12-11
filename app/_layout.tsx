@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../context/Auth';
-import { NotificationsProvider } from '../context/Notifications';
+import { NotificationsProvider, useNotifications } from '../context/Notifications';
 import { OnboardingProvider, OnboardingStep, useOnboarding } from '../context/Onboarding';
 import { PreferencesProvider, usePreferences } from '../context/Preferences';
 import { ThemeProvider, useTheme } from '../context/Theme';
@@ -22,6 +22,8 @@ const InitialLayout = () => {
     const router = useRouter();
     const segments = useSegments();
     const navigationReady = useRootNavigationState()?.key;
+    // Notifications context (available because this component is rendered inside NotificationsProvider)
+    const { registerPushToken, syncTokenWithBackend, loadPreferences: loadNotificationPreferences } = useNotifications();
 
     // Initialize notifications on app startup
     useEffect(() => {
@@ -44,6 +46,50 @@ const InitialLayout = () => {
 
         initializeNotifications();
     }, []);
+
+    // When a user session is available, register the device for push, sync token with backend and load user notification prefs
+    useEffect(() => {
+        let mounted = true;
+        if (!session?.user?.id) return;
+
+        (async () => {
+            try {
+                console.log('[NOTIF] Initializing user notification state...');
+
+                // Request permission and register device (this handles permission prompts)
+                const registered = await registerPushToken();
+                console.log('[NOTIF] registerPushToken ->', registered);
+
+                // If registration succeeded, sync to backend
+                if (registered === true) {
+                    try {
+                        const synced = await syncTokenWithBackend(session.user.id);
+                        console.log('[NOTIF] syncTokenWithBackend ->', synced);
+                    } catch (syncErr) {
+                        console.warn('[NOTIF] Token sync failed', syncErr);
+                    }
+                } else {
+                    // Known failure cases (improve debugging):
+                    // - FCM_NOT_INITIALIZED -> missing google-services.json / FCM setup
+                    // - UNSUPPORTED_ENV_EXPO_GO_ANDROID -> running in Expo Go on Android
+                    console.warn('[NOTIF] Skipping backend sync because registerPushToken returned false or an unsupported environment.');
+                }
+
+                // Load user preferences (scheduling or enabling behavior can depend on these)
+                try {
+                    await loadNotificationPreferences(session.user.id);
+                    console.log('[NOTIF] Loaded notification preferences for user');
+                } catch (prefsErr) {
+                    console.warn('[NOTIF] Loading notification preferences failed', prefsErr);
+                }
+
+            } catch (err) {
+                console.error('[NOTIF] Error initializing notifications for user:', err);
+            }
+        })();
+
+        return () => { mounted = false; };
+    }, [session?.user?.id, registerPushToken, syncTokenWithBackend, loadNotificationPreferences]);
 
     // Main navigation logic
     useEffect(() => {

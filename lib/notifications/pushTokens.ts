@@ -6,9 +6,11 @@
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { supabase } from '../supabase';
 import { NotificationToken, PushTokenResponse } from './types';
 
+// Local storage keys for push token management
 const PUSH_TOKEN_KEY = 'expo_push_token';
 const LAST_TOKEN_REFRESH_KEY = 'last_token_refresh';
 
@@ -36,6 +38,19 @@ export class PushTokenManager {
    */
   async registerDevice(): Promise<PushTokenResponse> {
     try {
+      // If running inside Expo Go on Android, push token registration via FCM isn't supported
+      if (Platform.OS === 'android' && Constants.appOwnership === 'expo') {
+        console.warn(
+          '⚠️ Skipping push token registration: running inside Expo Go on Android. Build a custom dev client or standalone app and configure FCM (see https://docs.expo.dev/push-notifications/fcm-credentials/).'
+        );
+        return {
+          success: false,
+          error: 'UNSUPPORTED_ENV_EXPO_GO_ANDROID',
+          message:
+            'Expo Go on Android does not support FCM push tokens. Use a custom dev client or standalone build with FCM configured.',
+        };
+      }
+
       // Request notification permission
       const { status } = await Notifications.requestPermissionsAsync();
 
@@ -61,9 +76,27 @@ export class PushTokenManager {
       }
 
       // Get push token
-      const token = await Notifications.getExpoPushTokenAsync({
-        projectId,
-      });
+      let token;
+      try {
+        token = await Notifications.getExpoPushTokenAsync({ projectId });
+      } catch (err: any) {
+        // Detect common Firebase initialization error and return a helpful message
+        const msg = err?.message || String(err);
+        if (
+          msg.includes('Default FirebaseApp is not initialized') ||
+          msg.includes('Make sure to complete the guide')
+        ) {
+          console.error(
+            '❌ Firebase not initialized for FCM. Ensure google-services.json / FCM credentials are configured (see https://docs.expo.dev/push-notifications/fcm-credentials/)'
+          );
+          return {
+            success: false,
+            error: 'FCM_NOT_INITIALIZED',
+            message: 'Default FirebaseApp not initialized. Configure FCM credentials for Android per Expo docs.',
+          };
+        }
+        throw err;
+      }
 
       this.currentToken = token.data;
 
@@ -144,23 +177,32 @@ export class PushTokenManager {
         };
       }
 
-      // Save to Supabase
+      // First, try to delete any existing token for this user
+      // This avoids upsert constraint issues
+      try {
+        await supabase
+          .from('notification_tokens')
+          .delete()
+          .eq('user_id', userId);
+      } catch (deleteErr) {
+        console.warn('⚠️ Warning deleting old token:', deleteErr);
+        // Continue anyway — we'll try to insert
+      }
+
+      // Now insert the new token
       const { data, error } = await supabase
         .from('notification_tokens')
-        .upsert(
-          {
-            user_id: userId,
-            expo_push_token: token,
-            device_id: Constants.sessionId,
-            os_type: Constants.platform?.os === 'ios' ? 'ios' : 'android',
-            os_version: Constants.osVersion || 'unknown',
-            app_version: Constants.expoConfig?.version || '1.0.0',
-            registered_at: new Date().toISOString(),
-            last_refreshed_at: new Date().toISOString(),
-            is_valid: true,
-          },
-          { onConflict: 'user_id' }
-        )
+        .insert({
+          user_id: userId,
+          expo_push_token: token,
+          device_id: Constants.sessionId,
+          os_type: Constants.platform?.os === 'ios' ? 'ios' : 'android',
+          os_version: Constants.osVersion || 'unknown',
+          app_version: Constants.expoConfig?.version || '1.0.0',
+          registered_at: new Date().toISOString(),
+          last_refreshed_at: new Date().toISOString(),
+          is_valid: true,
+        })
         .select()
         .single();
 
