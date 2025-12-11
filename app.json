@@ -41,7 +41,20 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification_icon.png",
+          "color": "#6366F1",
+          "defaultChannel": "default",
+          "enableBackgroundRemoteNotifications": true,
+          "sounds": [
+            "./assets/sounds/notification_sound.wav",
+            "./assets/sounds/critical_alert.wav"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

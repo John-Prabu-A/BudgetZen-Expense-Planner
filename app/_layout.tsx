@@ -5,10 +5,14 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../context/Auth';
+import { NotificationsProvider } from '../context/Notifications';
 import { OnboardingProvider, OnboardingStep, useOnboarding } from '../context/Onboarding';
 import { PreferencesProvider, usePreferences } from '../context/Preferences';
 import { ThemeProvider, useTheme } from '../context/Theme';
 import { ToastProvider } from '../context/Toast';
+import { setupDeepLinking } from '../lib/deepLinking';
+import { setupNotificationCategories } from '../lib/notifications/notificationCategories';
+import { setupNotificationChannels } from '../lib/notifications/notificationChannels';
 
 const InitialLayout = () => {
     const { session, loading: authLoading, isPasswordLocked, unlockPassword } = useAuth();
@@ -18,6 +22,28 @@ const InitialLayout = () => {
     const router = useRouter();
     const segments = useSegments();
     const navigationReady = useRootNavigationState()?.key;
+
+    // Initialize notifications on app startup
+    useEffect(() => {
+        const initializeNotifications = async () => {
+            try {
+                // Setup Android notification channels
+                await setupNotificationChannels();
+                
+                // Setup iOS notification categories
+                await setupNotificationCategories();
+                
+                // Setup deep linking
+                setupDeepLinking();
+                
+                console.log('✅ Notifications initialized');
+            } catch (error) {
+                console.error('❌ Error initializing notifications:', error);
+            }
+        };
+
+        initializeNotifications();
+    }, []);
 
     // Main navigation logic
     useEffect(() => {
@@ -193,7 +219,9 @@ export default function RootLayout() {
                     <OnboardingProvider>
                         <ThemeProvider>
                             <ToastProvider>
-                                <InitialLayout />
+                                <NotificationsProvider>
+                                    <InitialLayout />
+                                </NotificationsProvider>
                             </ToastProvider>
                         </ThemeProvider>
                     </OnboardingProvider>
