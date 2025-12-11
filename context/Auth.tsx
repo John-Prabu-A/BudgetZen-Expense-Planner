@@ -35,12 +35,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       setLoading(false);
 
-      // Reset lock and clear onboarding step if user signs out
+      // Reset lock if user signs out
+      // NOTE: Do NOT clear onboarding step - it should persist across sessions
       if (event === 'SIGNED_OUT') {
         setIsPasswordLocked(false);
-        SecureStore.deleteItemAsync('onboarding_step').catch(err =>
-          console.error('Error clearing onboarding step:', err)
-        );
       }
     });
 
@@ -107,8 +105,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      // Clear onboarding step
-      await SecureStore.deleteItemAsync('onboarding_step');
+      // NOTE: Do NOT clear onboarding state on logout
+      // Once a user completes onboarding, they should not see it again
+      // even if they log out and log back in (possibly with a different account)
       // Sign out from Supabase
       await supabase.auth.signOut();
     } catch (error) {

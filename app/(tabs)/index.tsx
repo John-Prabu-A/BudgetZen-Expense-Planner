@@ -1,4 +1,3 @@
-import Button from '@/components/ui/Button';
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
 import { useToast } from '@/context/Toast';
@@ -28,7 +27,7 @@ export default function RecordsScreen() {
   const spacing = useUIMode();
   const styles = getStyles(spacing);
   const toast = useToast();
-  const { sendBudgetWarning, registerPushToken, syncTokenWithBackend } = useNotifications();
+  const { sendBudgetWarning } = useNotifications();
 
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [records, setRecords] = useState<any[]>([]);
@@ -448,28 +447,6 @@ export default function RecordsScreen() {
     );
   });
 
-  // Debug helper (manual token registration + backend sync)
-  const debugRegisterAndSync = async () => {
-    try {
-      const registered = await registerPushToken();
-      console.log('[DEBUG] registerPushToken ->', registered);
-      if (registered === true) {
-        if (!session?.user?.id) {
-          Alert.alert('Push Token', 'Registered but not synced: no user session available');
-          return;
-        }
-        const syncResult = await syncTokenWithBackend(session.user.id);
-        console.log('[DEBUG] syncTokenWithBackend ->', syncResult);
-        Alert.alert('Push Token', 'Registered and synced: ' + JSON.stringify(syncResult));
-      } else {
-        Alert.alert('Push Token', 'Registration failed: ' + JSON.stringify(registered));
-      }
-    } catch (err) {
-      console.error('[DEBUG] registerAndSync error', err);
-      Alert.alert('Push Token Error', String(err));
-    }
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
@@ -536,16 +513,6 @@ export default function RecordsScreen() {
             <MonthlyChart />
           </>
         )}
-
-        <Button 
-      title="Send Test Notification"
-      onPress={() => sendBudgetWarning('Food', 3000, 5000)}
-    />
-
-    <Button
-      title="Debug: Register & Sync Token"
-      onPress={debugRegisterAndSync}
-    />
 
         {/* Records List */}
         <View style={{ paddingBottom: spacing.xl }}>

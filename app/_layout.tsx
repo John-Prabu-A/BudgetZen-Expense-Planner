@@ -138,18 +138,8 @@ const InitialLayout = () => {
             return;
         }
 
-        // NO SESSION: User not logged in
-        if (!session) {
-            if (!inAuthGroup) {
-                console.log('[NAV] No session → Redirecting to login');
-                router.replace('/(auth)/login');
-            }
-            return;
-        }
-
-        // HAS SESSION: User is logged in
-
-        // If onboarding is not complete, show onboarding
+        // PRIORITY 1: Check if onboarding is complete (for all users)
+        // If NOT complete, show onboarding screens FIRST (before auth or tabs)
         if (currentStep !== OnboardingStep.COMPLETED) {
             // Map onboarding step to route
             let targetRoute: string = '/(onboarding)/currency';
@@ -179,9 +169,19 @@ const InitialLayout = () => {
             return;
         }
 
-        // ONBOARDING IS COMPLETE: Show main app
+        // PRIORITY 2: Onboarding IS complete, check session
+        // NO SESSION: User not logged in, show login/signup
+        if (!session) {
+            if (!inAuthGroup) {
+                console.log('[NAV] Onboarding complete, no session → Redirecting to login');
+                router.replace('/(auth)/login');
+            }
+            return;
+        }
+
+        // PRIORITY 3: Onboarding complete AND user is logged in → Show main app
         if (!inTabsGroup) {
-            console.log('[NAV] Onboarding complete → Redirecting to main app');
+            console.log('[NAV] Onboarding complete + logged in → Redirecting to main app');
             router.replace('/(tabs)');
         }
     }, [
