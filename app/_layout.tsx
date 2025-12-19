@@ -10,10 +10,11 @@ import { OnboardingProvider, OnboardingStep, useOnboarding } from '../context/On
 import { PreferencesProvider, usePreferences } from '../context/Preferences';
 import { ThemeProvider, useTheme } from '../context/Theme';
 import { ToastProvider } from '../context/Toast';
+import { IngestionProvider } from '../context/TransactionIngestion';
 import { setupDeepLinking } from '../lib/deepLinking';
+import { jobScheduler } from '../lib/notifications/jobScheduler';
 import { setupNotificationCategories } from '../lib/notifications/notificationCategories';
 import { setupNotificationChannels } from '../lib/notifications/notificationChannels';
-import { jobScheduler } from '../lib/notifications/jobScheduler';
 
 const InitialLayout = () => {
     const { session, loading: authLoading, isPasswordLocked, unlockPassword } = useAuth();
@@ -26,9 +27,9 @@ const InitialLayout = () => {
     // Notifications context (available because this component is rendered inside NotificationsProvider)
     const { registerPushToken, syncTokenWithBackend, loadPreferences: loadNotificationPreferences } = useNotifications();
 
-    // Initialize notifications on app startup
+    // Initialize notifications and transaction ingestion on app startup
     useEffect(() => {
-        const initializeNotifications = async () => {
+        const initializeServices = async () => {
             try {
                 // Setup Android notification channels
                 await setupNotificationChannels();
@@ -43,12 +44,13 @@ const InitialLayout = () => {
                 await jobScheduler.start();
                 
                 console.log('✅ Notifications initialized');
+                console.log('✅ Transaction ingestion context ready');
             } catch (error) {
-                console.error('❌ Error initializing notifications:', error);
+                console.error('❌ Error initializing services:', error);
             }
         };
 
-        initializeNotifications();
+        initializeServices();
 
         // Cleanup on unmount
         return () => {
@@ -277,7 +279,9 @@ export default function RootLayout() {
                         <ThemeProvider>
                             <ToastProvider>
                                 <NotificationsProvider>
-                                    <InitialLayout />
+                                    <IngestionProvider>
+                                        <InitialLayout />
+                                    </IngestionProvider>
                                 </NotificationsProvider>
                             </ToastProvider>
                         </ThemeProvider>
