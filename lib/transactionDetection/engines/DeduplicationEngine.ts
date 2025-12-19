@@ -3,7 +3,7 @@
  * Detects and prevents duplicate transaction creation
  */
 
-import crypto from 'crypto';
+import CryptoJS from 'crypto-js';
 import {
     DeduplicationRule,
     DuplicateCheckResult,
@@ -44,7 +44,7 @@ export class DeduplicationEngine {
     };
 
     const hashInput = JSON.stringify(data);
-    return crypto.createHash('sha256').update(hashInput).digest('hex');
+    return CryptoJS.SHA256(hashInput).toString();
   }
 
   /**
@@ -59,7 +59,7 @@ export class DeduplicationEngine {
     };
 
     const hashInput = JSON.stringify(data);
-    return crypto.createHash('sha256').update(hashInput).digest('hex');
+    return CryptoJS.SHA256(hashInput).toString();
   }
 
   /**

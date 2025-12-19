@@ -177,8 +177,36 @@ export const downloadBackup = async (userId: string, backupName: string): Promis
       throw new Error(error.message);
     }
 
-    // Parse JSON
-    const text = await data.text();
+    // Handle different data types from Supabase
+    let text: string;
+    
+    if (!data) {
+      throw new Error('No data returned from backup file');
+    }
+
+    // Check if it's a Blob (React Native/Expo)
+    if (data instanceof Blob) {
+      text = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = () => {
+          reject(new Error('Failed to read backup file'));
+        };
+        reader.readAsText(data);
+      });
+    } else if (typeof data === 'string') {
+      // Already a string
+      text = data;
+    } else if (typeof (data as any).text === 'function') {
+      // Has text() method (standard Response)
+      text = await (data as any).text();
+    } else {
+      // Fallback: convert to string
+      text = JSON.stringify(data);
+    }
+
     const backup: BackupData = JSON.parse(text);
 
     // Validate backup structure
