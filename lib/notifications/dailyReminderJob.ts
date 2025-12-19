@@ -23,20 +23,24 @@ export class DailyReminderJob {
   /**
    * Schedule daily reminder for a user
    * @param userId - User ID
-   * @param time - Time in HH:MM format (default: 19:00)
+   * @param time - Time in HH:MM format or "HH:MM AM/PM" format
    */
   async scheduleDailyReminder(userId: string, time: string = '19:00'): Promise<void> {
     try {
-      console.log(`📝 [DailyReminder] Scheduling for user ${userId} at ${time}`);
+      // Normalize time to 24-hour format (HH:MM)
+      const normalizedTime = this.normalizeTimeFormat(time);
+      console.log(`📝 [DailyReminder] Scheduling for user ${userId} at ${normalizedTime}`);
 
-      // Get user preferences
-      const { data: prefs } = await supabase
+      // Get user preferences from notification_preferences table
+      const { data: prefs, error: prefsError } = await supabase
         .from('notification_preferences')
-        .select('*')
+        .select('daily_reminder_enabled, daily_reminder_time')
         .eq('user_id', userId)
         .single();
 
-      if (!prefs?.daily_reminder_enabled) {
+      if (prefsError || !prefs) {
+        console.warn(`⚠️ [DailyReminder] No preferences found for user ${userId}, using provided time`);
+      } else if (!prefs.daily_reminder_enabled) {
         console.log(`⏭️ [DailyReminder] Daily reminder disabled for user ${userId}`);
         return;
       }
@@ -105,10 +109,12 @@ export class DailyReminderJob {
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
       for (const pref of preferences) {
-        const preferredTime = pref.daily_reminder_time || '19:00';
+        const rawTime = pref.daily_reminder_time || '19:00';
+        const preferredTime = this.normalizeTimeFormat(rawTime);
 
         // Check if current time matches preferred time (within 5 minute window)
         if (this.isTimeWindow(currentTime, preferredTime, 5)) {
+          console.log(`⏰ [DailyReminder] Time match for user ${pref.user_id}: ${currentTime} ≈ ${preferredTime}`);
           await this.scheduleDailyReminder(pref.user_id, preferredTime);
         }
       }
@@ -155,6 +161,46 @@ export class DailyReminderJob {
 
     const diff = Math.abs(currentTotalMin - preferredTotalMin);
     return diff <= windowMinutes;
+  }
+
+  /**
+   * Normalize time format to 24-hour HH:MM format
+   * Supports both "HH:MM" and "HH:MM AM/PM" formats
+   */
+  private normalizeTimeFormat(time: string): string {
+    try {
+      const parts = time.trim().split(' ');
+      
+      if (parts.length === 2) {
+        // Format: "HH:MM AM/PM"
+        const [hourStr, minuteStr] = parts[0].split(':');
+        const period = parts[1].toUpperCase();
+        let hour = parseInt(hourStr);
+        const minute = parseInt(minuteStr);
+
+        // Convert to 24-hour format
+        if (period === 'PM' && hour !== 12) {
+          hour += 12;
+        } else if (period === 'AM' && hour === 12) {
+          hour = 0;
+        }
+
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      } else if (parts.length === 1 && parts[0].includes(':')) {
+        // Already in HH:MM format
+        const [hourStr, minuteStr] = parts[0].split(':');
+        const hour = parseInt(hourStr);
+        const minute = parseInt(minuteStr);
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      }
+
+      // Default fallback
+      console.warn(`Invalid time format: ${time}, defaulting to 19:00`);
+      return '19:00';
+    } catch (error) {
+      console.warn(`Error parsing time format: ${time}`, error);
+      return '19:00';
+    }
   }
 
   /**

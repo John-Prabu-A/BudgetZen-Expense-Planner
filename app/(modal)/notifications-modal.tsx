@@ -1,22 +1,49 @@
+import { ReminderTimePicker } from '@/components/ReminderTimePicker';
 import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NotificationsModal() {
   const router = useRouter();
-  const { remindDaily, setRemindDaily } = usePreferences();
+  const { 
+    remindDaily, 
+    setRemindDaily, 
+    reminderTime, 
+    setReminderTime,
+    budgetAlerts,
+    setBudgetAlerts,
+    lowBalanceAlerts,
+    setLowBalanceAlerts,
+    emailNotifications,
+    setEmailNotifications,
+    pushNotifications,
+    setPushNotifications,
+  } = usePreferences();
   const { isDark, colors } = useTheme();
+  const [showTimePickerModal, setShowTimePickerModal] = useState(false);
+
+  // Log and handle preference changes
+  useEffect(() => {
+    console.log('🔔 [NotificationsModal] Preferences updated:', {
+      remindDaily,
+      reminderTime,
+      budgetAlerts,
+      lowBalanceAlerts,
+      emailNotifications,
+      pushNotifications,
+    });
+  }, [remindDaily, reminderTime, budgetAlerts, lowBalanceAlerts, emailNotifications, pushNotifications]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
@@ -93,10 +120,10 @@ export default function NotificationsModal() {
               </View>
             </View>
             <Switch
-              value={true}
-              onValueChange={() => {}}
+              value={budgetAlerts}
+              onValueChange={setBudgetAlerts}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor={true ? colors.accent : colors.textSecondary}
+              thumbColor={budgetAlerts ? colors.accent : colors.textSecondary}
             />
           </View>
 
@@ -121,10 +148,10 @@ export default function NotificationsModal() {
               </View>
             </View>
             <Switch
-              value={true}
-              onValueChange={() => {}}
+              value={lowBalanceAlerts}
+              onValueChange={setLowBalanceAlerts}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor={true ? colors.accent : colors.textSecondary}
+              thumbColor={lowBalanceAlerts ? colors.accent : colors.textSecondary}
             />
           </View>
         </View>
@@ -136,6 +163,7 @@ export default function NotificationsModal() {
           </Text>
 
           <TouchableOpacity
+            onPress={() => setShowTimePickerModal(true)}
             style={[
               styles.timeButton,
               { borderColor: colors.border },
@@ -151,7 +179,7 @@ export default function NotificationsModal() {
                   Set Reminder Time
                 </Text>
                 <Text style={[styles.buttonDescription, { color: colors.textSecondary }]}>
-                  Currently set to 09:00 AM
+                  Currently set to {reminderTime}
                 </Text>
               </View>
             </View>
@@ -190,10 +218,10 @@ export default function NotificationsModal() {
               </View>
             </View>
             <Switch
-              value={true}
-              onValueChange={() => {}}
+              value={emailNotifications}
+              onValueChange={setEmailNotifications}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor={true ? colors.accent : colors.textSecondary}
+              thumbColor={emailNotifications ? colors.accent : colors.textSecondary}
             />
           </View>
 
@@ -218,10 +246,10 @@ export default function NotificationsModal() {
               </View>
             </View>
             <Switch
-              value={true}
-              onValueChange={() => {}}
+              value={pushNotifications}
+              onValueChange={setPushNotifications}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor={true ? colors.accent : colors.textSecondary}
+              thumbColor={pushNotifications ? colors.accent : colors.textSecondary}
             />
           </View>
         </View>
@@ -243,6 +271,18 @@ export default function NotificationsModal() {
           </Text>
         </View>
       </ScrollView>
+      
+      {/* Time Picker Modal */}
+      <ReminderTimePicker
+        visible={showTimePickerModal}
+        currentTime={reminderTime}
+        onTimeChange={(newTime) => {
+          console.log('[NotificationsModal] Reminder time changed to:', newTime);
+          setReminderTime(newTime);
+        }}
+        onClose={() => setShowTimePickerModal(false)}
+        title="Set Reminder Time"
+      />
       </View>
     </SafeAreaView>
   );

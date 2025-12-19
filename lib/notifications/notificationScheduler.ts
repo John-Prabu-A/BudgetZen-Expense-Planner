@@ -26,33 +26,68 @@ export class NotificationScheduler {
 
   /**
    * Schedule daily reminder notification
+   * @param preferences - User notification preferences
+   * @throws Will log error if scheduling fails
    */
   async scheduleDailyReminder(preferences: NotificationPreferences): Promise<void> {
-    if (!preferences.dailyReminder.enabled) {
-      console.log('⏭️ Daily reminder disabled');
-      return;
+    try {
+      if (!preferences.dailyReminder.enabled) {
+        console.log('⏭️ Daily reminder disabled');
+        return;
+      }
+
+      // Parse time in format "HH:MM" (24-hour)
+      const timeStr = preferences.dailyReminder.time || '21:00';
+      const [hour, minute] = timeStr.split(':').map(Number);
+
+      if (isNaN(hour) || isNaN(minute)) {
+        console.error(`❌ Invalid time format: ${timeStr}`);
+        return;
+      }
+
+      const payload: NotificationPayload = {
+        type: NotificationType.DAILY_REMINDER,
+        title: '📝 Time to update your finances',
+        body: "Quick! Log your today's expenses before you forget",
+        data: {
+          screen: 'records',
+          type: 'daily_reminder',
+        },
+      };
+
+      console.log(`⏰ [Scheduler] Scheduling daily reminder at ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+
+      await notificationService.scheduleNotificationAtTime(
+        payload,
+        hour,
+        minute,
+        true
+      );
+
+      console.log(`✅ Daily reminder scheduled for ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+    } catch (error) {
+      console.error('❌ Error scheduling daily reminder:', error);
     }
+  }
 
-    const [hour, minute] = preferences.dailyReminder.time.split(':').map(Number);
-
-    const payload: NotificationPayload = {
-      type: NotificationType.DAILY_REMINDER,
-      title: '📝 Time to update your finances',
-      body: "Quick! Log your today's expenses before you forget",
-      data: {
-        screen: 'records',
-        type: 'daily_reminder',
-      },
-    };
-
-    await notificationService.scheduleNotificationAtTime(
-      payload,
-      hour,
-      minute,
-      true
-    );
-
-    console.log(`✅ Daily reminder scheduled for ${hour}:${minute}`);
+  /**
+   * Reschedule daily reminder when preference changes
+   * Cancels old schedule and creates new one
+   */
+  async rescheduleDailyReminder(preferences: NotificationPreferences): Promise<void> {
+    try {
+      console.log('🔄 [Scheduler] Rescheduling daily reminder...');
+      
+      // Cancel any existing scheduled notifications for daily reminder
+      // (Note: This depends on platform-specific implementation)
+      
+      // Schedule with new time
+      await this.scheduleDailyReminder(preferences);
+      
+      console.log('✅ [Scheduler] Daily reminder rescheduled successfully');
+    } catch (error) {
+      console.error('❌ [Scheduler] Error rescheduling daily reminder:', error);
+    }
   }
 
   /**

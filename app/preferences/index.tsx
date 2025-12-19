@@ -1,3 +1,4 @@
+import { ReminderTimePicker } from '@/components/ReminderTimePicker';
 import { useAuth } from '@/context/Auth';
 import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
@@ -34,12 +35,15 @@ export default function PreferencesScreen() {
     hasSecurity,
     remindDaily,
     setRemindDaily,
+    reminderTime,
+    setReminderTime,
     sendCrashStats,
     setSendCrashStats,
     appVersion,
   } = usePreferences();
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [showTimePickerModal, setShowTimePickerModal] = useState(false);
 
   // Theme modal options
   const themeOptions = [
@@ -338,8 +342,51 @@ export default function PreferencesScreen() {
             description="Get reminded to log your expenses"
             value={remindDaily}
             onValueChange={setRemindDaily}
-            isLast
+            isLast={!remindDaily}
           />
+          
+          {/* Time Picker Row (shown only when reminders enabled) */}
+          {remindDaily && (
+            <TouchableOpacity
+              style={[
+                styles.preferenceRow,
+                {
+                  backgroundColor: colors.accent + '08',
+                  borderBottomColor: 'transparent',
+                  borderTopColor: colors.border,
+                  borderTopWidth: 1,
+                },
+              ]}
+              onPress={() => setShowTimePickerModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.prefLeft}>
+                <MaterialCommunityIcons
+                  name="clock-outline"
+                  size={24}
+                  color={colors.accent}
+                />
+                <View style={styles.prefLabel}>
+                  <Text style={[styles.prefTitle, { color: colors.text }]}>
+                    Set Reminder Time
+                  </Text>
+                  <Text
+                    style={[
+                      styles.prefValue,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {reminderTime}
+                  </Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={24}
+                color={colors.accent}
+              />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ABOUT SECTION */}
@@ -495,6 +542,18 @@ export default function PreferencesScreen() {
         selectedValue={decimalPlaces}
         onSelect={setDecimalPlaces}
         onClose={() => setActiveModal(null)}
+      />
+
+      {/* Time Picker Modal */}
+      <ReminderTimePicker
+        visible={showTimePickerModal}
+        currentTime={reminderTime}
+        onTimeChange={(newTime) => {
+          console.log('[PreferencesScreen] Reminder time changed to:', newTime);
+          setReminderTime(newTime);
+        }}
+        onClose={() => setShowTimePickerModal(false)}
+        title="Set Reminder Time"
       />
     </View>
   );

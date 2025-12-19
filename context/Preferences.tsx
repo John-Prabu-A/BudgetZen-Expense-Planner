@@ -42,6 +42,24 @@ interface PreferencesContextType {
   setRemindDaily: (remind: boolean) => Promise<void>;
   reminderTime: string;
   setReminderTime: (time: string) => Promise<void>;
+  budgetAlerts: boolean;
+  setBudgetAlerts: (enabled: boolean) => Promise<void>;
+  lowBalanceAlerts: boolean;
+  setLowBalanceAlerts: (enabled: boolean) => Promise<void>;
+  emailNotifications: boolean;
+  setEmailNotifications: (enabled: boolean) => Promise<void>;
+  pushNotifications: boolean;
+  setPushNotifications: (enabled: boolean) => Promise<void>;
+
+  // Data Management
+  autoSync: boolean;
+  setAutoSync: (enabled: boolean) => Promise<void>;
+  autoBackup: boolean;
+  setAutoBackup: (enabled: boolean) => Promise<void>;
+  dataRetentionDays: number;
+  setDataRetentionDays: (days: number) => Promise<void>;
+  exportFormat: 'csv' | 'json';
+  setExportFormat: (format: 'csv' | 'json') => Promise<void>;
 
   // About
   sendCrashStats: boolean;
@@ -69,6 +87,14 @@ const STORAGE_KEYS = {
   AUTH_METHOD: 'pref_auth_method',
   REMIND_DAILY: 'pref_remind_daily',
   REMINDER_TIME: 'pref_reminder_time',
+  BUDGET_ALERTS: 'pref_budget_alerts',
+  LOW_BALANCE_ALERTS: 'pref_low_balance_alerts',
+  EMAIL_NOTIFICATIONS: 'pref_email_notifications',
+  PUSH_NOTIFICATIONS: 'pref_push_notifications',
+  AUTO_SYNC: 'pref_auto_sync',
+  AUTO_BACKUP: 'pref_auto_backup',
+  DATA_RETENTION_DAYS: 'pref_data_retention_days',
+  EXPORT_FORMAT: 'pref_export_format',
   SEND_CRASH_STATS: 'pref_send_crash_stats',
 };
 
@@ -87,6 +113,14 @@ const DEFAULT_VALUES = {
   authMethod: 'none' as 'password' | 'passcode' | 'both' | 'none',
   remindDaily: true,
   reminderTime: '09:00 AM',
+  budgetAlerts: true,
+  lowBalanceAlerts: true,
+  emailNotifications: true,
+  pushNotifications: true,
+  autoSync: true,
+  autoBackup: true,
+  dataRetentionDays: 365,
+  exportFormat: 'csv' as 'csv' | 'json',
   sendCrashStats: true,
 };
 
@@ -105,6 +139,14 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const [authMethod, setAuthMethodState] = useState<'password' | 'passcode' | 'both' | 'none'>(DEFAULT_VALUES.authMethod);
   const [remindDaily, setRemindDailyState] = useState<boolean>(DEFAULT_VALUES.remindDaily);
   const [reminderTime, setReminderTimeState] = useState<string>(DEFAULT_VALUES.reminderTime);
+  const [budgetAlerts, setBudgetAlertsState] = useState<boolean>(DEFAULT_VALUES.budgetAlerts);
+  const [lowBalanceAlerts, setLowBalanceAlertsState] = useState<boolean>(DEFAULT_VALUES.lowBalanceAlerts);
+  const [emailNotifications, setEmailNotificationsState] = useState<boolean>(DEFAULT_VALUES.emailNotifications);
+  const [pushNotifications, setPushNotificationsState] = useState<boolean>(DEFAULT_VALUES.pushNotifications);
+  const [autoSync, setAutoSyncState] = useState<boolean>(DEFAULT_VALUES.autoSync);
+  const [autoBackup, setAutoBackupState] = useState<boolean>(DEFAULT_VALUES.autoBackup);
+  const [dataRetentionDays, setDataRetentionDaysState] = useState<number>(DEFAULT_VALUES.dataRetentionDays);
+  const [exportFormat, setExportFormatState] = useState<'csv' | 'json'>(DEFAULT_VALUES.exportFormat);
   const [sendCrashStats, setSendCrashStatsState] = useState<boolean>(DEFAULT_VALUES.sendCrashStats);
   const [loading, setLoading] = useState(true);
 
@@ -128,6 +170,14 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       const storedAuthMethod = (await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_METHOD)) as 'password' | 'passcode' | 'both' | 'none' | null;
       const storedRemindDaily = (await SecureStore.getItemAsync(STORAGE_KEYS.REMIND_DAILY)) !== 'false';
       const storedReminderTime = (await SecureStore.getItemAsync(STORAGE_KEYS.REMINDER_TIME)) || DEFAULT_VALUES.reminderTime;
+      const storedBudgetAlerts = (await SecureStore.getItemAsync(STORAGE_KEYS.BUDGET_ALERTS)) !== 'false';
+      const storedLowBalanceAlerts = (await SecureStore.getItemAsync(STORAGE_KEYS.LOW_BALANCE_ALERTS)) !== 'false';
+      const storedEmailNotifications = (await SecureStore.getItemAsync(STORAGE_KEYS.EMAIL_NOTIFICATIONS)) !== 'false';
+      const storedPushNotifications = (await SecureStore.getItemAsync(STORAGE_KEYS.PUSH_NOTIFICATIONS)) !== 'false';
+      const storedAutoSync = (await SecureStore.getItemAsync(STORAGE_KEYS.AUTO_SYNC)) !== 'false';
+      const storedAutoBackup = (await SecureStore.getItemAsync(STORAGE_KEYS.AUTO_BACKUP)) !== 'false';
+      const storedDataRetentionDays = parseInt((await SecureStore.getItemAsync(STORAGE_KEYS.DATA_RETENTION_DAYS)) || DEFAULT_VALUES.dataRetentionDays.toString());
+      const storedExportFormat = (await SecureStore.getItemAsync(STORAGE_KEYS.EXPORT_FORMAT)) as 'csv' | 'json' | null;
       const storedSendCrashStats = (await SecureStore.getItemAsync(STORAGE_KEYS.SEND_CRASH_STATS)) !== 'false';
 
       if (storedTheme) setThemeState(storedTheme);
@@ -144,6 +194,14 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       if (storedAuthMethod) setAuthMethodState(storedAuthMethod);
       setRemindDailyState(storedRemindDaily);
       setReminderTimeState(storedReminderTime);
+      setBudgetAlertsState(storedBudgetAlerts);
+      setLowBalanceAlertsState(storedLowBalanceAlerts);
+      setEmailNotificationsState(storedEmailNotifications);
+      setPushNotificationsState(storedPushNotifications);
+      setAutoSyncState(storedAutoSync);
+      setAutoBackupState(storedAutoBackup);
+      setDataRetentionDaysState(storedDataRetentionDays);
+      if (storedExportFormat) setExportFormatState(storedExportFormat);
       setSendCrashStatsState(storedSendCrashStats);
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -325,8 +383,37 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
 
   const setReminderTime = async (time: string) => {
     try {
-      setReminderTimeState(time);
-      await SecureStore.setItemAsync(STORAGE_KEYS.REMINDER_TIME, time);
+      // Validate time format
+      if (!time || typeof time !== 'string') {
+        console.error('Invalid time format:', time);
+        return;
+      }
+
+      // Parse time (format: "HH:MM AM/PM" or "HH:MM")
+      let normalizedTime = time;
+      
+      // If format is "HH:MM AM/PM", keep as is
+      // If format is "HH:MM" (24-hour), convert to 12-hour AM/PM format
+      if (time.includes(':') && !time.includes(' ')) {
+        const [hourStr, minuteStr] = time.split(':');
+        const hour = parseInt(hourStr);
+        const minute = minuteStr;
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        normalizedTime = `${hour12.toString().padStart(2, '0')}:${minute} ${period}`;
+      }
+
+      console.log('[Preferences] Setting reminder time:', normalizedTime);
+      
+      // Update local state
+      setReminderTimeState(normalizedTime);
+      
+      // Persist to SecureStore
+      await SecureStore.setItemAsync(STORAGE_KEYS.REMINDER_TIME, normalizedTime);
+      
+      // TODO: Sync with Supabase when user context is available
+      // This will be handled by the NotificationsContext/dailyReminderJob
+      console.log('[Preferences] Reminder time saved to SecureStore:', normalizedTime);
     } catch (error) {
       console.error('Error setting reminder time:', error);
     }
@@ -338,6 +425,86 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       await SecureStore.setItemAsync(STORAGE_KEYS.SEND_CRASH_STATS, send.toString());
     } catch (error) {
       console.error('Error setting send crash stats:', error);
+    }
+  };
+
+  const setBudgetAlerts = async (enabled: boolean) => {
+    try {
+      setBudgetAlertsState(enabled);
+      await SecureStore.setItemAsync(STORAGE_KEYS.BUDGET_ALERTS, enabled.toString());
+      console.log('[Preferences] Budget alerts set to:', enabled);
+    } catch (error) {
+      console.error('Error setting budget alerts:', error);
+    }
+  };
+
+  const setLowBalanceAlerts = async (enabled: boolean) => {
+    try {
+      setLowBalanceAlertsState(enabled);
+      await SecureStore.setItemAsync(STORAGE_KEYS.LOW_BALANCE_ALERTS, enabled.toString());
+      console.log('[Preferences] Low balance alerts set to:', enabled);
+    } catch (error) {
+      console.error('Error setting low balance alerts:', error);
+    }
+  };
+
+  const setEmailNotifications = async (enabled: boolean) => {
+    try {
+      setEmailNotificationsState(enabled);
+      await SecureStore.setItemAsync(STORAGE_KEYS.EMAIL_NOTIFICATIONS, enabled.toString());
+      console.log('[Preferences] Email notifications set to:', enabled);
+    } catch (error) {
+      console.error('Error setting email notifications:', error);
+    }
+  };
+
+  const setPushNotifications = async (enabled: boolean) => {
+    try {
+      setPushNotificationsState(enabled);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PUSH_NOTIFICATIONS, enabled.toString());
+      console.log('[Preferences] Push notifications set to:', enabled);
+    } catch (error) {
+      console.error('Error setting push notifications:', error);
+    }
+  };
+
+  const setAutoSync = async (enabled: boolean) => {
+    try {
+      setAutoSyncState(enabled);
+      await SecureStore.setItemAsync(STORAGE_KEYS.AUTO_SYNC, enabled.toString());
+      console.log('[Preferences] Auto sync set to:', enabled);
+    } catch (error) {
+      console.error('Error setting auto sync:', error);
+    }
+  };
+
+  const setAutoBackup = async (enabled: boolean) => {
+    try {
+      setAutoBackupState(enabled);
+      await SecureStore.setItemAsync(STORAGE_KEYS.AUTO_BACKUP, enabled.toString());
+      console.log('[Preferences] Auto backup set to:', enabled);
+    } catch (error) {
+      console.error('Error setting auto backup:', error);
+    }
+  };
+
+  const setDataRetentionDays = async (days: number) => {
+    try {
+      setDataRetentionDaysState(days);
+      await SecureStore.setItemAsync(STORAGE_KEYS.DATA_RETENTION_DAYS, days.toString());
+      console.log('[Preferences] Data retention days set to:', days);
+    } catch (error) {
+      console.error('Error setting data retention days:', error);
+    }
+  };
+
+  const setExportFormat = async (format: 'csv' | 'json') => {
+    try {
+      setExportFormatState(format);
+      await SecureStore.setItemAsync(STORAGE_KEYS.EXPORT_FORMAT, format);
+      console.log('[Preferences] Export format set to:', format);
+    } catch (error) {
+      console.error('Error setting export format:', error);
     }
   };
 
@@ -371,6 +538,22 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     setRemindDaily,
     reminderTime,
     setReminderTime,
+    budgetAlerts,
+    setBudgetAlerts,
+    lowBalanceAlerts,
+    setLowBalanceAlerts,
+    emailNotifications,
+    setEmailNotifications,
+    pushNotifications,
+    setPushNotifications,
+    autoSync,
+    setAutoSync,
+    autoBackup,
+    setAutoBackup,
+    dataRetentionDays,
+    setDataRetentionDays,
+    exportFormat,
+    setExportFormat,
     sendCrashStats,
     setSendCrashStats,
     appVersion: '1.0.0',
