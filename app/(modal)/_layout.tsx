@@ -26,6 +26,7 @@ export default function ModalLayout() {
             <Stack.Screen name="advanced-modal" options={{ headerShown: false }} />
             <Stack.Screen name="data-management-modal" options={{ headerShown: false }} />
             <Stack.Screen name="about-modal" options={{ headerShown: false }} />
+            <Stack.Screen name="legal-viewer-modal" options={{ headerShown: false }} />
             <Stack.Screen name="help-modal" options={{ headerShown: false }} />
             <Stack.Screen name="feedback-modal" options={{ headerShown: false }} />
         </Stack>

@@ -20,6 +20,25 @@ export default function AboutModal() {
     Linking.openURL(url).catch(() => {});
   };
 
+  /**
+   * Handle opening legal documents
+   * @param documentType - Type of legal document (privacyPolicy, termsOfService, licenses)
+   */
+  const handleOpenLegalDocument = (documentType: 'privacyPolicy' | 'termsOfService' | 'licenses') => {
+    try {
+      console.log(`[About] Opening legal document: ${documentType}`);
+      
+      // Navigate to legal viewer modal with document type as query param
+      // The modal will handle displaying the appropriate content
+      router.push({
+        pathname: '/(modal)/legal-viewer-modal',
+        params: { documentType },
+      });
+    } catch (error) {
+      console.error(`[About] Error opening legal document:`, error);
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -200,7 +219,9 @@ export default function AboutModal() {
             style={[
               styles.legalButton,
               { borderColor: colors.border },
-            ]}>
+            ]}
+            onPress={() => handleOpenLegalDocument('privacyPolicy')}
+            accessibilityLabel="View Privacy Policy">
             <Text style={[styles.legalText, { color: colors.text }]}>
               Privacy Policy
             </Text>
@@ -215,7 +236,9 @@ export default function AboutModal() {
             style={[
               styles.legalButton,
               { borderColor: colors.border },
-            ]}>
+            ]}
+            onPress={() => handleOpenLegalDocument('termsOfService')}
+            accessibilityLabel="View Terms of Service">
             <Text style={[styles.legalText, { color: colors.text }]}>
               Terms of Service
             </Text>
@@ -230,7 +253,9 @@ export default function AboutModal() {
             style={[
               styles.legalButton,
               { borderColor: colors.border },
-            ]}>
+            ]}
+            onPress={() => handleOpenLegalDocument('licenses')}
+            accessibilityLabel="View Open Source Licenses">
             <Text style={[styles.legalText, { color: colors.text }]}>
               Licenses
             </Text>
