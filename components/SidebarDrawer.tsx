@@ -4,17 +4,17 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    InteractionManager,
-    Modal,
-    PanResponder,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  Easing,
+  InteractionManager,
+  Modal,
+  PanResponder,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -41,7 +41,7 @@ const MENU_ITEMS: MenuItem[] = [
   { id: 'preferences', label: 'Preferences', icon: 'cog', route: 'preferences', section: 'settings' },
   { id: 'security', label: 'Security & Privacy', icon: 'lock-outline', route: '/(modal)/security-modal', section: 'settings' },
   { id: 'notifications', label: 'Notifications', icon: 'bell-outline', route: '/(modal)/notifications-modal', section: 'settings' },
-  { id: 'advanced', label: 'Advanced Settings', icon: 'tools', route: '/(modal)/advanced-modal', section: 'advanced' },
+  // { id: 'advanced', label: 'Advanced Settings', icon: 'tools', route: '/(modal)/advanced-modal', section: 'advanced' },
   { id: 'data-management', label: 'Data Management', icon: 'database-outline', route: '/(modal)/data-management-modal', section: 'advanced' },
   { id: 'about', label: 'About App', icon: 'information-outline', route: '/(modal)/about-modal', section: 'app' },
   { id: 'help', label: 'Help & Support', icon: 'help-circle-outline', route: '/(modal)/help-modal', section: 'app' },
