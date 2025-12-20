@@ -454,7 +454,7 @@ export default function RecordsScreen() {
         contentContainerStyle={styles.scrollContentInner}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header
         <View style={[styles.selectorHeader, styles.headerContainer, {justifyContent: 'space-between' },  { marginBottom: spacing.sm }]}>
           <View style={styles.selectorLabel}>
             <View style={[styles.iconBackdrop, { backgroundColor: colors.surfaceLight, borderColor: colors.borderLight }]}>
@@ -465,6 +465,13 @@ export default function RecordsScreen() {
               <Text style={[styles.selectorLabelText, { color: colors.textSecondary }]}>{getPeriodLabel(viewMode)}</Text>
             </View>
           </View>
+        </View> */}
+
+        {/* Stat Cards */}
+        <View style={{ flexDirection: 'row', gap: 5, marginVertical: spacing.lg }}>
+            <StatCard label="Total Income" amount={totals.income} color={colors.income} icon="arrow-up-circle" />
+            <StatCard label="Total Expense" amount={totals.expense} color={colors.expense} icon="arrow-down-circle" />
+            <StatCard label="Net Total" amount={totals.total} color={totals.total >= 0 ? colors.income : colors.expense} icon="currency-rupee" />
         </View>
 
         <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.borderLight, shadowColor: colors.accent }]}>
@@ -483,13 +490,6 @@ export default function RecordsScreen() {
             <Picker.Item label="📅 Calendar View" value="CALENDAR" color={colors.text} style={{ backgroundColor: colors.surface }} />
             <Picker.Item label="📊 Monthly Chart" value="CHART" color={colors.text} style={{ backgroundColor: colors.surface }} />
           </Picker>
-        </View>
-
-        {/* Stat Cards */}
-        <View style={{ flexDirection: 'row', gap: 5, marginVertical: spacing.lg }}>
-            <StatCard label="Total Income" amount={totals.income} color={colors.income} icon="arrow-up-circle" />
-            <StatCard label="Total Expense" amount={totals.expense} color={colors.expense} icon="arrow-down-circle" />
-            <StatCard label="Net Total" amount={totals.total} color={totals.total >= 0 ? colors.income : colors.expense} icon="currency-rupee" />
         </View>
 
         {/* View Content */}

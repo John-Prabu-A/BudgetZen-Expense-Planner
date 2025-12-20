@@ -176,7 +176,7 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
       marginBottom: 2,
       lineHeight: 15,
       letterSpacing: 0.1,
-      opacity: 0.4,
+      // opacity: 0.4,
     },
     amountContainer: {
       alignItems: 'center',
@@ -194,7 +194,7 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
       fontWeight: '700',
       lineHeight: 9,
       letterSpacing: 0.1,
-      opacity: 0.4,
+      // opacity: 0.4,
     },
     zeroDayIndicator: {
       width: 6,
@@ -333,7 +333,7 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
           style={[
             styles.dayCell,
             item && (item.income > 0 || item.expense > 0) && styles.dayCellActive,
-            isDimmed && { opacity: 0.5 },
+            isDimmed && { opacity: 1 },
           ]}
           onPress={() => item && onDayPress?.(item)}
           activeOpacity={0.7}
