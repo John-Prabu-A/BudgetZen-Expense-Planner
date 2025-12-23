@@ -1,5 +1,5 @@
 import { Session, User } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
+import SecureStorageManager from '../lib/storage/secureStorageManager';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
@@ -82,8 +82,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const checkPasswordStatus = async () => {
     try {
       // Check if either password hash or passcode hash exists
-      const passwordHash = await SecureStore.getItemAsync('pref_password_hash');
-      const passcodeHash = await SecureStore.getItemAsync('pref_passcode_hash');
+      const passwordHash = await SecureStorageManager.getItem('pref_password_hash');
+      const passcodeHash = await SecureStorageManager.getItem('pref_passcode_hash');
       
       console.log('[AUTH] Checking password status:', { 
         hasPasswordHash: !!passwordHash, 

@@ -1,5 +1,5 @@
-import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import SecureStorageManager from '../lib/storage/secureStorageManager';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type UIMode = 'compact' | 'standard' | 'spacious';
@@ -156,29 +156,29 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
 
   const loadPreferences = async () => {
     try {
-      const storedTheme = (await SecureStore.getItemAsync(STORAGE_KEYS.THEME)) as Theme;
-      const storedUIMode = (await SecureStore.getItemAsync(STORAGE_KEYS.UI_MODE)) as UIMode;
-      const storedCurrencySign = (await SecureStore.getItemAsync(STORAGE_KEYS.CURRENCY_SIGN)) as CurrencySign;
-      const storedCurrencyPosition = (await SecureStore.getItemAsync(STORAGE_KEYS.CURRENCY_POSITION)) as CurrencyPosition;
-      const storedDecimalPlaces = (await SecureStore.getItemAsync(STORAGE_KEYS.DECIMAL_PLACES)) as unknown as DecimalPlaces;
-      const storedHasSecurity = (await SecureStore.getItemAsync(STORAGE_KEYS.HAS_SECURITY)) === 'true';
-      const storedPasscodeEnabled = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_ENABLED)) === 'true';
-      const storedPasscodeHash = await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_HASH);
-      const storedPasscodeLength = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSCODE_LENGTH)) as '4' | '6' | null;
-      const storedPasswordEnabled = (await SecureStore.getItemAsync(STORAGE_KEYS.PASSWORD_ENABLED)) === 'true';
-      const storedPasswordHash = await SecureStore.getItemAsync(STORAGE_KEYS.PASSWORD_HASH);
-      const storedAuthMethod = (await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_METHOD)) as 'password' | 'passcode' | 'both' | 'none' | null;
-      const storedRemindDaily = (await SecureStore.getItemAsync(STORAGE_KEYS.REMIND_DAILY)) !== 'false';
-      const storedReminderTime = (await SecureStore.getItemAsync(STORAGE_KEYS.REMINDER_TIME)) || DEFAULT_VALUES.reminderTime;
-      const storedBudgetAlerts = (await SecureStore.getItemAsync(STORAGE_KEYS.BUDGET_ALERTS)) !== 'false';
-      const storedLowBalanceAlerts = (await SecureStore.getItemAsync(STORAGE_KEYS.LOW_BALANCE_ALERTS)) !== 'false';
-      const storedEmailNotifications = (await SecureStore.getItemAsync(STORAGE_KEYS.EMAIL_NOTIFICATIONS)) !== 'false';
-      const storedPushNotifications = (await SecureStore.getItemAsync(STORAGE_KEYS.PUSH_NOTIFICATIONS)) !== 'false';
-      const storedAutoSync = (await SecureStore.getItemAsync(STORAGE_KEYS.AUTO_SYNC)) !== 'false';
-      const storedAutoBackup = (await SecureStore.getItemAsync(STORAGE_KEYS.AUTO_BACKUP)) !== 'false';
-      const storedDataRetentionDays = parseInt((await SecureStore.getItemAsync(STORAGE_KEYS.DATA_RETENTION_DAYS)) || DEFAULT_VALUES.dataRetentionDays.toString());
-      const storedExportFormat = (await SecureStore.getItemAsync(STORAGE_KEYS.EXPORT_FORMAT)) as 'csv' | 'json' | null;
-      const storedSendCrashStats = (await SecureStore.getItemAsync(STORAGE_KEYS.SEND_CRASH_STATS)) !== 'false';
+      const storedTheme = (await SecureStorageManager.getItem(STORAGE_KEYS.THEME)) as Theme;
+      const storedUIMode = (await SecureStorageManager.getItem(STORAGE_KEYS.UI_MODE)) as UIMode;
+      const storedCurrencySign = (await SecureStorageManager.getItem(STORAGE_KEYS.CURRENCY_SIGN)) as CurrencySign;
+      const storedCurrencyPosition = (await SecureStorageManager.getItem(STORAGE_KEYS.CURRENCY_POSITION)) as CurrencyPosition;
+      const storedDecimalPlaces = (await SecureStorageManager.getItem(STORAGE_KEYS.DECIMAL_PLACES)) as unknown as DecimalPlaces;
+      const storedHasSecurity = (await SecureStorageManager.getItem(STORAGE_KEYS.HAS_SECURITY)) === 'true';
+      const storedPasscodeEnabled = (await SecureStorageManager.getItem(STORAGE_KEYS.PASSCODE_ENABLED)) === 'true';
+      const storedPasscodeHash = await SecureStorageManager.getItem(STORAGE_KEYS.PASSCODE_HASH);
+      const storedPasscodeLength = (await SecureStorageManager.getItem(STORAGE_KEYS.PASSCODE_LENGTH)) as '4' | '6' | null;
+      const storedPasswordEnabled = (await SecureStorageManager.getItem(STORAGE_KEYS.PASSWORD_ENABLED)) === 'true';
+      const storedPasswordHash = await SecureStorageManager.getItem(STORAGE_KEYS.PASSWORD_HASH);
+      const storedAuthMethod = (await SecureStorageManager.getItem(STORAGE_KEYS.AUTH_METHOD)) as 'password' | 'passcode' | 'both' | 'none' | null;
+      const storedRemindDaily = (await SecureStorageManager.getItem(STORAGE_KEYS.REMIND_DAILY)) !== 'false';
+      const storedReminderTime = (await SecureStorageManager.getItem(STORAGE_KEYS.REMINDER_TIME)) || DEFAULT_VALUES.reminderTime;
+      const storedBudgetAlerts = (await SecureStorageManager.getItem(STORAGE_KEYS.BUDGET_ALERTS)) !== 'false';
+      const storedLowBalanceAlerts = (await SecureStorageManager.getItem(STORAGE_KEYS.LOW_BALANCE_ALERTS)) !== 'false';
+      const storedEmailNotifications = (await SecureStorageManager.getItem(STORAGE_KEYS.EMAIL_NOTIFICATIONS)) !== 'false';
+      const storedPushNotifications = (await SecureStorageManager.getItem(STORAGE_KEYS.PUSH_NOTIFICATIONS)) !== 'false';
+      const storedAutoSync = (await SecureStorageManager.getItem(STORAGE_KEYS.AUTO_SYNC)) !== 'false';
+      const storedAutoBackup = (await SecureStorageManager.getItem(STORAGE_KEYS.AUTO_BACKUP)) !== 'false';
+      const storedDataRetentionDays = parseInt((await SecureStorageManager.getItem(STORAGE_KEYS.DATA_RETENTION_DAYS)) || DEFAULT_VALUES.dataRetentionDays.toString());
+      const storedExportFormat = (await SecureStorageManager.getItem(STORAGE_KEYS.EXPORT_FORMAT)) as 'csv' | 'json' | null;
+      const storedSendCrashStats = (await SecureStorageManager.getItem(STORAGE_KEYS.SEND_CRASH_STATS)) !== 'false';
 
       if (storedTheme) setThemeState(storedTheme);
       if (storedUIMode) setUIModeState(storedUIMode);
@@ -213,7 +213,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setTheme = async (newTheme: Theme) => {
     try {
       setThemeState(newTheme);
-      await SecureStore.setItemAsync(STORAGE_KEYS.THEME, newTheme);
+      await SecureStorageManager.setItem(STORAGE_KEYS.THEME, newTheme);
     } catch (error) {
       console.error('Error setting theme:', error);
     }
@@ -222,7 +222,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setUIMode = async (newMode: UIMode) => {
     try {
       setUIModeState(newMode);
-      await SecureStore.setItemAsync(STORAGE_KEYS.UI_MODE, newMode);
+      await SecureStorageManager.setItem(STORAGE_KEYS.UI_MODE, newMode);
     } catch (error) {
       console.error('Error setting UI mode:', error);
     }
@@ -231,7 +231,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setCurrencySign = async (newSign: CurrencySign) => {
     try {
       setCurrencySignState(newSign);
-      await SecureStore.setItemAsync(STORAGE_KEYS.CURRENCY_SIGN, newSign);
+      await SecureStorageManager.setItem(STORAGE_KEYS.CURRENCY_SIGN, newSign);
     } catch (error) {
       console.error('Error setting currency sign:', error);
     }
@@ -240,7 +240,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setCurrencyPosition = async (newPosition: CurrencyPosition) => {
     try {
       setCurrencyPositionState(newPosition);
-      await SecureStore.setItemAsync(STORAGE_KEYS.CURRENCY_POSITION, newPosition);
+      await SecureStorageManager.setItem(STORAGE_KEYS.CURRENCY_POSITION, newPosition);
     } catch (error) {
       console.error('Error setting currency position:', error);
     }
@@ -249,7 +249,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setDecimalPlaces = async (newPlaces: DecimalPlaces) => {
     try {
       setDecimalPlacesState(newPlaces);
-      await SecureStore.setItemAsync(STORAGE_KEYS.DECIMAL_PLACES, newPlaces.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.DECIMAL_PLACES, newPlaces.toString());
     } catch (error) {
       console.error('Error setting decimal places:', error);
     }
@@ -258,7 +258,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setPasscodeEnabled = async (enabled: boolean) => {
     try {
       setPasscodeEnabledState(enabled);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_ENABLED, enabled.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSCODE_ENABLED, enabled.toString());
     } catch (error) {
       console.error('Error setting passcode enabled:', error);
     }
@@ -267,7 +267,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setPasswordEnabled = async (enabled: boolean) => {
     try {
       setPasswordEnabledState(enabled);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, enabled.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSWORD_ENABLED, enabled.toString());
     } catch (error) {
       console.error('Error setting password enabled:', error);
     }
@@ -278,9 +278,9 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       setPasswordHashState(hash);
       setPasswordEnabledState(true);
       setHasSecurityState(true);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_HASH, hash);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, 'true');
-      await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, 'true');
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSWORD_HASH, hash);
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSWORD_ENABLED, 'true');
+      await SecureStorageManager.setItem(STORAGE_KEYS.HAS_SECURITY, 'true');
     } catch (error) {
       console.error('Error setting password hash:', error);
     }
@@ -289,14 +289,14 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const clearPasswordHash = async () => {
     try {
       setPasswordHashState(null);
-      await SecureStore.deleteItemAsync(STORAGE_KEYS.PASSWORD_HASH);
+      await SecureStorageManager.deleteItem(STORAGE_KEYS.PASSWORD_HASH);
       setPasswordEnabledState(false);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, 'false');
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSWORD_ENABLED, 'false');
       
       // Update hasSecurity: false only if passcode is also disabled
       if (!passcodeEnabled) {
         setHasSecurityState(false);
-        await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, 'false');
+        await SecureStorageManager.setItem(STORAGE_KEYS.HAS_SECURITY, 'false');
       }
     } catch (error) {
       console.error('Error clearing password hash:', error);
@@ -308,9 +308,9 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       setPasscodeHashState(hash);
       setPasscodeEnabledState(true);
       setHasSecurityState(true);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_HASH, hash);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_ENABLED, 'true');
-      await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, 'true');
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSCODE_HASH, hash);
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSCODE_ENABLED, 'true');
+      await SecureStorageManager.setItem(STORAGE_KEYS.HAS_SECURITY, 'true');
     } catch (error) {
       console.error('Error setting passcode hash:', error);
     }
@@ -319,14 +319,14 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const clearPasscodeHash = async () => {
     try {
       setPasscodeHashState(null);
-      await SecureStore.deleteItemAsync(STORAGE_KEYS.PASSCODE_HASH);
+      await SecureStorageManager.deleteItem(STORAGE_KEYS.PASSCODE_HASH);
       setPasscodeEnabledState(false);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_ENABLED, 'false');
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSCODE_ENABLED, 'false');
       
       // Update hasSecurity: false only if password is also disabled
       if (!passwordEnabled) {
         setHasSecurityState(false);
-        await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, 'false');
+        await SecureStorageManager.setItem(STORAGE_KEYS.HAS_SECURITY, 'false');
       }
     } catch (error) {
       console.error('Error clearing passcode hash:', error);
@@ -336,7 +336,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setPasscodeLength = async (length: 4 | 6) => {
     try {
       setPasscodeLengthState(length);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_LENGTH, length.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.PASSCODE_LENGTH, length.toString());
     } catch (error) {
       console.error('Error setting passcode length:', error);
     }
@@ -345,7 +345,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setAuthMethod = async (method: 'password' | 'passcode' | 'both' | 'none') => {
     try {
       setAuthMethodState(method);
-      await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_METHOD, method);
+      await SecureStorageManager.setItem(STORAGE_KEYS.AUTH_METHOD, method);
 
       // Sync passcodeEnabled and passwordEnabled based on authMethod
       const isPasscodeActive = method === 'passcode' || method === 'both';
@@ -353,19 +353,19 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
 
       if (isPasscodeActive !== passcodeEnabled) {
         setPasscodeEnabledState(isPasscodeActive);
-        await SecureStore.setItemAsync(STORAGE_KEYS.PASSCODE_ENABLED, isPasscodeActive.toString());
+        await SecureStorageManager.setItem(STORAGE_KEYS.PASSCODE_ENABLED, isPasscodeActive.toString());
       }
 
       if (isPasswordActive !== passwordEnabled) {
         setPasswordEnabledState(isPasswordActive);
-        await SecureStore.setItemAsync(STORAGE_KEYS.PASSWORD_ENABLED, isPasswordActive.toString());
+        await SecureStorageManager.setItem(STORAGE_KEYS.PASSWORD_ENABLED, isPasswordActive.toString());
       }
 
       // Sync hasSecurity: true if any method is active, false if none
       const shouldHaveSecurity = method !== 'none';
       if (shouldHaveSecurity !== hasSecurity) {
         setHasSecurityState(shouldHaveSecurity);
-        await SecureStore.setItemAsync(STORAGE_KEYS.HAS_SECURITY, shouldHaveSecurity.toString());
+        await SecureStorageManager.setItem(STORAGE_KEYS.HAS_SECURITY, shouldHaveSecurity.toString());
       }
     } catch (error) {
       console.error('Error setting auth method:', error);
@@ -375,7 +375,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setRemindDaily = async (remind: boolean) => {
     try {
       setRemindDailyState(remind);
-      await SecureStore.setItemAsync(STORAGE_KEYS.REMIND_DAILY, remind.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.REMIND_DAILY, remind.toString());
     } catch (error) {
       console.error('Error setting remind daily:', error);
     }
@@ -409,7 +409,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       setReminderTimeState(normalizedTime);
       
       // Persist to SecureStore
-      await SecureStore.setItemAsync(STORAGE_KEYS.REMINDER_TIME, normalizedTime);
+      await SecureStorageManager.setItem(STORAGE_KEYS.REMINDER_TIME, normalizedTime);
       
       // TODO: Sync with Supabase when user context is available
       // This will be handled by the NotificationsContext/dailyReminderJob
@@ -422,7 +422,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setSendCrashStats = async (send: boolean) => {
     try {
       setSendCrashStatsState(send);
-      await SecureStore.setItemAsync(STORAGE_KEYS.SEND_CRASH_STATS, send.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.SEND_CRASH_STATS, send.toString());
     } catch (error) {
       console.error('Error setting send crash stats:', error);
     }
@@ -431,7 +431,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setBudgetAlerts = async (enabled: boolean) => {
     try {
       setBudgetAlertsState(enabled);
-      await SecureStore.setItemAsync(STORAGE_KEYS.BUDGET_ALERTS, enabled.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.BUDGET_ALERTS, enabled.toString());
       console.log('[Preferences] Budget alerts set to:', enabled);
     } catch (error) {
       console.error('Error setting budget alerts:', error);
@@ -441,7 +441,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setLowBalanceAlerts = async (enabled: boolean) => {
     try {
       setLowBalanceAlertsState(enabled);
-      await SecureStore.setItemAsync(STORAGE_KEYS.LOW_BALANCE_ALERTS, enabled.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.LOW_BALANCE_ALERTS, enabled.toString());
       console.log('[Preferences] Low balance alerts set to:', enabled);
     } catch (error) {
       console.error('Error setting low balance alerts:', error);
@@ -451,7 +451,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setEmailNotifications = async (enabled: boolean) => {
     try {
       setEmailNotificationsState(enabled);
-      await SecureStore.setItemAsync(STORAGE_KEYS.EMAIL_NOTIFICATIONS, enabled.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.EMAIL_NOTIFICATIONS, enabled.toString());
       console.log('[Preferences] Email notifications set to:', enabled);
     } catch (error) {
       console.error('Error setting email notifications:', error);
@@ -461,7 +461,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setPushNotifications = async (enabled: boolean) => {
     try {
       setPushNotificationsState(enabled);
-      await SecureStore.setItemAsync(STORAGE_KEYS.PUSH_NOTIFICATIONS, enabled.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.PUSH_NOTIFICATIONS, enabled.toString());
       console.log('[Preferences] Push notifications set to:', enabled);
     } catch (error) {
       console.error('Error setting push notifications:', error);
@@ -471,7 +471,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setAutoSync = async (enabled: boolean) => {
     try {
       setAutoSyncState(enabled);
-      await SecureStore.setItemAsync(STORAGE_KEYS.AUTO_SYNC, enabled.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.AUTO_SYNC, enabled.toString());
       console.log('[Preferences] Auto sync set to:', enabled);
     } catch (error) {
       console.error('Error setting auto sync:', error);
@@ -481,7 +481,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setAutoBackup = async (enabled: boolean) => {
     try {
       setAutoBackupState(enabled);
-      await SecureStore.setItemAsync(STORAGE_KEYS.AUTO_BACKUP, enabled.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.AUTO_BACKUP, enabled.toString());
       console.log('[Preferences] Auto backup set to:', enabled);
     } catch (error) {
       console.error('Error setting auto backup:', error);
@@ -491,7 +491,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setDataRetentionDays = async (days: number) => {
     try {
       setDataRetentionDaysState(days);
-      await SecureStore.setItemAsync(STORAGE_KEYS.DATA_RETENTION_DAYS, days.toString());
+      await SecureStorageManager.setItem(STORAGE_KEYS.DATA_RETENTION_DAYS, days.toString());
       console.log('[Preferences] Data retention days set to:', days);
     } catch (error) {
       console.error('Error setting data retention days:', error);
@@ -501,7 +501,7 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
   const setExportFormat = async (format: 'csv' | 'json') => {
     try {
       setExportFormatState(format);
-      await SecureStore.setItemAsync(STORAGE_KEYS.EXPORT_FORMAT, format);
+      await SecureStorageManager.setItem(STORAGE_KEYS.EXPORT_FORMAT, format);
       console.log('[Preferences] Export format set to:', format);
     } catch (error) {
       console.error('Error setting export format:', error);

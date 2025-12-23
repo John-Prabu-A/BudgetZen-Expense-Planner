@@ -12,9 +12,12 @@ import { ThemeProvider, useTheme } from '../context/Theme';
 import { ToastProvider } from '../context/Toast';
 import { IngestionProvider } from '../context/TransactionIngestion';
 import { setupDeepLinking } from '../lib/deepLinking';
-import { jobScheduler } from '../lib/notifications/jobScheduler';
+import { JobScheduler } from '../lib/notifications/jobScheduler';
 import { setupNotificationCategories } from '../lib/notifications/notificationCategories';
 import { setupNotificationChannels } from '../lib/notifications/notificationChannels';
+import { notificationQueueManager } from '../lib/notifications/notificationQueue';
+import { NotificationService } from '../lib/notifications/NotificationService';
+import { supabase } from '../lib/supabase';
 
 const InitialLayout = () => {
     const { session, loading: authLoading, isPasswordLocked, unlockPassword } = useAuth();
@@ -41,7 +44,8 @@ const InitialLayout = () => {
                 setupDeepLinking();
                 
                 // Start job scheduler for daily/weekly batch notifications
-                await jobScheduler.start();
+                const scheduler = JobScheduler.getInstance();
+                await scheduler.start();
                 
                 console.log('✅ Notifications initialized');
                 console.log('✅ Transaction ingestion context ready');
@@ -54,7 +58,8 @@ const InitialLayout = () => {
 
         // Cleanup on unmount
         return () => {
-            jobScheduler.stop().catch(error => {
+            const scheduler = JobScheduler.getInstance();
+            scheduler.stop().catch((error: any) => {
                 console.warn('Error stopping scheduler:', error);
             });
         };
@@ -96,13 +101,91 @@ const InitialLayout = () => {
                     console.warn('[NOTIF] Loading notification preferences failed', prefsErr);
                 }
 
+                // 🔄 PHASE 3.2: Process queue periodically (every 5 minutes)
+                if (mounted) {
+                    const queueProcessingInterval = setInterval(() => {
+                        notificationQueueManager.sendPending(session.user.id)
+                            .then((result) => {
+                                if (result.sent > 0 || result.failed > 0) {
+                                    console.log(`[NOTIF] Queue processed: ${result.sent} sent, ${result.failed} failed`);
+                                }
+                            })
+                            .catch((err) => {
+                                console.warn('[NOTIF] Error processing queue:', err);
+                            });
+                    }, 5 * 60 * 1000); // Every 5 minutes
+
+                    // Also process on app startup
+                    notificationQueueManager.sendPending(session.user.id)
+                        .catch((err) => {
+                            console.warn('[NOTIF] Error processing queue on startup:', err);
+                        });
+
+                    // Cleanup interval
+                    return () => clearInterval(queueProcessingInterval);
+                }
+
             } catch (err) {
                 console.error('[NOTIF] Error initializing notifications for user:', err);
             }
         })();
 
-        return () => { mounted = false; };
-    }, [session?.user?.id, registerPushToken, syncTokenWithBackend, loadNotificationPreferences]);
+        return () => {
+            mounted = false;
+        };
+    }, [
+        session,
+        registerPushToken,
+        syncTokenWithBackend,
+        loadNotificationPreferences,
+    ]);
+
+    // 🔄 PHASE 3.3: Subscribe to real-time queue updates
+    useEffect(() => {
+        let mounted = true;
+        if (!session?.user?.id) return;
+
+        const userId = session.user.id;
+        const notificationService = NotificationService.getInstance();
+
+        // Subscribe to real-time queue updates using Realtime
+        const channel = supabase
+            .channel(`notification_queue:user_id=eq.${userId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notification_queue',
+                    filter: `user_id=eq.${userId}`,
+                },
+                (payload: any) => {
+                    if (!mounted) return;
+
+                    const notification = payload.new as any;
+                    
+                    if (notification.status === 'pending' || notification.status === 'sent') {
+                        console.log(`[NOTIF] 🔔 New notification from queue: ${notification.title}`);
+
+                        // Show local notification immediately if app is in foreground
+                        notificationService.sendNotification({
+                            type: notification.notification_type,
+                            title: notification.title,
+                            body: notification.body,
+                            data: notification.data || {},
+                        }).catch((err: any) => {
+                            console.warn('[NOTIF] Error showing notification:', err);
+                        });
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            mounted = false;
+            supabase.removeChannel(channel);
+        };
+    }, [session?.user?.id]);
 
     // Main navigation logic
     useEffect(() => {

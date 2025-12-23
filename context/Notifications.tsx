@@ -5,6 +5,7 @@
 
 import React, { createContext, useCallback, useContext, useState } from 'react';
 import { notificationPreferencesManager } from '../lib/notifications/notificationPreferences';
+import { notificationQueueManager } from '../lib/notifications/notificationQueue';
 import { pushTokenManager } from '../lib/notifications/pushTokens';
 import { NotificationPreferences } from '../lib/notifications/types';
 
@@ -24,6 +25,18 @@ interface NotificationsContextType {
   syncTokenWithBackend: (userId: string) => Promise<boolean>;
   isNotificationAllowed: () => boolean;
   clearError: () => void;
+  
+  // Queue management
+  queueNotification: (
+    userId: string,
+    type: string,
+    title: string,
+    body: string,
+    data?: Record<string, any>,
+    idempotencyKey?: string
+  ) => Promise<boolean>;
+  getQueueStats: (userId: string) => Promise<any>;
+  sendPendingNotifications: (userId: string) => Promise<boolean>;
 }
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
@@ -216,6 +229,75 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     setError(null);
   }, []);
 
+  /**
+   * Queue a notification
+   */
+  const queueNotification = useCallback(
+    async (
+      userId: string,
+      type: string,
+      title: string,
+      body: string,
+      data?: Record<string, any>,
+      idempotencyKey?: string
+    ) => {
+      setError(null);
+      try {
+        const result = await notificationQueueManager.queueNotification(
+          userId,
+          type,
+          title,
+          body,
+          data,
+          undefined,
+          idempotencyKey
+        );
+        if (!result.success) {
+          setError(result.message);
+        }
+        return result.success;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Error queuing notification';
+        setError(errorMessage);
+        console.error('❌ Error queuing notification:', err);
+        return false;
+      }
+    },
+    []
+  );
+
+  /**
+   * Get queue statistics
+   */
+  const getQueueStats = useCallback(async (userId: string) => {
+    try {
+      return await notificationQueueManager.getStats(userId);
+    } catch (err) {
+      console.error('❌ Error getting queue stats:', err);
+      return null;
+    }
+  }, []);
+
+  /**
+   * Send pending notifications
+   */
+  const sendPendingNotifications = useCallback(async (userId: string) => {
+    setError(null);
+    try {
+      const result = await notificationQueueManager.sendPending(userId);
+      const totalSent = result.sent + result.failed > 0;
+      if (result.failed > 0) {
+        setError(`Failed to send ${result.failed} notifications`);
+      }
+      return totalSent;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error sending pending notifications';
+      setError(errorMessage);
+      console.error('❌ Error sending pending notifications:', err);
+      return false;
+    }
+  }, []);
+
   const value: NotificationsContextType = {
     preferences,
     isLoading,
@@ -229,6 +311,9 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     syncTokenWithBackend,
     isNotificationAllowed,
     clearError,
+    queueNotification,
+    getQueueStats,
+    sendPendingNotifications,
   };
 
   return (

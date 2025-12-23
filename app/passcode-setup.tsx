@@ -1,8 +1,8 @@
 import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
+import SecureStorageManager from '@/lib/storage/secureStorageManager';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -45,7 +45,7 @@ export default function PasscodeSetupScreen() {
       setLoading(true);
       // Hash the passcode (simple implementation - in production use a proper hashing library)
       const hashedPasscode = btoa(passcode); // Base64 encoding for demo
-      await SecureStore.setItemAsync(PASSCODE_KEY, hashedPasscode);
+      await SecureStorageManager.setItem(PASSCODE_KEY, hashedPasscode);
       await setPasscodeEnabled(true);
 
       Alert.alert('Success', 'Passcode has been set successfully!', [
@@ -65,7 +65,7 @@ export default function PasscodeSetupScreen() {
   const handleVerifyAndRemove = async () => {
     try {
       setLoading(true);
-      const storedPasscode = await SecureStore.getItemAsync(PASSCODE_KEY);
+      const storedPasscode = await SecureStorageManager.getItem(PASSCODE_KEY);
       const hashedInput = btoa(verifyPasscode);
 
       if (storedPasscode === hashedInput) {
@@ -76,7 +76,7 @@ export default function PasscodeSetupScreen() {
             text: 'Disable',
             onPress: async () => {
               try {
-                await SecureStore.deleteItemAsync(PASSCODE_KEY);
+                await SecureStorageManager.deleteItem(PASSCODE_KEY);
                 await setPasscodeEnabled(false);
                 Alert.alert('Success', 'Passcode protection has been disabled', [
                   {
@@ -106,7 +106,7 @@ export default function PasscodeSetupScreen() {
   const handleChangePasscode = async () => {
     try {
       setLoading(true);
-      const storedPasscode = await SecureStore.getItemAsync(PASSCODE_KEY);
+      const storedPasscode = await SecureStorageManager.getItem(PASSCODE_KEY);
       const hashedInput = btoa(verifyPasscode);
 
       if (storedPasscode === hashedInput) {
