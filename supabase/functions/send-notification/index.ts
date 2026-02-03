@@ -33,6 +33,7 @@ interface SendNotificationRequest {
   data?: Record<string, any>;
   notification_type?: string;
   queue_id?: string;
+  delay_seconds?: number;
 }
 
 interface ExpoTicketResponse {
@@ -123,6 +124,7 @@ Deno.serve(async (req) => {
       data,
       notification_type = "general",
       queue_id,
+      delay_seconds = 0,
     } = requestData;
 
     // Validate input
@@ -142,15 +144,62 @@ Deno.serve(async (req) => {
       `📤 Sending notification to user ${user_id}: ${notification_type}`
     );
 
-    // Get valid push tokens for user
+    if (delay_seconds && delay_seconds > 0) {
+      const delayMs = Math.min(Math.floor(delay_seconds * 1000), 120000);
+      console.log(`⏳ Delaying send by ${delayMs}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+
+    // Get valid push tokens for user (new table)
     const { data: tokens, error: tokenError } = await supabase
-      .from("push_tokens")
-      .select("id, token, platform")
+      .from("notification_tokens")
+      .select("id, expo_push_token, os_type")
       .eq("user_id", user_id)
       .eq("is_valid", true);
 
-    if (tokenError || !tokens || tokens.length === 0) {
+    // Fallback to legacy table if none found
+    let normalizedTokens: Array<{ id: string; token: string; platform: string; source: "notification_tokens" | "push_tokens" }> = [];
+    if (!tokenError && tokens && tokens.length > 0) {
+      normalizedTokens = tokens.map((t: any) => ({
+        id: t.id,
+        token: t.expo_push_token,
+        platform: t.os_type,
+        source: "notification_tokens",
+      }));
+    } else {
+      const { data: legacyTokens, error: legacyError } = await supabase
+        .from("push_tokens")
+        .select("id, token, platform")
+        .eq("user_id", user_id)
+        .eq("is_valid", true);
+
+      if (legacyError) {
+        console.warn(`⚠️ No valid push tokens found for user ${user_id}`);
+      } else if (legacyTokens && legacyTokens.length > 0) {
+        normalizedTokens = legacyTokens.map((t: any) => ({
+          id: t.id,
+          token: t.token,
+          platform: t.platform,
+          source: "push_tokens",
+        }));
+      }
+    }
+
+    if (normalizedTokens.length === 0) {
       console.warn(`⚠️ No valid push tokens found for user ${user_id}`);
+
+      // Debug counts to help diagnose env/table mismatch
+      const { count: notifCount } = await supabase
+        .from("notification_tokens")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user_id)
+        .eq("is_valid", true);
+
+      const { count: legacyCount } = await supabase
+        .from("push_tokens")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user_id)
+        .eq("is_valid", true);
       
       // Update queue status
       if (queue_id) {
@@ -167,6 +216,11 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: false,
           message: "No valid push tokens found",
+          debug: {
+            notification_tokens: notifCount || 0,
+            push_tokens: legacyCount || 0,
+            supabase_url: Deno.env.get("SUPABASE_URL") || "unknown",
+          },
         }),
         {
           status: 404,
@@ -180,7 +234,7 @@ Deno.serve(async (req) => {
     let failureCount = 0;
     const expoNotificationIds: string[] = [];
 
-    for (const tokenRecord of tokens) {
+    for (const tokenRecord of normalizedTokens) {
       const expoResult = await sendViaExpo(
         tokenRecord.token,
         title,
@@ -220,7 +274,7 @@ Deno.serve(async (req) => {
         ) {
           // Mark token as invalid
           await supabase
-            .from("push_tokens")
+            .from(tokenRecord.source)
             .update({
               is_valid: false,
               invalid_reason: "Device unregistered",

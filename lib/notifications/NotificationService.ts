@@ -149,6 +149,58 @@ export class NotificationService {
   }
 
   /**
+   * Schedule notification after a time delay (in seconds)
+   */
+  async scheduleNotificationInSeconds(
+    payload: NotificationPayload,
+    seconds: number
+  ): Promise<NotificationResult> {
+    try {
+      if (!payload.type || !payload.title || !payload.body) {
+        console.warn('❌ Invalid notification payload:', { type: payload.type, title: payload.title, body: payload.body });
+        return {
+          success: false,
+          message: 'Invalid notification payload - missing required fields',
+        };
+      }
+
+      const categoryId = getCategoryForNotificationType(payload.type);
+
+      const delaySeconds = Math.max(1, Math.floor(seconds));
+      const scheduledDate = new Date(Date.now() + delaySeconds * 1000);
+
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: payload.title,
+          body: payload.body,
+          data: payload.data || {},
+          badge: payload.badge,
+          sound: payload.sound || true,
+          categoryIdentifier: categoryId,
+        },
+        trigger: scheduledDate,
+      });
+
+      console.log(
+        `⏳ Notification scheduled at ${scheduledDate.toISOString()}: ${payload.title} (ID: ${notificationId})`
+      );
+
+      return {
+        success: true,
+        notificationId,
+        message: `Notification scheduled for ${scheduledDate.toISOString()}`,
+      };
+    } catch (error) {
+      console.error('❌ Error scheduling delayed notification:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to schedule delayed notification',
+      };
+    }
+  }
+
+  /**
    * Schedule notification for specific day and time (weekly)
    */
   async scheduleWeeklyNotification(

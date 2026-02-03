@@ -8,23 +8,8 @@
  * - AsyncStorage: Preferences, settings, non-sensitive configs
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-
-// Import AsyncStorage with proper error handling for TypeScript
-let AsyncStorage: any;
-try {
-  AsyncStorage = require('@react-native-async-storage/async-storage').default;
-} catch (e) {
-  // Fallback: provide stub implementation if not available
-  console.warn('⚠️ AsyncStorage not available, using fallback');
-  AsyncStorage = {
-    setItem: async () => { throw new Error('AsyncStorage not available'); },
-    getItem: async () => null,
-    removeItem: async () => {},
-    getAllKeys: async () => [],
-    clear: async () => {},
-  };
-}
 
 /**
  * Data classification for storage selection

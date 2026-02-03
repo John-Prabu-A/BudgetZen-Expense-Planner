@@ -318,7 +318,7 @@ export default function AnalysisScreen() {
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={[styles.metricDelta, { color: (currentMonthData.income - currentMonthData.expense) >= 0 ? colors.income : colors.expense }]}>
-                      {((currentMonthData.income - currentMonthData.expense) / Math.max(currentMonthData.income, currentMonthData.expense) * 100).toFixed(0)}%
+                      {Math.max(currentMonthData.income, currentMonthData.expense) ? ((currentMonthData.income - currentMonthData.expense) / Math.max(currentMonthData.income, currentMonthData.expense) * 100).toFixed(0) : 0}%
                     </Text>
                   </View>
                 </View>
@@ -422,10 +422,11 @@ export default function AnalysisScreen() {
                         </View>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
                           <Text style={[styles.breakdownLabel, { fontSize: 10, color: colors.income }]}>
-                            Income {(account.income / totalTransactions * 100).toFixed(0)}%
+                            
+                            Income {totalTransactions ? (account.income / totalTransactions * 100).toFixed(0) : 0}%
                           </Text>
                           <Text style={[styles.breakdownLabel, { fontSize: 10, color: colors.expense }]}>
-                            Expense {(account.expense / totalTransactions * 100).toFixed(0)}%
+                            Expense {totalTransactions ? (account.expense / totalTransactions * 100).toFixed(0) : 0}%
                           </Text>
                         </View>
                       </View>

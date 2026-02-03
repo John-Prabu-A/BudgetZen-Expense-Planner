@@ -74,6 +74,23 @@ export const useNotifications = (listeners?: NotificationListeners) => {
   }, [context.preferences]);
 
   /**
+   * Schedule notification after a time delay (seconds)
+   */
+  const scheduleNotificationInSeconds = useCallback(
+    async (payload: NotificationPayload, seconds: number) => {
+      if (!context.isNotificationAllowed()) {
+        console.log('⚠️ Notification blocked by DND or user settings');
+        return {
+          success: false,
+          message: 'Notifications are currently disabled',
+        };
+      }
+      return notificationService.scheduleNotificationInSeconds(payload, seconds);
+    },
+    [context]
+  );
+
+  /**
    * Send budget warning
    */
   const sendBudgetWarning = useCallback(
@@ -294,6 +311,7 @@ export const useNotifications = (listeners?: NotificationListeners) => {
     scheduleDailyReminder,
     scheduleWeeklyReport,
     scheduleMonthlyReport,
+    scheduleNotificationInSeconds,
     sendBudgetWarning,
     sendBudgetExceeded,
     sendAchievement,

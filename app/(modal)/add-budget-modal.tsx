@@ -25,7 +25,6 @@ export default function AddBudgetModal() {
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<any>(null);
     const [budgetAmount, setBudgetAmount] = useState('');
-    const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
@@ -52,7 +51,6 @@ export default function AddBudgetModal() {
                 // Edit mode: prefill with existing budget data
                 setEditingBudgetId(incomingBudget.id || null);
                 setBudgetAmount(String(incomingBudget.amount || incomingBudget.limit || ''));
-                setNotes(incomingBudget.notes || '');
                 
                 // Find and select the category
                 const category = (data || []).find((c) => c.id === incomingBudget.category_id);
@@ -85,7 +83,6 @@ export default function AddBudgetModal() {
             const budgetData = {
                 category_id: selectedCategory.id,
                 amount: parseFloat(budgetAmount),
-                notes: notes || null,
             };
 
             if (editingBudgetId) {
@@ -93,12 +90,16 @@ export default function AddBudgetModal() {
                 await updateBudget(editingBudgetId, budgetData);
                 Alert.alert('Success', 'Budget updated successfully!');
             } else {
-                // Create new budget
+                // Create new budget - include start_date and end_date for the current month
+                const now = new Date();
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                
                 const newBudgetData = {
                     ...budgetData,
                     user_id: user.id,
-                    start_date: new Date().toISOString().split('T')[0],
-                    end_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+                    start_date: monthStart.toISOString().split('T')[0],
+                    end_date: monthEnd.toISOString().split('T')[0],
                 };
                 await createBudget(newBudgetData);
                 Alert.alert('Success', 'Budget created successfully!');
@@ -216,27 +217,6 @@ export default function AddBudgetModal() {
                         keyboardType="decimal-pad"
                         value={budgetAmount}
                         onChangeText={setBudgetAmount}
-                    />
-                </View>
-
-                {/* Notes */}
-                <View style={styles.section}>
-                    <Text style={[styles.label, { color: colors.text }]}>Notes (Optional)</Text>
-                    <TextInput
-                        style={[
-                            styles.textArea,
-                            {
-                                borderColor: colors.border,
-                                backgroundColor: colors.surface,
-                                color: colors.text,
-                            },
-                        ]}
-                        placeholder="Add notes about this budget"
-                        placeholderTextColor={colors.textSecondary}
-                        multiline
-                        numberOfLines={4}
-                        value={notes}
-                        onChangeText={setNotes}
                     />
                 </View>
 

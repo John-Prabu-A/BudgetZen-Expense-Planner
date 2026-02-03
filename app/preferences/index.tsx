@@ -336,6 +336,12 @@ export default function PreferencesScreen() {
         {/* NOTIFICATIONS SECTION */}
         <View style={styles.section}>
           <SectionHeader title="Notifications" />
+          <PreferenceRow
+            icon="bell-outline"
+            label="Notification Settings"
+            value="Alerts, reminders, reports"
+            onPress={() => router.push('/preferences/notifications')}
+          />
           <ToggleRow
             icon="bell"
             label="Daily Reminder"

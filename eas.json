@@ -5,34 +5,42 @@
   },
   "build": {
     "preview": {
+      "environment": "preview",
       "android": {
         "buildType": "apk",
         "env": {
-          "NODE_ENV": "development"
+          "NODE_ENV": "development",
+          "GOOGLE_SERVICES_JSON": "@GOOGLE_SERVICES_JSON"
         }
       }
     },
     "preview2": {
+      "environment": "preview",
       "android": {
         "buildType": "apk",
         "env": {
-          "NODE_ENV": "development"
+          "NODE_ENV": "development",
+          "GOOGLE_SERVICES_JSON": "@GOOGLE_SERVICES_JSON"
         }
       }
     },
     "preview3": {
+      "environment": "preview",
       "android": {
         "buildType": "apk",
         "env": {
-          "NODE_ENV": "development"
+          "NODE_ENV": "development",
+          "GOOGLE_SERVICES_JSON": "@GOOGLE_SERVICES_JSON"
         }
       }
     },
     "production": {
+      "environment": "production",
       "android": {
         "buildType": "app-bundle",
         "env": {
-          "NODE_ENV": "production"
+          "NODE_ENV": "production",
+          "GOOGLE_SERVICES_JSON": "@GOOGLE_SERVICES_JSON"
         }
       }
     }

@@ -56,6 +56,8 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   updatedAt: new Date(),
 };
 
+type RawPreferences = Record<string, any>;
+
 /**
  * Notification Preferences Manager
  */
@@ -96,7 +98,7 @@ export class NotificationPreferencesManager {
       }
 
       console.log('✅ Preferences fetched');
-      return data as NotificationPreferences;
+      return this.normalizePreferences(data as RawPreferences, userId);
     } catch (error) {
       console.error('❌ Error getting preferences:', error);
       return null;
@@ -207,13 +209,15 @@ export class NotificationPreferencesManager {
    * Check if notifications are allowed (respect DND)
    */
   isNotificationAllowed(preferences: NotificationPreferences): boolean {
-    if (!preferences.enabled) return false;
+    if (!preferences?.enabled) return false;
 
-    if (preferences.doNotDisturb.enabled) {
+    if (preferences.doNotDisturb?.enabled) {
       const now = new Date();
       const [currentHour, currentMinute] = [now.getHours(), now.getMinutes()];
-      const [dndStartHour, dndStartMin] = preferences.doNotDisturb.startTime.split(':').map(Number);
-      const [dndEndHour, dndEndMin] = preferences.doNotDisturb.endTime.split(':').map(Number);
+      const startTime = preferences.doNotDisturb.startTime ?? DEFAULT_PREFERENCES.doNotDisturb.startTime;
+      const endTime = preferences.doNotDisturb.endTime ?? DEFAULT_PREFERENCES.doNotDisturb.endTime;
+      const [dndStartHour, dndStartMin] = startTime.split(':').map(Number);
+      const [dndEndHour, dndEndMin] = endTime.split(':').map(Number);
 
       const currentTime = currentHour * 60 + currentMinute;
       const dndStart = dndStartHour * 60 + dndStartMin;
@@ -229,6 +233,44 @@ export class NotificationPreferencesManager {
     }
 
     return true;
+  }
+
+  /**
+   * Normalize raw DB preferences to full NotificationPreferences shape
+   */
+  private normalizePreferences(raw: RawPreferences, userId: string): NotificationPreferences {
+    const base = { ...DEFAULT_PREFERENCES, userId };
+    if (!raw) return base;
+
+    const mapped: NotificationPreferences = {
+      ...base,
+      userId: raw.user_id ?? raw.userId ?? userId,
+      enabled: raw.enabled ?? base.enabled,
+      dailyReminder: raw.daily_reminder ?? raw.dailyReminder ?? base.dailyReminder,
+      weeklyReport: raw.weekly_report ?? raw.weeklyReport ?? base.weeklyReport,
+      monthlyReport: raw.monthly_report ?? raw.monthlyReport ?? base.monthlyReport,
+      budgetAlerts: raw.budget_alerts ?? raw.budgetAlerts ?? base.budgetAlerts,
+      spendingAnomalies: raw.spending_anomalies ?? raw.spendingAnomalies ?? base.spendingAnomalies,
+      dailyBudgetNotif: raw.daily_budget_notif ?? raw.dailyBudgetNotif ?? base.dailyBudgetNotif,
+      achievements: raw.achievements ?? base.achievements,
+      accountAlerts: raw.account_alerts ?? raw.accountAlerts ?? base.accountAlerts,
+      doNotDisturb: raw.do_not_disturb ?? raw.doNotDisturb ?? base.doNotDisturb,
+      createdAt: raw.created_at ? new Date(raw.created_at) : base.createdAt,
+      updatedAt: raw.updated_at ? new Date(raw.updated_at) : base.updatedAt,
+    };
+
+    return {
+      ...mapped,
+      dailyReminder: { ...base.dailyReminder, ...mapped.dailyReminder },
+      weeklyReport: { ...base.weeklyReport, ...mapped.weeklyReport },
+      monthlyReport: { ...base.monthlyReport, ...mapped.monthlyReport },
+      budgetAlerts: { ...base.budgetAlerts, ...mapped.budgetAlerts },
+      spendingAnomalies: { ...base.spendingAnomalies, ...mapped.spendingAnomalies },
+      dailyBudgetNotif: { ...base.dailyBudgetNotif, ...mapped.dailyBudgetNotif },
+      achievements: { ...base.achievements, ...mapped.achievements },
+      accountAlerts: { ...base.accountAlerts, ...mapped.accountAlerts },
+      doNotDisturb: { ...base.doNotDisturb, ...mapped.doNotDisturb },
+    };
   }
 
   /**

@@ -21,6 +21,12 @@ export default function PreferencesLayout() {
             header: () => <Header onMenuPress={() => setDrawerVisible(true)} /> 
           }} 
         />
+        <Stack.Screen 
+          name="notifications" 
+          options={{ 
+            header: () => <Header onMenuPress={() => setDrawerVisible(true)} /> 
+          }} 
+        />
         {/* Add other preference screens here */}
       </Stack>
       <SidebarDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />

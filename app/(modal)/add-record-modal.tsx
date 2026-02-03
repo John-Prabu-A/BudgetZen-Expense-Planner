@@ -1,9 +1,9 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
-import { createRecord, readAccounts, readCategories, updateRecord } from '@/lib/finance';
-import { TempStore } from '@/lib/tempStore'; // Make sure to create this file
-import { supabase } from '@/lib/supabase';
 import useNotifications from '@/hooks/useNotifications';
+import { createRecord, readAccounts, readCategories, updateRecord } from '@/lib/finance';
+import { supabase } from '@/lib/supabase';
+import { TempStore } from '@/lib/tempStore'; // Make sure to create this file
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -26,6 +26,7 @@ export default function AddRecordModal() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const params = useLocalSearchParams();
+  const { sendLargeTransactionAlert, sendBudgetExceededAlert, sendUnusualSpendingAlert } = useNotifications();
 
   // Parse incoming params once
   const incomingRecord = params.record ? JSON.parse(params.record as string) : null;
@@ -166,8 +167,6 @@ export default function AddRecordModal() {
 
       // ✨ TIER 1: Real-Time Alerts - Check for notifications
       if (recordType === 'EXPENSE' && savedRecord) {
-        const { sendLargeTransactionAlert, sendBudgetExceededAlert, sendUnusualSpendingAlert } = useNotifications();
-
         // ALERT 1: Large Transaction Alert
         try {
           const { data: allRecords } = await supabase

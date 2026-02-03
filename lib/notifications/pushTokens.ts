@@ -5,8 +5,8 @@
 
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import SecureStorageManager from '../storage/secureStorageManager';
 import { supabase } from '../supabase';
 import { NotificationToken, PushTokenResponse } from './types';
 
@@ -130,7 +130,7 @@ export class PushTokenManager {
       }
 
       // Try to get from secure storage
-      const storedToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY);
+      const storedToken = await SecureStorageManager.getItem(PUSH_TOKEN_KEY);
 
       if (storedToken) {
         this.currentToken = storedToken;
@@ -151,8 +151,8 @@ export class PushTokenManager {
    */
   private async saveTokenLocally(token: string): Promise<void> {
     try {
-      await SecureStore.setItemAsync(PUSH_TOKEN_KEY, token);
-      await SecureStore.setItemAsync(
+      await SecureStorageManager.setItem(PUSH_TOKEN_KEY, token);
+      await SecureStorageManager.setItem(
         LAST_TOKEN_REFRESH_KEY,
         new Date().toISOString()
       );
@@ -164,6 +164,7 @@ export class PushTokenManager {
 
   /**
    * Sync token with backend
+   * Uses UPSERT to handle duplicate key constraints gracefully
    */
   async syncTokenWithBackend(userId: string): Promise<PushTokenResponse> {
     try {
@@ -177,37 +178,92 @@ export class PushTokenManager {
         };
       }
 
-      // First, try to delete any existing token for this user
-      // This avoids upsert constraint issues
-      try {
-        await supabase
-          .from('notification_tokens')
-          .delete()
-          .eq('user_id', userId);
-      } catch (deleteErr) {
-        console.warn('⚠️ Warning deleting old token:', deleteErr);
-        // Continue anyway — we'll try to insert
-      }
-
-      // Now insert the new token
+      // Use UPSERT (insert with conflict update) to handle existing tokens
+      // This avoids duplicate key constraint violations
       const { data, error } = await supabase
         .from('notification_tokens')
-        .insert({
-          user_id: userId,
-          expo_push_token: token,
-          device_id: Constants.sessionId,
-          os_type: Constants.platform?.os === 'ios' ? 'ios' : 'android',
-          os_version: Constants.osVersion || 'unknown',
-          app_version: Constants.expoConfig?.version || '1.0.0',
-          registered_at: new Date().toISOString(),
-          last_refreshed_at: new Date().toISOString(),
-          is_valid: true,
-        })
+        .upsert(
+          {
+            user_id: userId,
+            device_id: Constants.sessionId, // This is the unique key
+            expo_push_token: token,
+            os_type: Constants.platform?.os === 'ios' ? 'ios' : 'android',
+            os_version: Constants.osVersion || 'unknown',
+            app_version: Constants.expoConfig?.version || '1.0.0',
+            registered_at: new Date().toISOString(),
+            last_refreshed_at: new Date().toISOString(),
+            is_valid: true,
+          },
+          {
+            onConflict: 'user_id,device_id', // Match the unique constraint
+          }
+        )
         .select()
         .single();
 
       if (error) {
+        // Handle the specific duplicate key error with graceful fallback
+        if (error.message?.includes('duplicate key') || error.message?.includes('unique')) {
+          console.warn('⚠️ Token already synced for this device, updating instead...');
+          
+          // Fallback: Update existing token
+          const { data: updateData, error: updateError } = await supabase
+            .from('notification_tokens')
+            .update({
+              expo_push_token: token,
+              last_refreshed_at: new Date().toISOString(),
+              is_valid: true,
+            })
+            .eq('user_id', userId)
+            .eq('device_id', Constants.sessionId)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error('❌ Error updating token:', updateError);
+            return {
+              success: false,
+              error: updateError.message,
+              message: 'Failed to update token in backend',
+            };
+          }
+
+          console.log('✅ Token updated successfully');
+          return {
+            success: true,
+            token,
+            message: 'Token updated successfully',
+          };
+        }
+
         console.error('❌ Error syncing token to backend:', error);
+        // Best-effort fallback to legacy table (push_tokens)
+        try {
+          const { error: legacyError } = await supabase
+            .from('push_tokens')
+            .upsert(
+              {
+                user_id: userId,
+                token,
+                platform: Constants.platform?.os === 'ios' ? 'ios' : 'android',
+                is_valid: true,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'user_id,token' }
+            );
+
+          if (!legacyError) {
+            console.log('✅ Token synced to legacy push_tokens table');
+            return {
+              success: true,
+              token,
+              message: 'Token synced successfully (legacy table)',
+            };
+          }
+        } catch (legacyErr) {
+          console.warn('⚠️ Legacy token sync failed:', legacyErr);
+        }
+
         return {
           success: false,
           error: error.message,
@@ -237,7 +293,7 @@ export class PushTokenManager {
    */
   async refreshTokenIfNeeded(userId: string): Promise<PushTokenResponse> {
     try {
-      const lastRefresh = await SecureStore.getItemAsync(
+      const lastRefresh = await SecureStorageManager.getItem(
         LAST_TOKEN_REFRESH_KEY
       );
 
@@ -299,8 +355,8 @@ export class PushTokenManager {
       }
 
       // Clear local token
-      await SecureStore.deleteItemAsync(PUSH_TOKEN_KEY);
-      await SecureStore.deleteItemAsync(LAST_TOKEN_REFRESH_KEY);
+      await SecureStorageManager.deleteItem(PUSH_TOKEN_KEY);
+      await SecureStorageManager.deleteItem(LAST_TOKEN_REFRESH_KEY);
       this.currentToken = null;
 
       console.log('✅ Token removed from backend and local storage');
@@ -364,8 +420,8 @@ export class PushTokenManager {
    */
   async clearAllTokens(): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync(PUSH_TOKEN_KEY);
-      await SecureStore.deleteItemAsync(LAST_TOKEN_REFRESH_KEY);
+      await SecureStorageManager.deleteItem(PUSH_TOKEN_KEY);
+      await SecureStorageManager.deleteItem(LAST_TOKEN_REFRESH_KEY);
       this.currentToken = null;
       console.log('🗑️ All stored tokens cleared');
     } catch (error) {

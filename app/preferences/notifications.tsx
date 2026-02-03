@@ -10,8 +10,43 @@ export default function NotificationsPreferencesScreen() {
   const { preferences, loadPreferences, savePreferences, isLoading } = useNotifications();
   const { session } = useAuth();
   const { colors } = useTheme();
+
+  const normalizePrefs = (prefs: NotificationPreferences | null): NotificationPreferences | null => {
+    if (!prefs) return null;
+    const defaults: NotificationPreferences = {
+      userId: prefs.userId,
+      enabled: true,
+      dailyReminder: { enabled: false, time: '09:00', timezone: 'UTC' },
+      weeklyReport: { enabled: false, dayOfWeek: 1, time: '09:00', timezone: 'UTC' },
+      monthlyReport: { enabled: false, dayOfMonth: 1, time: '09:00', timezone: 'UTC' },
+      budgetAlerts: { enabled: true, warningPercentage: 80, alertSound: true, vibration: true },
+      spendingAnomalies: { enabled: true, threshold: 150 },
+      dailyBudgetNotif: { enabled: false, time: '00:00' },
+      achievements: { enabled: true },
+      accountAlerts: { enabled: true, lowBalanceThreshold: 20 },
+      doNotDisturb: { enabled: false, startTime: '22:00', endTime: '07:00' },
+      createdAt: prefs.createdAt ?? new Date(),
+      updatedAt: prefs.updatedAt ?? new Date(),
+    };
+
+    return {
+      ...defaults,
+      ...prefs,
+      dailyReminder: { ...defaults.dailyReminder, ...prefs.dailyReminder },
+      weeklyReport: { ...defaults.weeklyReport, ...prefs.weeklyReport },
+      monthlyReport: { ...defaults.monthlyReport, ...prefs.monthlyReport },
+      budgetAlerts: { ...defaults.budgetAlerts, ...prefs.budgetAlerts },
+      spendingAnomalies: { ...defaults.spendingAnomalies, ...prefs.spendingAnomalies },
+      dailyBudgetNotif: { ...defaults.dailyBudgetNotif, ...prefs.dailyBudgetNotif },
+      achievements: { ...defaults.achievements, ...prefs.achievements },
+      accountAlerts: { ...defaults.accountAlerts, ...prefs.accountAlerts },
+      doNotDisturb: { ...defaults.doNotDisturb, ...prefs.doNotDisturb },
+    };
+  };
   
-  const [localPrefs, setLocalPrefs] = useState<NotificationPreferences | null>(preferences);
+  const [localPrefs, setLocalPrefs] = useState<NotificationPreferences | null>(
+    normalizePrefs(preferences)
+  );
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -22,7 +57,7 @@ export default function NotificationsPreferencesScreen() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    setLocalPrefs(preferences);
+    setLocalPrefs(normalizePrefs(preferences));
     setHasChanges(false);
   }, [preferences]);
 
@@ -171,15 +206,6 @@ export default function NotificationsPreferencesScreen() {
       Alert.alert('❌ Error', 'An error occurred while saving preferences.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleTestNotification = async () => {
-    try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('🧪 Test', 'Test notification sent! Check your notifications.');
-    } catch (error) {
-      console.error('Error sending test notification:', error);
     }
   };
 
@@ -340,9 +366,6 @@ export default function NotificationsPreferencesScreen() {
         disabled={!hasChanges}
         colors={colors}
       />
-
-      {/* Test Button */}
-      <TestButton onPress={handleTestNotification} colors={colors} />
 
       <View style={{ height: 40 }} />
     </ScrollView>
@@ -573,22 +596,3 @@ function SaveButton({ onPress, loading, disabled, colors }: {
   );
 }
 
-function TestButton({ onPress, colors }: { onPress: () => Promise<void>; colors: any }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={{
-        backgroundColor: colors.card,
-        paddingVertical: 14,
-        borderRadius: 10,
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: colors.accent,
-      }}
-    >
-      <Text style={{ color: colors.accent, fontSize: 16, fontWeight: '600' }}>
-        🧪 Send Test Notification
-      </Text>
-    </TouchableOpacity>
-  );
-}
