@@ -45,3 +45,7 @@ app-example
 
 /supabase/.temp
 /documentation
+.qodo/
+.vscode/
+.idx/
+.env
