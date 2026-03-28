@@ -363,27 +363,38 @@ const InitialLayout = () => {
         if (inAuthGroup) {
             // User is in auth group but has a valid session
             // They've completed auth, so navigate them to the main app
-            // Use index which is the Records tab - first tab in the tabs group
-            const targetRoute = '/(tabs)/index';
+            // Use router.dismiss() to close the auth stack, then navigate to tabs
+            const targetRoute = '/(tabs)';
             const now = Date.now();
             if (!lastNavigationRef.current || lastNavigationRef.current.route !== targetRoute || now - lastNavigationRef.current.timestamp > 1000) {
                 console.log('[NAV] ✅ Session active & onboarding complete → navigating out of auth to main app');
-                console.log('[NAV-DEBUG] Executing navigation to main app...');
-                router.replace(targetRoute as any);
-                lastNavigationRef.current = { route: targetRoute, timestamp: now };
+                console.log('[NAV-DEBUG] Navigating with route:', targetRoute);
+                try {
+                    // Use the native module to ensure proper navigation
+                    router.replace(targetRoute as any);
+                    lastNavigationRef.current = { route: targetRoute, timestamp: now };
+                    console.log('[NAV-DEBUG] Navigation executed successfully');
+                } catch (error) {
+                    console.error('[NAV-ERROR] Navigation failed:', error);
+                }
             }
             return;
         }
 
         if (!inTabsGroup && !inAppGroup) {
-            const targetRoute = '/(tabs)/index';
+            const targetRoute = '/(tabs)';
             const now = Date.now();
             // Prevent rapid repeated navigation
             if (!lastNavigationRef.current || lastNavigationRef.current.route !== targetRoute || now - lastNavigationRef.current.timestamp > 1000) {
                 console.log('[NAV] 🏠 Session active, onboarding done → main app');
-                console.log('[NAV-DEBUG] Executing navigation to main app /(tabs)/index');
-                router.replace(targetRoute as any);
-                lastNavigationRef.current = { route: targetRoute, timestamp: now };
+                console.log('[NAV-DEBUG] Navigating with route:', targetRoute);
+                try {
+                    router.replace(targetRoute as any);
+                    lastNavigationRef.current = { route: targetRoute, timestamp: now };
+                    console.log('[NAV-DEBUG] Navigation executed successfully');
+                } catch (error) {
+                    console.error('[NAV-ERROR] Navigation failed:', error);
+                }
             }
         } else {
             console.log('[NAV] ✅ Already on main app screen');

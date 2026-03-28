@@ -30,7 +30,9 @@ export default function TabsLayout() {
             paddingTop: 8,
             height: 70 + Math.max(insets.bottom, 0),
           },
-        }}>
+        }}
+        initialRouteName="index"
+      >
         <Tabs.Screen
           name="index"
           options={{
