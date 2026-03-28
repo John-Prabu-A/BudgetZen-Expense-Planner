@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
+import useAppSettings from '@/hooks/useAppSettings';
 import { createBudget, readCategories, updateBudget } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,6 +20,7 @@ export default function AddBudgetModal() {
     const router = useRouter();
     const { user, session } = useAuth();
     const { isDark, colors } = useTheme();
+    const { currencySign } = useAppSettings();
     const params = useLocalSearchParams();
     const incomingBudget = params.budget ? JSON.parse(params.budget as string) : null;
 
@@ -202,7 +204,7 @@ export default function AddBudgetModal() {
 
                 {/* Budget Amount */}
                 <View style={styles.section}>
-                    <Text style={[styles.label, { color: colors.text }]}>Budget Amount (₹)</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>Budget Amount ({currencySign})</Text>
                     <TextInput
                         style={[
                             styles.input,

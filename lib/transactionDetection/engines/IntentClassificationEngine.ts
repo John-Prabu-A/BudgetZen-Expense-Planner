@@ -167,20 +167,20 @@ export class IntentClassificationEngine {
     },
     {
       bank: 'PhonePe',
-      debitPattern: /(?:you\s+)?(?:paid|sent)\s+₹\s*\d+/i,
-      creditPattern: /(?:you\s+)?(?:received|got)\s+₹\s*\d+/i,
+      debitPattern: /(?:you\s+)?(?:paid|sent)\s+[₹$€£¥]\s*\d+/i,
+      creditPattern: /(?:you\s+)?(?:received|got)\s+[₹$€£¥]\s*\d+/i,
       ignorePattern: /(?:verification|otp|password|update profile)/i,
     },
     {
       bank: 'Google Pay',
-      debitPattern: /(?:you\s+)?(?:sent|paid|transferred)\s+₹\s*\d+/i,
-      creditPattern: /(?:you\s+)?(?:received)\s+₹\s*\d+/i,
+      debitPattern: /(?:you\s+)?(?:sent|paid|transferred)\s+[₹$€£¥]\s*\d+/i,
+      creditPattern: /(?:you\s+)?(?:received)\s+[₹$€£¥]\s*\d+/i,
       ignorePattern: /(?:otp|verify|security|update)/i,
     },
     {
       bank: 'Paytm',
-      debitPattern: /(?:money sent|payment done|amount paid)\s+₹\s*\d+/i,
-      creditPattern: /(?:money received|amount credited)\s+₹\s*\d+/i,
+      debitPattern: /(?:money sent|payment done|amount paid)\s+[₹$€£¥]\s*\d+/i,
+      creditPattern: /(?:money received|amount credited)\s+[₹$€£¥]\s*\d+/i,
       ignorePattern: /(?:otp|verification|kyc|promotion)/i,
     },
   ];

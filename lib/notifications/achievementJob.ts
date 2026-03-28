@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { formatCurrencyWithPreferences } from '@/lib/currency';
 import { notificationService } from './NotificationService';
 import { NotificationType } from './types';
 
@@ -54,6 +55,17 @@ export class AchievementJob {
         return;
       }
 
+      // Get currency preferences
+      const { data: currencyPrefs } = await supabase
+        .from('user_preferences')
+        .select('currency_sign,currency_position,decimal_places')
+        .eq('user_id', userId)
+        .single();
+
+      const currencySign = currencyPrefs?.currency_sign || '₹';
+      const currencyPosition = currencyPrefs?.currency_position || 'before';
+      const decimalPlaces = currencyPrefs?.decimal_places || 2;
+
       // Calculate total savings
       const totalSavings = await this.calculateTotalSavings(userId);
 
@@ -62,11 +74,11 @@ export class AchievementJob {
         return;
       }
 
-      console.log(`💰 [Achievements] User ${userId} has ₹${totalSavings.toLocaleString('en-IN')} saved`);
+      console.log(`💰 [Achievements] User ${userId} has ${formatCurrencyWithPreferences(totalSavings, currencySign, currencyPosition, decimalPlaces)} saved`);
 
       // Check all achievements
       for (const achievement of SAVINGS_ACHIEVEMENTS) {
-        await this.checkAchievementUnlock(userId, achievement, totalSavings);
+        await this.checkAchievementUnlock(userId, achievement, totalSavings, currencySign, currencyPosition, decimalPlaces);
       }
     } catch (error) {
       console.error('❌ [Achievements] Error checking achievements:', error);
@@ -134,7 +146,10 @@ export class AchievementJob {
   private async checkAchievementUnlock(
     userId: string,
     achievement: Achievement,
-    currentSavings: number
+    currentSavings: number,
+    currencySign: string,
+    currencyPosition: 'before' | 'after',
+    decimalPlaces: number
   ): Promise<void> {
     try {
       // Check if user has already been notified of this achievement
@@ -152,7 +167,7 @@ export class AchievementJob {
 
       // Check if user meets threshold
       if (currentSavings >= achievement.threshold) {
-        await this.sendAchievementNotification(userId, achievement, currentSavings);
+        await this.sendAchievementNotification(userId, achievement, currentSavings, currencySign, currencyPosition, decimalPlaces);
         await this.recordAchievementUnlocked(userId, achievement);
       }
     } catch (error) {
@@ -166,12 +181,15 @@ export class AchievementJob {
   private async sendAchievementNotification(
     userId: string,
     achievement: Achievement,
-    currentSavings: number
+    currentSavings: number,
+    currencySign: string,
+    currencyPosition: 'before' | 'after',
+    decimalPlaces: number
   ): Promise<void> {
     try {
       let body = `🎉 Congratulations!\n`;
       body += `You've reached the "${achievement.label}" milestone!\n`;
-      body += `Total savings: ₹${currentSavings.toLocaleString('en-IN')}`;
+      body += `Total savings: ${formatCurrencyWithPreferences(currentSavings, currencySign, currencyPosition, decimalPlaces)}`;
 
       // Add motivational message based on achievement
       const motivations: Record<number, string> = {

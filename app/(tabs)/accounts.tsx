@@ -13,7 +13,7 @@ export default function AccountsScreen() {
   const { user, session } = useAuth();
   const { isDark, colors } = useTheme();
   const spacing = useUIMode();
-  const { formatCurrencyValue, currencySign } = useAppSettings();
+  const { formatCurrencyValue, currencySign, formatCurrencyWithPosition } = useAppSettings();
   const styles = createAccountsStyles(spacing, colors);
 
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -197,14 +197,14 @@ export default function AccountsScreen() {
           <View style={styles.balanceItem}>
             <Text style={[styles.balanceLabel, { color: colors.income }]}>+Income</Text>
             <Text style={[styles.balanceValue, { color: colors.income }]}>
-              {currencySign}{formatCurrencyValue(income)}
+              {formatCurrencyWithPosition(income)}
             </Text>
           </View>
           <View style={styles.balanceDivider} />
           <View style={styles.balanceItem}>
             <Text style={[styles.balanceLabel, { color: colors.expense }]}>-Expense</Text>
             <Text style={[styles.balanceValue, { color: colors.expense }]}>
-              {currencySign}{formatCurrencyValue(expense)}
+              {formatCurrencyWithPosition(expense)}
             </Text>
           </View>
         </View>
@@ -222,7 +222,7 @@ export default function AccountsScreen() {
                 },
               ]}
             >
-              {currencySign}{formatCurrencyValue(balance)}
+              {formatCurrencyWithPosition(balance)}
             </Text>
           </View>
           <MaterialCommunityIcons
@@ -275,7 +275,7 @@ export default function AccountsScreen() {
           Total Balance
         </Text>
         <Text style={[styles.totalBalanceAmount, { color: '#FFFFFF' }]}>
-          ₹{totalBalance.toLocaleString()}
+          {formatCurrencyWithPosition(totalBalance)}
         </Text>
         <View style={styles.totalBalanceFooter}>
           <TouchableOpacity style={[styles.actionButton, { borderColor: '#FFFFFF' }]} onPress={() => router.push('/(modal)/add-account-modal')}>

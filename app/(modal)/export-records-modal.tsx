@@ -22,7 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ExportRecordsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { formatCurrency } = useAppSettings();
+  const { formatCurrency, formatCurrencyWithPosition } = useAppSettings();
   const { success, error, info, warning } = useToast();
 
   const [dateFrom, setDateFrom] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -139,9 +139,9 @@ export default function ExportRecordsScreen() {
             <View style={styles.statGrid}>
               {/* Stat Items */}
               <StatItem icon="file-document" label="Records" value={exportData?.summary.totalRecords} color={colors.accent} />
-              <StatItem icon="plus-circle" label="Income" value={formatCurrency(exportData?.summary.totalIncome ?? 0)} color={colors.success} />
-              <StatItem icon="minus-circle" label="Expense" value={formatCurrency(exportData?.summary.totalExpense ?? 0)} color={colors.danger} />
-              <StatItem icon="wallet" label="Balance" value={formatCurrency(exportData?.summary.netBalance ?? 0)} color={colors.text} />
+              <StatItem icon="plus-circle" label="Income" value={formatCurrencyWithPosition(exportData?.summary.totalIncome ?? 0)} color={colors.success} />
+              <StatItem icon="minus-circle" label="Expense" value={formatCurrencyWithPosition(exportData?.summary.totalExpense ?? 0)} color={colors.danger} />
+              <StatItem icon="wallet" label="Balance" value={formatCurrencyWithPosition(exportData?.summary.netBalance ?? 0)} color={colors.text} />
               <StatItem icon="tag-multiple" label="Categories" value={exportData?.summary.uniqueCategories} color={colors.accent} />
               <StatItem icon="account-multiple" label="Accounts" value={exportData?.summary.uniqueAccounts} color={colors.accent} />
             </View>

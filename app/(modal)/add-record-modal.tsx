@@ -26,7 +26,7 @@ export default function AddRecordModal() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { colors } = useTheme();
-  const { formatCurrencyValue, currencySign } = useAppSettings();
+  const { formatCurrencyValue, currencySign, formatCurrencyWithPosition } = useAppSettings();
   const params = useLocalSearchParams();
   const { sendLargeTransactionAlert, sendBudgetExceededAlert, sendUnusualSpendingAlert } = useNotifications();
 
@@ -127,7 +127,7 @@ export default function AddRecordModal() {
     }
 
     if (parsedAmount > 10000000) {
-      return Alert.alert('Error', `Amount cannot exceed ${currencySign}${formatCurrencyValue(10000000)}`);
+      return Alert.alert('Error', `Amount cannot exceed ${formatCurrencyWithPosition(10000000)}`);
     }
 
     const decimalPart = normalizedAmount.includes('.') ? normalizedAmount.split('.')[1] : '';
