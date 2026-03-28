@@ -13,7 +13,7 @@ export default function AccountsScreen() {
   const { user, session } = useAuth();
   const { isDark, colors } = useTheme();
   const spacing = useUIMode();
-  const { formatCurrency } = useAppSettings();
+  const { formatCurrencyValue, currencySign } = useAppSettings();
   const styles = createAccountsStyles(spacing, colors);
 
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -197,14 +197,14 @@ export default function AccountsScreen() {
           <View style={styles.balanceItem}>
             <Text style={[styles.balanceLabel, { color: colors.income }]}>+Income</Text>
             <Text style={[styles.balanceValue, { color: colors.income }]}>
-              {formatCurrency(income)}
+              {currencySign}{formatCurrencyValue(income)}
             </Text>
           </View>
           <View style={styles.balanceDivider} />
           <View style={styles.balanceItem}>
             <Text style={[styles.balanceLabel, { color: colors.expense }]}>-Expense</Text>
             <Text style={[styles.balanceValue, { color: colors.expense }]}>
-              {formatCurrency(expense)}
+              {currencySign}{formatCurrencyValue(expense)}
             </Text>
           </View>
         </View>
@@ -222,7 +222,7 @@ export default function AccountsScreen() {
                 },
               ]}
             >
-              {formatCurrency(balance)}
+              {currencySign}{formatCurrencyValue(balance)}
             </Text>
           </View>
           <MaterialCommunityIcons

@@ -13,7 +13,7 @@ export default function BudgetsScreen() {
   const { user, session } = useAuth();
   const { isDark, colors } = useTheme();
   const spacing = useUIMode();
-  const { formatCurrency } = useAppSettings();
+  const { formatCurrencyValue, currencySign, formatCurrencyWithPosition } = useAppSettings();
   const styles = createBudgetsStyles(spacing);
 
   const [budgets, setBudgets] = useState<any[]>([]);
@@ -244,7 +244,7 @@ export default function BudgetsScreen() {
                 {budget.name}
               </Text>
               <Text style={[styles.budgetSubtext, { color: colors.textSecondary }]}>
-                Budget: {formatCurrency(budget.limit)}
+                Budget: {formatCurrencyWithPosition(budget.limit)}
               </Text>
             </View>
           </View>
@@ -282,10 +282,10 @@ export default function BudgetsScreen() {
           </View>
           <View style={styles.progressLabels}>
             <Text style={[styles.spentText, { color: colors.text }]}>
-              Spent: {formatCurrency(budget.spent)}
+              Spent: {formatCurrencyWithPosition(budget.spent)}
             </Text>
             <Text style={[styles.remainingText, { color: colors.accent }]}>
-              Remaining: {formatCurrency(Math.max(0, budget.limit - budget.spent))}
+              Remaining: {formatCurrencyWithPosition(Math.max(0, budget.limit - budget.spent))}
             </Text>
           </View>
         </View>
@@ -300,7 +300,7 @@ export default function BudgetsScreen() {
                   Daily Avg
                 </Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  {budget.spent > 0 ? formatCurrency(budget.spent / daysRemaining) : formatCurrency(0)}
+                  {budget.spent > 0 ? formatCurrencyWithPosition(budget.spent / daysRemaining) : formatCurrencyWithPosition(0)}
                 </Text>
               </View>
               <View style={styles.statBox}>
@@ -316,7 +316,7 @@ export default function BudgetsScreen() {
                   Daily Budget
                 </Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  {daysRemaining > 0 ? formatCurrency(budget.limit / daysRemaining) : formatCurrency(0)}
+                  {daysRemaining > 0 ? formatCurrencyWithPosition(budget.limit / daysRemaining) : formatCurrencyWithPosition(0)}
                 </Text>
               </View>
             </View>
@@ -330,7 +330,7 @@ export default function BudgetsScreen() {
                   color={colors.expense || '#FF6B6B'} 
                 />
                 <Text style={[styles.warningText, { color: colors.expense || '#FF6B6B' }]}>
-                  You&apos;ve exceeded this budget by {formatCurrency(budget.spent - budget.limit)}
+                  You&apos;ve exceeded this budget by {formatCurrencyWithPosition(budget.spent - budget.limit)}
                 </Text>
               </View>
             )}
@@ -420,7 +420,7 @@ export default function BudgetsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Budget</Text>
               <Text style={[styles.metricValue, { color: colors.text }]}>
-                {formatCurrency(summaryStats.totalBudget)}
+                {formatCurrencyWithPosition(summaryStats.totalBudget)}
               </Text>
             </View>
           </View>
@@ -511,7 +511,7 @@ export default function BudgetsScreen() {
                 Total Budget
               </Text>
               <Text style={[styles.summaryValue, { color: colors.text }]}>
-                {formatCurrency(summaryStats.totalBudget)}
+                {formatCurrencyWithPosition(summaryStats.totalBudget)}
               </Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -520,7 +520,7 @@ export default function BudgetsScreen() {
                 Total Spent
               </Text>
               <Text style={[styles.summaryValue, { color: colors.text }]}>
-                {formatCurrency(summaryStats.totalSpent)}
+                {formatCurrencyWithPosition(summaryStats.totalSpent)}
               </Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -531,7 +531,7 @@ export default function BudgetsScreen() {
               <Text style={[styles.summaryValue, { 
                 color: summaryStats.totalRemaining >= 0 ? colors.income || '#4CAF50' : colors.expense || '#FF6B6B'
               }]}>
-                {formatCurrency(summaryStats.totalRemaining)}
+                {formatCurrencyWithPosition(summaryStats.totalRemaining)}
               </Text>
             </View>
           </View>
@@ -564,8 +564,8 @@ export default function BudgetsScreen() {
             </View>
             <Text style={[styles.utilizationNote, { color: colors.textSecondary }]}>
               {summaryStats.totalRemaining >= 0 
-                ? `₹${summaryStats.totalRemaining.toLocaleString()} under budget`
-                : `₹${Math.abs(summaryStats.totalRemaining).toLocaleString()} over budget`}
+                ? `${formatCurrencyWithPosition(summaryStats.totalRemaining)} under budget`
+                : `${formatCurrencyWithPosition(Math.abs(summaryStats.totalRemaining))} over budget`}
             </Text>
           </View>
 

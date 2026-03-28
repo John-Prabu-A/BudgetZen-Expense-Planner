@@ -7,6 +7,68 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+// Emoji to Material Community Icon mapping
+const EMOJI_TO_ICON_MAP: { [key: string]: string } = {
+  '🏠': 'home',
+  '🍔': 'food',
+  '🍕': 'pizza',
+  '🛍️': 'shopping',
+  '🎬': 'movie',
+  '💻': 'laptop',
+  '🚗': 'car',
+  '🏥': 'hospital-box',
+  '💰': 'cash-multiple',
+  '💡': 'lightbulb',
+  '📚': 'book',
+  '⚽': 'soccer',
+  '✈️': 'airplane',
+  '🏨': 'hotel',
+  '📱': 'phone',
+  '👕': 'tshirt-v',
+  '🎓': 'school',
+  '💊': 'pill',
+  '🎮': 'gamepad-variant',
+  '📺': 'television',
+  '🎵': 'music',
+  '💇': 'scissors-cutting',
+  '🐕': 'dog',
+  '🌳': 'tree',
+  '⚡': 'lightning-bolt',
+  '🎁': 'gift',
+  '🍰': 'cake',
+  '📸': 'camera',
+  '🚴': 'bike',
+  '💄': 'palette',
+  '🏋️': 'dumbbell',
+  '🧘': 'meditation',
+  '🌮': 'taco',
+  '☕': 'coffee',
+  '🍷': 'wine',
+  '🎤': 'microphone',
+  '⌚': 'watch',
+  '💍': 'ring',
+  '🌟': 'star',
+  '📊': 'chart-box',
+  '📈': 'chart-line',
+  '💸': 'cash',
+  '💳': 'credit-card',
+  '🏦': 'bank',
+  '📝': 'clipboard-text',
+};
+
+// Function to get valid icon name from category icon (handles emojis)
+const getValidIconName = (icon: string | undefined): string => {
+  if (!icon) return 'cash';
+  
+  // Check if it's an emoji and map it to a valid icon
+  if (EMOJI_TO_ICON_MAP[icon]) {
+    return EMOJI_TO_ICON_MAP[icon];
+  }
+  
+  // If it's already a valid icon name, return it
+  return icon;
+};
+
 export default function CategoriesScreen() {
   const router = useRouter();
   const { user, session } = useAuth();
@@ -99,6 +161,7 @@ export default function CategoriesScreen() {
 
   const CategoryCard = ({ category, type }: any) => {
     const isExpanded = expandedCategoryId === category.id;
+    const validIconName = getValidIconName(category.icon);
 
     return (
       <TouchableOpacity
@@ -114,7 +177,7 @@ export default function CategoriesScreen() {
       >
         <View style={styles.categoryHeader}>
           <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
-            <MaterialCommunityIcons name={category.icon} size={24} color="#FFFFFF" />
+            <MaterialCommunityIcons name={validIconName as any} size={24} color="#FFFFFF" />
           </View>
           <View style={styles.categoryInfo}>
             <Text style={[styles.categoryName, { color: colors.text }]}>

@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
+import useAppSettings from '@/hooks/useAppSettings';
 import useNotifications from '@/hooks/useNotifications';
 import { createRecord, readAccounts, readCategories, updateRecord } from '@/lib/finance';
 import { supabase } from '@/lib/supabase';
@@ -8,15 +9,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,6 +26,7 @@ export default function AddRecordModal() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const { formatCurrencyValue, currencySign } = useAppSettings();
   const params = useLocalSearchParams();
   const { sendLargeTransactionAlert, sendBudgetExceededAlert, sendUnusualSpendingAlert } = useNotifications();
 
@@ -125,7 +127,7 @@ export default function AddRecordModal() {
     }
 
     if (parsedAmount > 10000000) {
-      return Alert.alert('Error', 'Amount cannot exceed ₹10,000,000');
+      return Alert.alert('Error', `Amount cannot exceed ${currencySign}${formatCurrencyValue(10000000)}`);
     }
 
     const decimalPart = normalizedAmount.includes('.') ? normalizedAmount.split('.')[1] : '';
@@ -379,7 +381,7 @@ export default function AddRecordModal() {
         <View style={{ alignItems: 'center', marginVertical: 20 }}>
             <Text style={{ fontSize: 16, color: colors.textSecondary }}>Amount</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 32, color: getTypeColor(), fontWeight: 'bold' }}>₹</Text>
+                <Text style={{ fontSize: 32, color: getTypeColor(), fontWeight: 'bold' }}>{currencySign}</Text>
                 <Text style={{ fontSize: 48, color: colors.text, fontWeight: 'bold' }}>
                     {amount || '0'}
                 </Text>

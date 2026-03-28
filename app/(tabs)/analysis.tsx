@@ -22,7 +22,7 @@ type AnalysisView =
 export default function AnalysisScreen() {
   const { isDark, colors } = useTheme();
   const spacing = useUIMode();
-  const { formatCurrency } = useAppSettings();
+  const { formatCurrencyValue, currencySign, formatCurrencyWithPosition } = useAppSettings();
   const { user, session } = useAuth();
   const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
@@ -255,7 +255,7 @@ export default function AnalysisScreen() {
                   TOTAL WEALTH
                 </Text>
                 <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '800', letterSpacing: 0.5 }}>
-                  {formatCurrency(accountAnalysisData.reduce((sum, a) => sum + a.value, 0))}
+                  {formatCurrencyWithPosition(accountAnalysisData.reduce((sum, a) => sum + a.value, 0))}
                 </Text>
               </View>
               <View style={{ gap: 12 }}>
@@ -283,7 +283,7 @@ export default function AnalysisScreen() {
                       Monthly Income
                     </Text>
                     <Text style={[styles.metricValue, { color: colors.income }]}>
-                      {formatCurrency(currentMonthData.income)}
+                      {formatCurrencyWithPosition(currentMonthData.income)}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -304,7 +304,7 @@ export default function AnalysisScreen() {
                       Monthly Expense
                     </Text>
                     <Text style={[styles.metricValue, { color: colors.expense }]}>
-                      {formatCurrency(currentMonthData.expense)}
+                      {formatCurrencyWithPosition(currentMonthData.expense)}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -325,7 +325,7 @@ export default function AnalysisScreen() {
                       Net This Month
                     </Text>
                     <Text style={[styles.metricValue, { color: colors.accent }]}>
-                      {formatCurrency(currentMonthData.income - currentMonthData.expense)}
+                      {formatCurrencyWithPosition(currentMonthData.income - currentMonthData.expense)}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -388,7 +388,7 @@ export default function AnalysisScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Expense</Text>
                     <Text style={[styles.metricValue, { color: colors.expense }]}>
-                      {formatCurrency(currentMonthData.expense)}
+                      {formatCurrencyWithPosition(currentMonthData.expense)}
                     </Text>
                   </View>
                 </View>
@@ -411,7 +411,7 @@ export default function AnalysisScreen() {
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg per Transaction</Text>
                             <Text style={[styles.metricValue, { color: colors.expense }]}>
-                              ₹{avgExpense.toFixed(2)}
+                              {formatCurrencyWithPosition(avgExpense)}
                             </Text>
                           </View>
                           <Text style={[styles.metricDelta, { color: colors.expense }]}>{expenseRecords.length}</Text>
@@ -427,7 +427,7 @@ export default function AnalysisScreen() {
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Highest Transaction</Text>
                             <Text style={[styles.metricValue, { color: colors.expense }]}>
-                              ₹{maxExpenseRecord.amount.toFixed(2)}
+                              {formatCurrencyWithPosition(maxExpenseRecord.amount)}
                             </Text>
                           </View>
                           <Text style={[styles.metricDelta, { color: colors.textSecondary, fontSize: 11 }]}>
@@ -479,7 +479,7 @@ export default function AnalysisScreen() {
                         </View>
                         <View style={{ flex: 0.4, alignItems: 'flex-end' }}>
                           <Text style={[styles.categoryAmount, { color: colors.expense }]}>
-                            ₹{data.expense.toFixed(0)}
+                            {formatCurrencyWithPosition(data.expense)}
                           </Text>
                           <View
                             style={{
@@ -595,7 +595,7 @@ export default function AnalysisScreen() {
                         </Text>
                       </View>
                       <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
-                        ₹{avgExpensePerDay.toFixed(0)}/day
+                        {formatCurrencyWithPosition(avgExpensePerDay)}/day
                       </Text>
                     </View>
                   </View>
@@ -621,7 +621,7 @@ export default function AnalysisScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Income</Text>
                     <Text style={[styles.metricValue, { color: colors.income }]}>
-                      {formatCurrency(currentMonthData.income)}
+                      {formatCurrencyWithPosition(currentMonthData.income)}
                     </Text>
                   </View>
                 </View>
@@ -640,7 +640,7 @@ export default function AnalysisScreen() {
                         </Text>
                       </View>
                       <Text style={[styles.metricDelta, { color: colors.income }]}>
-                        ₹{incomeExpenseOverviewData.incomeByCategory[0].value.toFixed(0)}
+                        {formatCurrencyWithPosition(incomeExpenseOverviewData.incomeByCategory[0].value)}
                       </Text>
                     </View>
                   </View>
@@ -741,7 +741,7 @@ export default function AnalysisScreen() {
                           </Text>
                         </View>
                       </View>
-                      <Text style={[styles.categoryAmount, { color: colors.income }]}>+₹{d.value.toFixed(2)}</Text>
+                      <Text style={[styles.categoryAmount, { color: colors.income }]}>+{formatCurrencyWithPosition(d.value)}</Text>
                     </View>
                   );
                 })
@@ -766,7 +766,7 @@ export default function AnalysisScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Expense</Text>
                     <Text style={[styles.metricValue, { color: colors.expense }]}>
-                      {formatCurrency(currentMonthData.expense)}
+                      {formatCurrencyWithPosition(currentMonthData.expense)}
                     </Text>
                   </View>
                 </View>
@@ -785,7 +785,7 @@ export default function AnalysisScreen() {
                         </Text>
                       </View>
                       <Text style={[styles.metricDelta, { color: colors.expense }]}>
-                        ₹{incomeExpenseOverviewData.expenseByCategory[0].value.toFixed(0)}
+                        {formatCurrencyWithPosition(incomeExpenseOverviewData.expenseByCategory[0].value)}
                       </Text>
                     </View>
                   </View>
@@ -886,7 +886,7 @@ export default function AnalysisScreen() {
                           </Text>
                         </View>
                       </View>
-                      <Text style={[styles.categoryAmount, { color: colors.expense }]}>-₹{d.value.toFixed(2)}</Text>
+                      <Text style={[styles.categoryAmount, { color: colors.expense }]}>-{formatCurrencyWithPosition(d.value)}</Text>
                     </View>
                   );
                 })
@@ -903,8 +903,8 @@ export default function AnalysisScreen() {
   const renderAccountDetailsItem = ({ item }: { item: any }) => (
     <View style={styles.detailedAccountCard}>
       <Text style={styles.accountTitleLarge}>{item.label}</Text>
-      <Text style={styles.breakdownValue}>Balance: ₹{item.value.toFixed(2)}</Text>
-      <Text style={styles.breakdownLabel}>Income: ₹{item.income.toFixed(2)} · Expense: ₹{item.expense.toFixed(2)}</Text>
+      <Text style={styles.breakdownValue}>Balance: {formatCurrencyWithPosition(item.value)}</Text>
+      <Text style={styles.breakdownLabel}>Income: {formatCurrencyWithPosition(item.income)} · Expense: {formatCurrencyWithPosition(item.expense)}</Text>
     </View>
   );
 
