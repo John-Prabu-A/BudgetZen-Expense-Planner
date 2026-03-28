@@ -1,5 +1,6 @@
 import { useTheme } from '@/context/Theme';
 import { useToast } from '@/context/Toast';
+import useAppSettings from '@/hooks/useAppSettings';
 import { ExportOptions, exportRecordsToCSV } from '@/lib/dataExport';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -8,19 +9,20 @@ import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ExportRecordsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { formatCurrency } = useAppSettings();
   const { success, error, info, warning } = useToast();
 
   const [dateFrom, setDateFrom] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -82,7 +84,7 @@ export default function ExportRecordsScreen() {
       error('No export data available to share.', 3000);
       return;
     }
-  
+
     setLoading(true);
     try {
       const isAvailable = await Sharing.isAvailableAsync();
@@ -90,23 +92,31 @@ export default function ExportRecordsScreen() {
         error('Sharing is not available on this device.', 4000);
         return;
       }
-  
-      // Create a file in the cache directory
-      const { File, Paths } = FileSystem;
-      const file = new File(Paths.cache, exportData.filename);
-      
-      // Write the CSV content to the file
-      await file.write(exportData.csv);
-      
-      // Share the file
-      await Sharing.shareAsync(file.uri, {
+
+      const cacheDirectory =
+        (FileSystem.Paths as any)?.cache?.uri ||
+        (FileSystem.Paths as any)?.document?.uri;
+
+      if (!cacheDirectory) {
+        throw new Error('No usable file system directory available for export.');
+      }
+
+      const normalizedDir = cacheDirectory.endsWith('/') ? cacheDirectory : `${cacheDirectory}/`;
+      const fileUri = `${normalizedDir}${exportData.filename}`;
+
+      await (FileSystem as any).writeAsStringAsync(fileUri, exportData.csv, {
+        encoding: 'utf8',
+      });
+
+      await Sharing.shareAsync(fileUri, {
         mimeType: 'text/csv',
         dialogTitle: 'Share CSV Export',
         UTI: 'public.comma-separated-values-text',
       });
 
+      await (FileSystem as any).deleteAsync(fileUri, { idempotent: true });
     } catch (err: any) {
-      error(`Share failed: ${err.message}`, 4000);
+      error(`Share failed: ${err?.message || 'Unknown error'}`, 4000);
     } finally {
       setLoading(false);
     }
@@ -129,9 +139,9 @@ export default function ExportRecordsScreen() {
             <View style={styles.statGrid}>
               {/* Stat Items */}
               <StatItem icon="file-document" label="Records" value={exportData?.summary.totalRecords} color={colors.accent} />
-              <StatItem icon="plus-circle" label="Income" value={`₹${exportData?.summary.totalIncome.toLocaleString()}`} color={colors.success} />
-              <StatItem icon="minus-circle" label="Expense" value={`₹${exportData?.summary.totalExpense.toLocaleString()}`} color={colors.danger} />
-              <StatItem icon="wallet" label="Balance" value={`₹${exportData?.summary.netBalance.toLocaleString()}`} color={colors.text} />
+              <StatItem icon="plus-circle" label="Income" value={formatCurrency(exportData?.summary.totalIncome ?? 0)} color={colors.success} />
+              <StatItem icon="minus-circle" label="Expense" value={formatCurrency(exportData?.summary.totalExpense ?? 0)} color={colors.danger} />
+              <StatItem icon="wallet" label="Balance" value={formatCurrency(exportData?.summary.netBalance ?? 0)} color={colors.text} />
               <StatItem icon="tag-multiple" label="Categories" value={exportData?.summary.uniqueCategories} color={colors.accent} />
               <StatItem icon="account-multiple" label="Accounts" value={exportData?.summary.uniqueAccounts} color={colors.accent} />
             </View>
@@ -201,7 +211,10 @@ export default function ExportRecordsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.infoTitle, { color: colors.text }]}>Good to know</Text>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              • Exports include date, type, amount, category, account, and notes.\n• These CSV files cannot be restored back into the app.
+              • Exports include date, type, amount, category, account, and notes.
+            </Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              • These CSV files cannot be restored back into the app.
             </Text>
           </View>
         </View>

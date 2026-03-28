@@ -1,5 +1,6 @@
 import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
+import SecurePasswordManager from '@/lib/security/SecurePasswordManager';
 import SecureStorageManager from '@/lib/storage/secureStorageManager';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -31,8 +32,9 @@ export default function PasscodeSetupScreen() {
   const PASSCODE_KEY = 'app_passcode';
 
   const handleSetPasscode = async () => {
-    if (passcode.length < 4) {
-      Alert.alert('Error', 'Passcode must be at least 4 digits');
+    // Validate passcode
+    if (!SecurePasswordManager.validatePasscode(passcode)) {
+      Alert.alert('Invalid Passcode', 'Passcode must be exactly 4-6 digits');
       return;
     }
 
@@ -43,10 +45,13 @@ export default function PasscodeSetupScreen() {
 
     try {
       setLoading(true);
-      // Hash the passcode (simple implementation - in production use a proper hashing library)
-      const hashedPasscode = btoa(passcode); // Base64 encoding for demo
+      // Hash the passcode securely
+      const hashedPasscode = await SecurePasswordManager.hashPassword(passcode);
       await SecureStorageManager.setItem(PASSCODE_KEY, hashedPasscode);
       await setPasscodeEnabled(true);
+
+      // Clear failed attempts
+      await SecurePasswordManager.clearFailedAttempts('passcode');
 
       Alert.alert('Success', 'Passcode has been set successfully!', [
         {
@@ -65,10 +70,34 @@ export default function PasscodeSetupScreen() {
   const handleVerifyAndRemove = async () => {
     try {
       setLoading(true);
-      const storedPasscode = await SecureStorageManager.getItem(PASSCODE_KEY);
-      const hashedInput = btoa(verifyPasscode);
 
-      if (storedPasscode === hashedInput) {
+      // Check if account is locked out
+      const isLockedOut = await SecurePasswordManager.isLockedOut('passcode');
+      if (isLockedOut) {
+        const remainingTime = await SecurePasswordManager.getRemainingLockoutTime('passcode');
+        const minutes = Math.ceil(remainingTime / 60);
+        Alert.alert(
+          'Account Locked',
+          `Too many failed attempts. Please try again in ${minutes} minute(s).`
+        );
+        setLoading(false);
+        return;
+      }
+
+      const storedPasscode = await SecureStorageManager.getItem(PASSCODE_KEY);
+      
+      if (!storedPasscode) {
+        Alert.alert('Error', 'No passcode found. Please set one first.');
+        setLoading(false);
+        return;
+      }
+
+      const isValid = await SecurePasswordManager.verifyPassword(verifyPasscode, storedPasscode);
+
+      if (isValid) {
+        // Clear failed attempts on success
+        await SecurePasswordManager.clearFailedAttempts('passcode');
+        
         // Correct passcode - show disable confirmation
         Alert.alert('Disable Passcode Protection', 'Are you sure you want to disable passcode protection?', [
           { text: 'Cancel', onPress: () => {}, style: 'cancel' },
@@ -92,7 +121,16 @@ export default function PasscodeSetupScreen() {
           },
         ]);
       } else {
-        Alert.alert('Error', 'Incorrect passcode');
+        // Record failed attempt and check lockout
+        const nowLockedOut = await SecurePasswordManager.recordFailedAttempt('passcode');
+        if (nowLockedOut) {
+          Alert.alert(
+            'Account Locked',
+            'Too many failed attempts. Please try again in 15 minutes.'
+          );
+        } else {
+          Alert.alert('Error', 'Incorrect passcode');
+        }
         setVerifyPasscode('');
       }
     } catch (error) {
@@ -106,15 +144,48 @@ export default function PasscodeSetupScreen() {
   const handleChangePasscode = async () => {
     try {
       setLoading(true);
-      const storedPasscode = await SecureStorageManager.getItem(PASSCODE_KEY);
-      const hashedInput = btoa(verifyPasscode);
 
-      if (storedPasscode === hashedInput) {
+      // Check if account is locked out
+      const isLockedOut = await SecurePasswordManager.isLockedOut('passcode');
+      if (isLockedOut) {
+        const remainingTime = await SecurePasswordManager.getRemainingLockoutTime('passcode');
+        const minutes = Math.ceil(remainingTime / 60);
+        Alert.alert(
+          'Account Locked',
+          `Too many failed attempts. Please try again in ${minutes} minute(s).`
+        );
+        setLoading(false);
+        return;
+      }
+
+      const storedPasscode = await SecureStorageManager.getItem(PASSCODE_KEY);
+      
+      if (!storedPasscode) {
+        Alert.alert('Error', 'No passcode found. Please set one first.');
+        setLoading(false);
+        return;
+      }
+
+      const isValid = await SecurePasswordManager.verifyPassword(verifyPasscode, storedPasscode);
+
+      if (isValid) {
+        // Clear failed attempts on success
+        await SecurePasswordManager.clearFailedAttempts('passcode');
+        
         // Correct passcode - proceed to set new one
         setVerifyPasscode('');
         setCurrentScreen('set');
       } else {
-        Alert.alert('Error', 'Incorrect passcode');
+        // Record failed attempt and check lockout
+        const nowLockedOut = await SecurePasswordManager.recordFailedAttempt('passcode');
+        if (nowLockedOut) {
+          Alert.alert(
+            'Account Locked',
+            'Too many failed attempts. Please try again in 15 minutes.'
+          );
+        } else {
+          Alert.alert('Error', 'Incorrect passcode');
+        }
         setVerifyPasscode('');
       }
     } catch (error) {

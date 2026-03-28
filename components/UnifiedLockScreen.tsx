@@ -1,5 +1,5 @@
 import { useTheme } from '@/context/Theme';
-import { verifyPassword } from '@/lib/passwordUtils';
+import SecurePasswordManager from '@/lib/security/SecurePasswordManager';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -80,16 +80,20 @@ export default function UnifiedLockScreen({
 
     const handlePasswordVerify = async () => {
         if (!password.trim() || !passwordHash) return;
+        console.log('[LOCK-SCREEN] 🔐 Verifying password...');
         setIsLoading(true);
         try {
-            const isValid = await verifyPassword(password, passwordHash);
+            const isValid = await SecurePasswordManager.verifyPassword(password, passwordHash);
             if (isValid) {
+                console.log('[LOCK-SCREEN] ✅ Password verified! Unlocking...');
                 Keyboard.dismiss();
                 onUnlock();
             } else {
+                console.log('[LOCK-SCREEN] ❌ Password verification failed');
                 handleError('Incorrect password');
             }
         } catch (err) {
+            console.error('[LOCK-SCREEN] 🚨 Password verification error:', err);
             handleError('Verification failed');
         } finally {
             setIsLoading(false);
@@ -98,16 +102,25 @@ export default function UnifiedLockScreen({
 
     const handlePasscodeVerify = async (codeToCheck: string) => {
         if (!passcodeHash) return;
+        console.log('[LOCK-SCREEN] 📱 Verifying passcode... code length:', codeToCheck.length, 'expected:', passcodeLength);
         setIsLoading(true);
         try {
             const hashedInput = btoa(codeToCheck);
+            console.log('[LOCK-SCREEN] Comparing hashes:', {
+                input: hashedInput,
+                stored: passcodeHash,
+                match: hashedInput === passcodeHash,
+            });
             if (hashedInput === passcodeHash) {
+                console.log('[LOCK-SCREEN] ✅ Passcode verified! Unlocking...');
                 onUnlock();
             } else {
+                console.log('[LOCK-SCREEN] ❌ Passcode verification failed');
                 setPasscode('');
                 handleError('Incorrect passcode');
             }
         } catch (err) {
+            console.error('[LOCK-SCREEN] 🚨 Passcode verification error:', err);
             setPasscode('');
             handleError('Verification failed');
         } finally {
@@ -116,10 +129,14 @@ export default function UnifiedLockScreen({
     };
 
     const handleError = (msg: string) => {
+        console.log('[LOCK-SCREEN] ⚠️ Error:', msg, 'attempts:', attempts + 1);
         setError(msg);
         triggerShake();
         setAttempts((prev) => prev + 1);
-        if (attempts >= 5) Alert.alert('Security Alert', 'Too many failed attempts.');
+        if (attempts >= 5) {
+            console.warn('[LOCK-SCREEN] 🚨 Too many failed attempts!');
+            Alert.alert('Security Alert', 'Too many failed attempts.');
+        }
     };
 
     const handleKeyPress = (num: string) => {
@@ -186,6 +203,13 @@ export default function UnifiedLockScreen({
             </View>
         </View>
     );
+
+    console.log('[LOCK-SCREEN] 🎨 RENDERING Lock Screen:', {
+        authMethod: currentMethod,
+        hasPasswordHash: !!passwordHash,
+        hasPasscodeHash: !!passcodeHash,
+        passcodeLength,
+    });
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

@@ -1,6 +1,6 @@
 import { useTheme } from '@/context/Theme';
 import { useUIMode } from '@/hooks/useUIMode';
-import { verifyPassword } from '@/lib/passwordUtils';
+import SecurePasswordManager from '@/lib/security/SecurePasswordManager';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useState } from 'react';
 import {
@@ -42,7 +42,7 @@ export default function PasswordLockScreen({ passwordHash, onUnlock }: PasswordL
     setError('');
 
     try {
-      const isCorrect = await verifyPassword(password, passwordHash);
+      const isCorrect = await SecurePasswordManager.verifyPassword(password, passwordHash);
 
       if (isCorrect) {
         setPassword('');

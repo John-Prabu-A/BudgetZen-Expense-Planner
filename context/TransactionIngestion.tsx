@@ -78,7 +78,6 @@ export const IngestionProvider = ({
         setSettings(newManager.getSettings());
         setIsInitialized(true);
         setIsListening(true);
-        console.log('[IngestionProvider] Initialized successfully for user:', user.id);
       })
       .catch((error) => {
         console.error('[IngestionProvider] Initialization failed:', error);

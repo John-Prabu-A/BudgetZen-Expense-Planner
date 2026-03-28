@@ -76,8 +76,10 @@ const PrivacyScreen = () => {
       console.log('[Privacy] Saved crash stats:', sendStats);
       console.log('[Privacy] Completing onboarding step...');
       await completeStep(OnboardingStep.PRIVACY);
-      console.log('[Privacy] Onboarding step completed, parent layout should navigate');
-      // Navigation is handled automatically by parent layout
+      console.log('[Privacy] Onboarding step completed');
+      // Navigate to next screen
+      console.log('[Privacy] Navigating to reminders screen...');
+      router.push('/(onboarding)/reminders');
     } catch (error) {
       console.error('[Privacy] Error completing privacy step:', error);
     }

@@ -188,14 +188,23 @@ export class NotificationQueueManager {
   private async sendNotification(notification: QueuedNotification): Promise<boolean> {
     try {
       // Call backend edge function to send
+      const sessionResponse = await supabase.auth.getSession();
+      const accessToken = sessionResponse.data?.session?.access_token;
+
+      const supabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/send-notification`,
+        `${supabaseUrl}/functions/v1/send-notification`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-          },
+          headers,
           body: JSON.stringify({
             user_id: notification.user_id,
             title: notification.title,

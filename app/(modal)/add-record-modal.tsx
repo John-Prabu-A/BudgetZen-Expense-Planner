@@ -8,15 +8,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
-  Alert,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -107,17 +107,49 @@ export default function AddRecordModal() {
   );
 
   const handleSave = async () => {
-    if (!amount || parseFloat(amount) === 0) return Alert.alert('Error', 'Enter a valid amount');
-    if (!selectedAccount) return Alert.alert('Error', 'Select an account');
+    // Validate amount
+    if (!amount || amount.trim() === '') {
+      return Alert.alert('Error', 'Please enter an amount');
+    }
+
+    const normalizedAmount = amount.replace(/,/g, '');
+    const parsedAmount = parseFloat(normalizedAmount);
+
+    if (isNaN(parsedAmount)) {
+      return Alert.alert('Error', 'Amount must be a valid number');
+    }
+
+    // Prevent excessively large numbers or malformed values
+    if (parsedAmount <= 0) {
+      return Alert.alert('Error', 'Amount must be greater than 0');
+    }
+
+    if (parsedAmount > 10000000) {
+      return Alert.alert('Error', 'Amount cannot exceed ₹10,000,000');
+    }
+
+    const decimalPart = normalizedAmount.includes('.') ? normalizedAmount.split('.')[1] : '';
+    if (decimalPart && decimalPart.length > 2) {
+      return Alert.alert('Error', 'Amount can have at most 2 decimal places');
+    }
+
+    if (normalizedAmount.length > 16) {
+      return Alert.alert('Error', 'Amount is too long');
+    }
+
+    // Validate account selection
+    if (!selectedAccount) {
+      return Alert.alert('Error', 'Please select an account');
+    }
     
     // Validate category for non-transfer records
     if (recordType !== 'TRANSFER' && !selectedCategory) {
-      return Alert.alert('Error', 'Select a category');
+      return Alert.alert('Error', 'Please select a category');
     }
     
     // Validate destination account for transfers
     if (recordType === 'TRANSFER' && !selectedToAccount) {
-      return Alert.alert('Error', 'Select destination account');
+      return Alert.alert('Error', 'Please select a destination account');
     }
     
     // Prevent transfer to same account
@@ -128,7 +160,7 @@ export default function AddRecordModal() {
     try {
       const payload: any = {
         user_id: user?.id,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         type: recordType.toLowerCase(),
         account_id: selectedAccount.id,
         notes,
@@ -275,9 +307,30 @@ export default function AddRecordModal() {
   };
 
   const handleNumberPress = (val: string) => {
-    if (val === 'DEL') setAmount(prev => prev.slice(0, -1));
-    else if (val === '.' && amount.includes('.')) return;
-    else setAmount(prev => prev + val);
+    if (val === 'DEL') {
+      setAmount(prev => prev.slice(0, -1));
+      return;
+    }
+
+    if (val === '.' && amount.includes('.')) {
+      return;
+    }
+
+    const candidate = amount + val;
+    const normalizedCandidate = candidate.replace(/,/g, '');
+
+    if (normalizedCandidate.length > 16) {
+      return;
+    }
+
+    if (normalizedCandidate.includes('.')) {
+      const decimalPart = normalizedCandidate.split('.')[1] || '';
+      if (decimalPart.length > 2) {
+        return;
+      }
+    }
+
+    setAmount(candidate);
   };
 
   return (

@@ -1,23 +1,27 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
+import useAppSettings from '@/hooks/useAppSettings';
 import { useUIMode } from '@/hooks/useUIMode';
 import { deleteBudget, readBudgets, readRecordsWithSpending } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function BudgetsScreen() {
   const router = useRouter();
   const { user, session } = useAuth();
   const { isDark, colors } = useTheme();
   const spacing = useUIMode();
+  const { formatCurrency } = useAppSettings();
   const styles = createBudgetsStyles(spacing);
 
   const [budgets, setBudgets] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [expandedBudgetId, setExpandedBudgetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'month' | 'year'>('month');
 
   const categoryIcons: { [key: string]: string } = {
@@ -47,7 +51,16 @@ export default function BudgetsScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const [budgetsData, recordsData] = await Promise.all([readBudgets(), readRecordsWithSpending()]);
+      
+      if (!budgetsData || budgetsData.length === 0) {
+        setError('No budgets found. Create one to get started!');
+        setBudgets([]);
+        setRecords([]);
+        setLoading(false);
+        return;
+      }
       
       const transformedBudgets = (budgetsData || []).map((budget: any) => ({
         ...budget,
@@ -55,32 +68,40 @@ export default function BudgetsScreen() {
         name: budget.categories?.name || 'Unknown',
         color: budget.categories?.color || '#888888',
         limit: budget.amount,
-        spent: 0,
+        spent: 0, // Will be calculated in budgetsWithSpending useMemo
       }));
-      
-      console.log('📊 BUDGET DEBUG INFO:');
-      console.log('Budgets loaded:', transformedBudgets.length);
-      console.log('Records loaded:', (recordsData || []).length);
-      
-      // Debug: Log each budget's category_id
-      transformedBudgets.forEach(b => {
-        console.log(`  Budget: ${b.name} (ID: ${b.id}, Category ID: ${b.category_id})`);
-      });
-      
-      // Debug: Log each record's category_id
-      (recordsData || []).forEach(r => {
-        console.log(`  Record: ${r.categories?.name} - ₹${r.amount} (Category ID: ${r.category_id}, Type: ${r.type})`);
-      });
       
       setBudgets(transformedBudgets);
       setRecords(recordsData || []);
-    } catch (error) {
+      setError(null);
+    } catch (error: any) {
       console.error('Error loading budgets:', error);
-      Alert.alert('Error', 'Failed to load budgets');
+      const errorMessage = error?.message || 'Failed to load budgets. Please check your internet connection and try again.';
+      setError(errorMessage);
+      Alert.alert('Error Loading Budgets', errorMessage, [
+        {
+          text: 'Retry',
+          onPress: loadData,
+        },
+        {
+          text: 'Dismiss',
+          style: 'cancel',
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadData();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user, session]);
 
   const handleDeleteBudget = (budgetId: string, budgetName: string) => {
     Alert.alert(
@@ -118,6 +139,7 @@ export default function BudgetsScreen() {
     } as any);
   };
 
+  // Replaced with shared lib/currency formatCurrency
   const getProgressColor = (spent: number, limit: number) => {
     const percentage = limit > 0 ? (spent / limit) * 100 : 0;
     if (percentage >= 100) return colors.expense || '#FF6B6B';
@@ -156,14 +178,6 @@ export default function BudgetsScreen() {
       });
 
       const spent = matchingRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0);
-
-      // Debug log for this specific budget
-      if (matchingRecords.length > 0) {
-        console.log(`💰 ${budget.name}: Found ${matchingRecords.length} matching records = ₹${spent}`);
-        matchingRecords.forEach(r => {
-          console.log(`    - ₹${r.amount} on ${new Date(r.transaction_date).toLocaleDateString()}`);
-        });
-      }
 
       return { ...budget, spent };
     });
@@ -230,7 +244,7 @@ export default function BudgetsScreen() {
                 {budget.name}
               </Text>
               <Text style={[styles.budgetSubtext, { color: colors.textSecondary }]}>
-                Budget: ₹{budget.limit.toLocaleString()}
+                Budget: {formatCurrency(budget.limit)}
               </Text>
             </View>
           </View>
@@ -268,10 +282,10 @@ export default function BudgetsScreen() {
           </View>
           <View style={styles.progressLabels}>
             <Text style={[styles.spentText, { color: colors.text }]}>
-              Spent: ₹{budget.spent.toLocaleString()}
+              Spent: {formatCurrency(budget.spent)}
             </Text>
             <Text style={[styles.remainingText, { color: colors.accent }]}>
-              Remaining: ₹{Math.max(0, budget.limit - budget.spent).toLocaleString()}
+              Remaining: {formatCurrency(Math.max(0, budget.limit - budget.spent))}
             </Text>
           </View>
         </View>
@@ -286,7 +300,7 @@ export default function BudgetsScreen() {
                   Daily Avg
                 </Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  ₹{daysRemaining > 0 ? (budget.spent / daysRemaining).toFixed(0) : '0'}
+                  {budget.spent > 0 ? formatCurrency(budget.spent / daysRemaining) : formatCurrency(0)}
                 </Text>
               </View>
               <View style={styles.statBox}>
@@ -302,7 +316,7 @@ export default function BudgetsScreen() {
                   Daily Budget
                 </Text>
                 <Text style={[styles.statValue, { color: colors.text }]}>
-                  ₹{daysRemaining > 0 ? (budget.limit / daysRemaining).toFixed(0) : '0'}
+                  {daysRemaining > 0 ? formatCurrency(budget.limit / daysRemaining) : formatCurrency(0)}
                 </Text>
               </View>
             </View>
@@ -316,7 +330,7 @@ export default function BudgetsScreen() {
                   color={colors.expense || '#FF6B6B'} 
                 />
                 <Text style={[styles.warningText, { color: colors.expense || '#FF6B6B' }]}>
-                  You&apos;ve exceeded this budget by ₹{(budget.spent - budget.limit).toLocaleString()}
+                  You&apos;ve exceeded this budget by {formatCurrency(budget.spent - budget.limit)}
                 </Text>
               </View>
             )}
@@ -360,6 +374,9 @@ export default function BudgetsScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+      }
     >
       {/* Header with Period Toggle */}
       <View style={styles.headerSection}>
@@ -403,7 +420,7 @@ export default function BudgetsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Budget</Text>
               <Text style={[styles.metricValue, { color: colors.text }]}>
-                ₹{summaryStats.totalBudget.toLocaleString()}
+                {formatCurrency(summaryStats.totalBudget)}
               </Text>
             </View>
           </View>
@@ -433,6 +450,20 @@ export default function BudgetsScreen() {
             <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 12 }]}>
               Loading budgets...
             </Text>
+          </View>
+        ) : error ? (
+          <View style={[styles.errorContainer, { backgroundColor: (colors.expense || '#FF6B6B') + '10', borderColor: colors.expense || '#FF6B6B' }]}>
+            <MaterialCommunityIcons name="alert-circle" size={48} color={colors.expense || '#FF6B6B'} />
+            <Text style={[styles.errorText, { color: colors.text, marginTop: 12 }]}>
+              {error}
+            </Text>
+            <TouchableOpacity
+              style={[styles.errorRetryButton, { backgroundColor: colors.accent }]}
+              onPress={loadData}
+            >
+              <MaterialCommunityIcons name="refresh" size={18} color="#FFFFFF" />
+              <Text style={styles.errorRetryButtonText}>Retry</Text>
+            </TouchableOpacity>
           </View>
         ) : budgetsWithSpending.length === 0 ? (
           <View style={[styles.emptyContainer, { backgroundColor: colors.surface }]}>
@@ -480,7 +511,7 @@ export default function BudgetsScreen() {
                 Total Budget
               </Text>
               <Text style={[styles.summaryValue, { color: colors.text }]}>
-                ₹{summaryStats.totalBudget.toLocaleString()}
+                {formatCurrency(summaryStats.totalBudget)}
               </Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -489,7 +520,7 @@ export default function BudgetsScreen() {
                 Total Spent
               </Text>
               <Text style={[styles.summaryValue, { color: colors.text }]}>
-                ₹{summaryStats.totalSpent.toLocaleString()}
+                {formatCurrency(summaryStats.totalSpent)}
               </Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -500,7 +531,7 @@ export default function BudgetsScreen() {
               <Text style={[styles.summaryValue, { 
                 color: summaryStats.totalRemaining >= 0 ? colors.income || '#4CAF50' : colors.expense || '#FF6B6B'
               }]}>
-                ₹{summaryStats.totalRemaining.toLocaleString()}
+                {formatCurrency(summaryStats.totalRemaining)}
               </Text>
             </View>
           </View>
@@ -905,5 +936,32 @@ const createBudgetsStyles = (spacing: any) => StyleSheet.create({
   metricValue: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  errorContainer: {
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  errorText: {
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  errorRetryButton: {
+    flexDirection: 'row',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 8,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  errorRetryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

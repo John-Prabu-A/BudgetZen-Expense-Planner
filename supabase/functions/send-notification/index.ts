@@ -19,6 +19,12 @@
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.35.0";
 
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -36,7 +42,7 @@ interface SendNotificationRequest {
   delay_seconds?: number;
 }
 
-interface ExpoTicketResponse {
+interface ExpoTicket {
   status: "ok" | "error";
   id?: string;
   message?: string;
@@ -45,12 +51,9 @@ interface ExpoTicketResponse {
   };
 }
 
-interface ExpoReceiptResponse {
-  status: "ok" | "error";
-  message?: string;
-  details?: {
-    error?: string;
-  };
+interface ExpoPushApiResponse {
+  data?: ExpoTicket[];
+  errors?: Array<{ message?: string }>;
 }
 
 // Initialize Supabase client
@@ -73,13 +76,13 @@ async function sendViaExpo(
   title: string,
   body: string,
   data?: Record<string, any>
-): Promise<ExpoTicketResponse> {
+): Promise<ExpoTicket> {
   try {
     const message = {
       to: token,
       sound: "default",
-      title: title,
-      body: body,
+      title,
+      body,
       data: data || {},
       badge: 1,
       priority: "high",
@@ -93,8 +96,37 @@ async function sendViaExpo(
       body: JSON.stringify(message),
     });
 
-    const result = (await response.json()) as ExpoTicketResponse;
-    return result;
+    if (!response.ok) {
+      const text = await response.text();
+      return {
+        status: "error",
+        message: `Expo API error ${response.status}: ${text}`,
+      };
+    }
+
+    const result = (await response.json()) as ExpoPushApiResponse;
+    const ticket = result?.data?.[0];
+
+    if (!ticket) {
+      const message = result?.errors?.[0]?.message || "Missing Expo response ticket";
+      return {
+        status: "error",
+        message,
+      };
+    }
+
+    if (ticket.status === "ok") {
+      return {
+        status: "ok",
+        id: ticket.id,
+      };
+    }
+
+    return {
+      status: "error",
+      message: ticket.message || String(ticket.details?.error || "Unknown Expo error"),
+      details: ticket.details,
+    };
   } catch (error) {
     console.error("Error sending to Expo:", error);
     return {

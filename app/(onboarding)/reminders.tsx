@@ -119,8 +119,10 @@ const RemindersScreen = () => {
       
       console.log('[Reminders] Completing onboarding step...');
       await completeStep(OnboardingStep.REMINDERS);
-      console.log('[Reminders] Onboarding step completed, parent layout should navigate');
-      // Navigation is handled automatically by parent layout
+      console.log('[Reminders] Onboarding step completed');
+      // Navigate to next screen
+      console.log('[Reminders] Navigating to tutorial screen...');
+      router.push('/(onboarding)/tutorial');
     } catch (error) {
       console.error('[Reminders] Error completing reminders step:', error);
     }

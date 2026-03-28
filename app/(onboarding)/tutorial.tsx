@@ -96,8 +96,14 @@ const TutorialScreen = () => {
       // Complete the tutorial step - this will mark onboarding as complete
       console.log('[Tutorial] Completing onboarding step...');
       await completeStep(OnboardingStep.TUTORIAL);
-      console.log('[Tutorial] Onboarding step completed, parent layout should navigate to main app');
-      // Navigation is handled automatically by parent layout
+      console.log('[Tutorial] Onboarding step completed');
+      
+      // Brief delay to ensure state updates are processed
+      // This prevents the root layout from showing a loading spinner
+      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('[Tutorial] Ready for navigation');
+      // The root layout will automatically detect onboarding is complete
+      // and navigate to the tabs screen
     } catch (error) {
       console.error('[Tutorial] Error completing tutorial:', error);
       Alert.alert('Error', 'Failed to complete onboarding. Please try again.');

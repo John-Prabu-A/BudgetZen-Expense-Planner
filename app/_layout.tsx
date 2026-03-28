@@ -1,7 +1,7 @@
 import UnifiedLockScreen from '@/components/UnifiedLockScreen';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../context/Auth';
@@ -20,7 +20,7 @@ import { NotificationService } from '../lib/notifications/NotificationService';
 import { supabase } from '../lib/supabase';
 
 const InitialLayout = () => {
-    const { session, loading: authLoading, isPasswordLocked, unlockPassword } = useAuth();
+    const { session, loading: authLoading, isPasswordLocked, unlockPassword, passwordStatusChecked } = useAuth();
     const { isDark, colors } = useTheme();
     const { authMethod, passwordHash, passcodeHash, passcodeLength } = usePreferences();
     const { currentStep, loading: onboardingLoading } = useOnboarding();
@@ -29,6 +29,28 @@ const InitialLayout = () => {
     const navigationReady = useRootNavigationState()?.key;
     // Notifications context (available because this component is rendered inside NotificationsProvider)
     const { registerPushToken, syncTokenWithBackend, loadPreferences: loadNotificationPreferences } = useNotifications();
+    
+    // Track last navigation action to prevent rapid repeated navigations
+    const lastNavigationRef = useRef<{ route: string; timestamp: number } | null>(null);
+    
+    // Track if password was just unlocked to prevent immediate re-navigation
+    const justUnlockedRef = useRef(false);
+
+    // Track when password is unlocked to skip navigation logic briefly
+    useEffect(() => {
+        if (!isPasswordLocked && justUnlockedRef.current === false) {
+            console.log('[NAV-DEBUG] Password was just unlocked - setting justUnlockedRef to true');
+            justUnlockedRef.current = true;
+            
+            // Reset the flag after a brief moment to allow navigation to complete
+            const timer = setTimeout(() => {
+                console.log('[NAV-DEBUG] Resetting justUnlockedRef to false');
+                justUnlockedRef.current = false;
+            }, 500);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [isPasswordLocked]);
 
     // Initialize notifications and transaction ingestion on app startup
     useEffect(() => {
@@ -189,48 +211,99 @@ const InitialLayout = () => {
 
     // Main navigation logic
     useEffect(() => {
+        console.log('[NAV-DEBUG] ====== NAVIGATION EFFECT TRIGGERED ======');
+        console.log('[NAV-DEBUG] Effect dependencies:', {
+            navigationReady,
+            authLoading,
+            onboardingLoading,
+            currentStep,
+            isPasswordLocked,
+            passwordStatusChecked,
+            segments: segments?.[0],
+            justUnlocked: justUnlockedRef.current,
+        });
+
         if (!navigationReady) {
-            console.log('Navigation not ready');
+            console.log('[NAV] Navigation not ready');
             return;
         }
 
         if (authLoading || onboardingLoading) {
-            console.log('Still loading auth or onboarding');
+            console.log('[NAV] Still loading auth or onboarding');
+            return;
+        }
+
+        // CRITICAL: Wait for password status to be checked before proceeding
+        if (!passwordStatusChecked) {
+            console.log('[NAV-DEBUG] ⏳ PASSWORD STATUS NOT YET CHECKED - waiting...');
+            return;
+        }
+
+        // If password was just unlocked, skip navigation logic briefly
+        // This gives Expo Router time to complete the previous navigation
+        if (justUnlockedRef.current) {
+            console.log('[NAV-DEBUG] ⏰ PASSWORD JUST UNLOCKED - skipping navigation logic for 500ms');
             return;
         }
 
         if (currentStep === null) {
-            console.log('Onboarding step not loaded yet');
+            console.log('[NAV] Onboarding step not loaded yet');
             return;
         }
 
         // If password is locked, don't proceed with navigation
+        // Reset the navigation ref so it doesn't try to re-navigate
         if (isPasswordLocked) {
-            console.log('Password locked - showing password screen');
+            console.log('[NAV-DEBUG] 🔒 PASSWORD IS LOCKED');
+            console.log('[NAV] ⏸️  Password is locked - showing lock screen, skipping navigation');
+            lastNavigationRef.current = null; // Clear ref so we don't have stale navigation attempts
             return;
         }
 
-        const inAuthGroup = segments[0] === '(auth)';
-        const inOnboardingGroup = segments[0] === '(onboarding)';
-        const inTabsGroup = segments[0] === '(tabs)';
-        const inPreferences = segments[0] === 'preferences';
-        const isModal = segments[0] === '(modal)';
+        const inAuthGroup = segments?.[0] === '(auth)';
+        const inOnboardingGroup = segments?.[0] === '(onboarding)';
+        const inTabsGroup = segments?.[0] === '(tabs)';
+        const inPreferences = segments?.[0] === 'preferences';
+        const isModal = segments?.[0] === '(modal)';
+        const inAppGroup = segments?.[0] === '(app)';
 
-        console.log('Navigation logic:', {
-            hasSession: !!session,
-            isPasswordLocked,
-            onboardingStep: currentStep,
-            isOnboardingComplete: currentStep === OnboardingStep.COMPLETED,
+        console.log('[NAV-DEBUG] Route detection:', {
             inAuthGroup,
             inOnboardingGroup,
             inTabsGroup,
+            inAppGroup,
             inPreferences,
             isModal,
-            segments,
+            currentSegment: segments?.[0],
+        });
+
+        // If segments don't have a group, navigation hasn't been initialized yet
+        // This is normal when the app is first loading - just wait
+        if (!inAuthGroup && !inOnboardingGroup && !inTabsGroup && !inPreferences && !isModal && !inAppGroup) {
+            console.log('[NAV] ⏳ Waiting for route initialization (segments not yet populated)');
+            console.log('[NAV-DEBUG] ⏳ Segments is empty or invalid:', segments);
+            return;
+        }
+
+        console.log('[NAV] Current route state:', {
+            segments: segments[0],
+            hasSession: !!session,
+            onboardingStep: currentStep,
+            inAuthGroup,
+            inOnboardingGroup,
+            inTabsGroup,
+            inAppGroup,
         });
 
         // If in modal or preferences, don't change navigation
         if (isModal || inPreferences) {
+            console.log('[NAV] 📍 In modal/preferences, skip navigation');
+            return;
+        }
+
+        // If in (app) group - this is a valid sub-route, don't interfere
+        if (inAppGroup) {
+            console.log('[NAV] 📍 In (app) group, skip navigation interference');
             return;
         }
 
@@ -250,17 +323,18 @@ const InitialLayout = () => {
                 targetRoute = '/(onboarding)/tutorial';
             }
 
-            // Get current route from segments
-            const currentRoute = segments.slice(1).join('/');
-            const targetRouteWithoutGroup = targetRoute.replace('/(onboarding)/', '');
-
-            // Navigate if we're not on the correct screen
-            if (currentRoute !== targetRouteWithoutGroup) {
-                console.log(`[NAV] Onboarding not complete (step: ${currentStep}) → Redirecting to ${targetRoute}`);
-                console.log(`[NAV] Current route: ${currentRoute}, Target: ${targetRouteWithoutGroup}`);
-                router.replace(targetRoute as any);
+            // Only navigate if not already in onboarding group
+            if (!inOnboardingGroup) {
+                // Prevent rapid repeated navigation to same route
+                const now = Date.now();
+                if (!lastNavigationRef.current || lastNavigationRef.current.route !== targetRoute || now - lastNavigationRef.current.timestamp > 1000) {
+                    console.log(`[NAV] 🎓 Onboarding not complete (${currentStep}) → ${targetRoute}`);
+                    console.log('[NAV-DEBUG] Executing navigation to onboarding...');
+                    router.replace(targetRoute as any);
+                    lastNavigationRef.current = { route: targetRoute, timestamp: now };
+                }
             } else {
-                console.log(`[NAV] Already on correct onboarding screen: ${currentRoute}`);
+                console.log(`[NAV] ✅ Already on onboarding screen`);
             }
             return;
         }
@@ -269,16 +343,50 @@ const InitialLayout = () => {
         // NO SESSION: User not logged in, show login/signup
         if (!session) {
             if (!inAuthGroup) {
-                console.log('[NAV] Onboarding complete, no session → Redirecting to login');
-                router.replace('/(auth)/login');
+                const targetRoute = '/(auth)/login';
+                const now = Date.now();
+                // Prevent rapid repeated navigation
+                if (!lastNavigationRef.current || lastNavigationRef.current.route !== targetRoute || now - lastNavigationRef.current.timestamp > 1000) {
+                    console.log('[NAV] 🔐 Onboarding done, no session → login');
+                    console.log('[NAV-DEBUG] Executing navigation to login...');
+                    router.replace(targetRoute as any);
+                    lastNavigationRef.current = { route: targetRoute, timestamp: now };
+                }
+            } else {
+                console.log('[NAV] ✅ Already on auth screen');
             }
             return;
         }
 
         // PRIORITY 3: Onboarding complete AND user is logged in → Show main app
-        if (!inTabsGroup) {
-            console.log('[NAV] Onboarding complete + logged in → Redirecting to main app');
-            router.replace('/(tabs)');
+        // Accept both (tabs) and (app) as valid main app groups
+        if (inAuthGroup) {
+            // User is in auth group but has a valid session
+            // They've completed auth, so navigate them to the main app
+            // Use index which is the Records tab - first tab in the tabs group
+            const targetRoute = '/(tabs)/index';
+            const now = Date.now();
+            if (!lastNavigationRef.current || lastNavigationRef.current.route !== targetRoute || now - lastNavigationRef.current.timestamp > 1000) {
+                console.log('[NAV] ✅ Session active & onboarding complete → navigating out of auth to main app');
+                console.log('[NAV-DEBUG] Executing navigation to main app...');
+                router.replace(targetRoute as any);
+                lastNavigationRef.current = { route: targetRoute, timestamp: now };
+            }
+            return;
+        }
+
+        if (!inTabsGroup && !inAppGroup) {
+            const targetRoute = '/(tabs)/index';
+            const now = Date.now();
+            // Prevent rapid repeated navigation
+            if (!lastNavigationRef.current || lastNavigationRef.current.route !== targetRoute || now - lastNavigationRef.current.timestamp > 1000) {
+                console.log('[NAV] 🏠 Session active, onboarding done → main app');
+                console.log('[NAV-DEBUG] Executing navigation to main app /(tabs)/index');
+                router.replace(targetRoute as any);
+                lastNavigationRef.current = { route: targetRoute, timestamp: now };
+            }
+        } else {
+            console.log('[NAV] ✅ Already on main app screen');
         }
     }, [
         session,
@@ -287,11 +395,24 @@ const InitialLayout = () => {
         onboardingLoading,
         currentStep,
         isPasswordLocked,
+        passwordStatusChecked,
         segments,
     ]);
 
     // Show loading state while initializing
-    if (authLoading || onboardingLoading || currentStep === null || !navigationReady) {
+    // BUT: if onboarding is complete and we have a session, don't show loading
+    // This prevents the spinner from appearing after tutorial completes
+    const shouldShowLoading = (authLoading || onboardingLoading || currentStep === null || !navigationReady || !passwordStatusChecked) &&
+        !(currentStep === OnboardingStep.COMPLETED && session);
+    
+    if (shouldShowLoading) {
+        console.log('[DEBUG] 🔄 Loading state - showing spinner:', {
+            authLoading,
+            onboardingLoading,
+            currentStep,
+            navigationReady,
+            passwordStatusChecked,
+        });
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
                 <ActivityIndicator size="large" color={colors.accent} />
@@ -302,8 +423,17 @@ const InitialLayout = () => {
     // Show password lock screen if password is locked
     // Show the appropriate lock screen based on authMethod and available credentials
     if (isPasswordLocked) {
+        console.log('[DEBUG] 🔒 PASSWORD LOCK SCREEN - Rendering lock screen:', {
+            isPasswordLocked,
+            hasPasswordHash: !!passwordHash,
+            hasPasscodeHash: !!passcodeHash,
+            authMethod,
+            passcodeLength,
+        });
+
         // If we have password hash, show password lock screen (fallback/default)
         if (passwordHash) {
+            console.log('[DEBUG] 🔐 Rendering PASSWORD lock screen');
             return (
                 <UnifiedLockScreen
                     authMethod={authMethod === 'passcode' ? 'passcode' : authMethod === 'both' ? 'both' : 'password'}
@@ -316,6 +446,7 @@ const InitialLayout = () => {
         }
         // If we have passcode hash but no password, show passcode lock screen
         else if (passcodeHash) {
+            console.log('[DEBUG] 📱 Rendering PASSCODE lock screen');
             return (
                 <UnifiedLockScreen
                     authMethod="passcode"
@@ -325,7 +456,21 @@ const InitialLayout = () => {
                 />
             );
         }
+        
+        // If neither password nor passcode, something is wrong
+        console.warn('[DEBUG] ⚠️ PASSWORD LOCKED BUT NO CREDENTIALS FOUND!', {
+            isPasswordLocked,
+            hasPasswordHash: !!passwordHash,
+            hasPasscodeHash: !!passcodeHash,
+        });
     }
+
+    console.log('[DEBUG] 🗺️ RENDERING STACK with all routes registered:', {
+        isPasswordLocked,
+        authLoading,
+        onboardingLoading,
+        navigationReady,
+    });
 
     return (
         <>
@@ -345,6 +490,7 @@ const InitialLayout = () => {
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(app)" options={{ headerShown: false }} />
                 <Stack.Screen name="(modal)" options={{ headerShown: false }} />
                 <Stack.Screen name="preferences" options={{ headerShown: false }} />
                 <Stack.Screen name="passcode-setup" options={{ headerShown: false }} />

@@ -1,4 +1,3 @@
-import { useAppColorScheme } from '@/hooks/useAppColorScheme';
 import React, { createContext, useContext } from 'react';
 
 /**
@@ -215,8 +214,10 @@ const darkTheme: ThemeColors = {
  * Theme Provider Component
  */
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const colorScheme = useAppColorScheme();
-  const isDark = colorScheme === 'dark';
+  // Use system color scheme as default to avoid blocking on PreferencesProvider
+  // The actual user preference will be applied once Preferences loads
+  const systemColorScheme = require('react-native').useColorScheme();
+  const isDark = systemColorScheme === 'dark';
   const colors = isDark ? darkTheme : lightTheme;
 
   const theme: Theme = {

@@ -14,8 +14,10 @@ module.exports = {
     },
     android: {
       package: "com.budgetzen.app",
+      // googleServicesFile is only needed for Firebase/FCM support
+      // For local development, comment it out unless you have google-services.json configured
       googleServicesFile:
-        process.env.GOOGLE_SERVICES_JSON ?? "./android/app/google-services.json",
+        process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       newArchEnabled: true,
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",

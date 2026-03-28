@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "270785194306",
+    "project_id": "budgetzen-bc609",
+    "storage_bucket": "budgetzen-bc609.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:270785194306:android:f9b29ce398b33463c3c0db",
+        "android_client_info": {
+          "package_name": "com.budgetzen.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaqTznmSmHLViYiRNoHj0JglzbA1FzqM4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,7 @@
 import { EmptyStateView } from '@/components/EmptyStateView';
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
+import useAppSettings from '@/hooks/useAppSettings';
 import { useSmartLoading } from '@/hooks/useSmartLoading';
 import { useUIMode } from '@/hooks/useUIMode';
 import { readAccounts, readCategories, readRecords } from '@/lib/finance';
@@ -8,7 +9,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import IncomeExpenseCalendar from '../components/IncomeExpenseCalendar';
 
 type AnalysisView =
@@ -21,6 +22,7 @@ type AnalysisView =
 export default function AnalysisScreen() {
   const { isDark, colors } = useTheme();
   const spacing = useUIMode();
+  const { formatCurrency } = useAppSettings();
   const { user, session } = useAuth();
   const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
@@ -28,6 +30,7 @@ export default function AnalysisScreen() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [analysisView, setAnalysisView] = useState<AnalysisView>('ACCOUNT_ANALYSIS');
+  const [refreshing, setRefreshing] = useState(false);
 
   const { loading, handleLoad } = useSmartLoading(
     async () => {
@@ -68,6 +71,15 @@ export default function AnalysisScreen() {
       }
     }, [user, session])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await handleLoad();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [handleLoad]);
 
   const currentMonthData = useMemo(() => {
     const monthRecords = records.filter((r) => {
@@ -243,7 +255,7 @@ export default function AnalysisScreen() {
                   TOTAL WEALTH
                 </Text>
                 <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '800', letterSpacing: 0.5 }}>
-                  ₹{accountAnalysisData.reduce((sum, a) => sum + a.value, 0).toFixed(2)}
+                  {formatCurrency(accountAnalysisData.reduce((sum, a) => sum + a.value, 0))}
                 </Text>
               </View>
               <View style={{ gap: 12 }}>
@@ -271,7 +283,7 @@ export default function AnalysisScreen() {
                       Monthly Income
                     </Text>
                     <Text style={[styles.metricValue, { color: colors.income }]}>
-                      ₹{currentMonthData.income.toFixed(2)}
+                      {formatCurrency(currentMonthData.income)}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -292,7 +304,7 @@ export default function AnalysisScreen() {
                       Monthly Expense
                     </Text>
                     <Text style={[styles.metricValue, { color: colors.expense }]}>
-                      ₹{currentMonthData.expense.toFixed(2)}
+                      {formatCurrency(currentMonthData.expense)}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -313,7 +325,7 @@ export default function AnalysisScreen() {
                       Net This Month
                     </Text>
                     <Text style={[styles.metricValue, { color: colors.accent }]}>
-                      ₹{(currentMonthData.income - currentMonthData.expense).toFixed(2)}
+                      {formatCurrency(currentMonthData.income - currentMonthData.expense)}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -338,101 +350,13 @@ export default function AnalysisScreen() {
                   </Text>
                 </View>
               ) : (
-                accountAnalysisData.map(account => {
-                  const totalTransactions = account.income + account.expense;
-                  const activityPercent = totalTransactions > 0 
-                    ? (account.income / totalTransactions) * 100 
-                    : 0;
-
-                  return (
-                    <View
-                      key={account.id}
-                      style={[
-                        styles.detailedAccountCard,
-                        { backgroundColor: colors.surface, borderColor: colors.border },
-                      ]}
-                    >
-                      {/* Header with Icon and Title */}
-                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
-                        <View style={[styles.accountIconLarge, { backgroundColor: colors.accent + '15', borderColor: colors.accent }]}>
-                          <MaterialCommunityIcons name="wallet" size={26} color={colors.accent} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.accountTitleLarge, { color: colors.text }]}>
-                            {account.label}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Current Balance */}
-                      <View style={{ gap: 12, marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                        <View>
-                          <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
-                            Current Balance
-                          </Text>
-                          <Text style={[styles.breakdownValue, { color: account.value >= 0 ? colors.income : colors.expense, fontSize: 18, fontWeight: '800' }]}>
-                            ₹{account.value.toFixed(2)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Income/Expense Breakdown */}
-                      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
-                            Income
-                          </Text>
-                          <Text style={[styles.breakdownValue, { color: colors.income }]}>
-                            +₹{account.income.toFixed(2)}
-                          </Text>
-                          <Text style={[styles.breakdownLabel, { color: colors.textSecondary, marginTop: 4, fontSize: 11 }]}>
-                            {totalTransactions > 0 ? `${(account.income / totalTransactions * 100).toFixed(0)}% of activity` : 'N/A'}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
-                            Expense
-                          </Text>
-                          <Text style={[styles.breakdownValue, { color: colors.expense }]}>
-                            -₹{account.expense.toFixed(2)}
-                          </Text>
-                          <Text style={[styles.breakdownLabel, { color: colors.textSecondary, marginTop: 4, fontSize: 11 }]}>
-                            {totalTransactions > 0 ? `${(account.expense / totalTransactions * 100).toFixed(0)}% of activity` : 'N/A'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Activity Progress Bar */}
-                      <View style={{ marginTop: 8 }}>
-                        <View style={{ flexDirection: 'row', height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: 'hidden', gap: 1 }}>
-                          <View
-                            style={{
-                              flex: activityPercent / 100,
-                              backgroundColor: colors.income,
-                              borderRadius: 3,
-                            }}
-                          />
-                          <View
-                            style={{
-                              flex: (100 - activityPercent) / 100,
-                              backgroundColor: colors.expense,
-                              borderRadius: 3,
-                            }}
-                          />
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                          <Text style={[styles.breakdownLabel, { fontSize: 10, color: colors.income }]}>
-                            
-                            Income {totalTransactions ? (account.income / totalTransactions * 100).toFixed(0) : 0}%
-                          </Text>
-                          <Text style={[styles.breakdownLabel, { fontSize: 10, color: colors.expense }]}>
-                            Expense {totalTransactions ? (account.expense / totalTransactions * 100).toFixed(0) : 0}%
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })
+                <FlatList
+                  data={accountAnalysisData}
+                  keyExtractor={(item) => String(item.id)}
+                  renderItem={renderAccountDetailsItem}
+                  scrollEnabled={false}
+                  ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                />
               )}
             </View>
           </View>
@@ -442,235 +366,11 @@ export default function AnalysisScreen() {
       case 'INCOME_FLOW':
         return (
           <View style={styles.viewContent}>
-            {/* Income Flow Summary Metrics */}
-            <View style={{ gap: 12, marginBottom: 20 }}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Income Analytics</Text>
-              
-              {/* Total Income Card */}
-              <View style={[styles.metricsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={[styles.metricIcon, { backgroundColor: colors.income + '15', borderColor: colors.income }]}>
-                    <MaterialCommunityIcons name="cash-multiple" size={20} color={colors.income} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Income</Text>
-                    <Text style={[styles.metricValue, { color: colors.income }]}>
-                      ₹{currentMonthData.income.toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {(() => {
-                const incomeRecords = currentMonthData.records.filter(r => r.type === 'INCOME');
-                if (incomeRecords.length > 0) {
-                  const avgIncome = currentMonthData.income / incomeRecords.length;
-                  const maxIncomeRecord = incomeRecords.reduce((max, r) => r.amount > max.amount ? r : max);
-                  
-                  return (
-                    <>
-                      {/* Average Income */}
-                      <View style={[styles.metricsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                          <View style={[styles.metricIcon, { backgroundColor: colors.income + '15', borderColor: colors.income }]}>
-                            <MaterialCommunityIcons name="chart-box" size={20} color={colors.income} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg per Transaction</Text>
-                            <Text style={[styles.metricValue, { color: colors.income }]}>
-                              ₹{avgIncome.toFixed(2)}
-                            </Text>
-                          </View>
-                          <Text style={[styles.metricDelta, { color: colors.income }]}>{incomeRecords.length}</Text>
-                        </View>
-                      </View>
-
-                      {/* Highest Income */}
-                      <View style={[styles.metricsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                          <View style={[styles.metricIcon, { backgroundColor: colors.income + '15', borderColor: colors.income }]}>
-                            <MaterialCommunityIcons name="trending-up" size={20} color={colors.income} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Highest Transaction</Text>
-                            <Text style={[styles.metricValue, { color: colors.income }]}>
-                              ₹{maxIncomeRecord.amount.toFixed(2)}
-                            </Text>
-                          </View>
-                          <Text style={[styles.metricDelta, { color: colors.textSecondary, fontSize: 11 }]}>
-                            {new Date(maxIncomeRecord.date).getDate()} {new Date(maxIncomeRecord.date).toLocaleString('default', { month: 'short' })}
-                          </Text>
-                        </View>
-                      </View>
-                    </>
-                  );
-                }
-                return null;
-              })()}
-            </View>
-
-            {/* Income by Account */}
-            {(() => {
-              const incomeByAccount = accounts.map(account => {
-                const accountIncomeRecords = currentMonthData.records.filter(
-                  r => r.account_id === account.id && r.type === 'INCOME'
-                );
-                const totalIncome = accountIncomeRecords.reduce((sum, r) => sum + r.amount, 0);
-                return {
-                  account: account.name,
-                  income: totalIncome,
-                  transactions: accountIncomeRecords.length,
-                  percentage: currentMonthData.income > 0 ? (totalIncome / currentMonthData.income) * 100 : 0,
-                };
-              }).filter(a => a.income > 0).sort((a, b) => b.income - a.income);
-
-              if (incomeByAccount.length > 0) {
-                return (
-                  <View style={{ marginBottom: 20 }}>
-                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>
-                      Income by Account
-                    </Text>
-                    {incomeByAccount.map((data, index) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.categoryItem,
-                          { backgroundColor: colors.surface, borderBottomColor: colors.border },
-                        ]}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.categoryName, { color: colors.text }]}>{data.account}</Text>
-                          <Text style={[styles.categoryPercent, { color: colors.textSecondary, fontSize: 11 }]}>
-                            {data.transactions} transaction{data.transactions !== 1 ? 's' : ''}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 0.4, alignItems: 'flex-end' }}>
-                          <Text style={[styles.categoryAmount, { color: colors.income }]}>
-                            ₹{data.income.toFixed(0)}
-                          </Text>
-                          <View
-                            style={{
-                              width: '100%',
-                              height: 4,
-                              backgroundColor: colors.border,
-                              borderRadius: 2,
-                              marginTop: 6,
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <View
-                              style={{
-                                width: `${data.percentage}%`,
-                                height: '100%',
-                                backgroundColor: colors.income,
-                              }}
-                            />
-                          </View>
-                          <Text style={[styles.breakdownLabel, { color: colors.textSecondary, marginTop: 4 }]}>
-                            {data.percentage.toFixed(0)}%
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                );
-              }
-              return null;
-            })()}
-
-            {/* Daily Income Trend Chart */}
-            <View style={styles.chartContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Daily Income Flow</Text>
-              {(() => {
-                try {
-                  // eslint-disable-next-line @typescript-eslint/no-var-requires
-                  const { LineChart } = require('react-native-gifted-charts');
-                  return (
-                    <LineChart
-                      data={incomeExpenseFlowData.incomeData}
-                      color1={colors.income}
-                      color2={colors.income}
-                      startFillColor={colors.income + '20'}
-                      startOpacity={1}
-                      endOpacity={0.3}
-                      initialSpacing={6}
-                      spacing={14}
-                      xAxisLabelTextStyle={{ color: colors.text, fontSize: 10 }}
-                      yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
-                      yAxisThickness={1}
-                      yAxisColor={colors.border}
-                      xAxisThickness={1}
-                      xAxisColor={colors.border}
-                      yAxisAtTop={false}
-                      curved={false}
-                      hideDataPoints={false}
-                      dataPointsHeight={6}
-                      dataPointsWidth={6}
-                      dataPointsColor={colors.income}
-                      height={200}
-                      width={chartWidth}
-                    />
-                  );
-                } catch (err) {
-                  console.warn('LineChart not available:', err);
-                  return (
-                    <View style={styles.errorContainer}>
-                      <MaterialCommunityIcons name="chart-line" size={48} color={colors.textSecondary} />
-                      <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-                        Charts unavailable
-                      </Text>
-                    </View>
-                  );
-                }
-              })()}
-            </View>
-
-            {/* Monthly Income Calendar */}
-            <View style={styles.dailyBreakdown}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Monthly Income Calendar</Text>
-              <IncomeExpenseCalendar
-                year={selectedDate.getFullYear()}
-                month={selectedDate.getMonth()}
-                data={calendarData}
-                isDark={isDark}
-                type="income"
-              />
-            </View>
-
-            {/* Income Frequency Analysis */}
-            {(() => {
-              const incomeRecords = currentMonthData.records.filter(r => r.type === 'INCOME');
-              if (incomeRecords.length === 0) return null;
-
-              const daysWithIncome = Object.keys(calendarData).filter(day => calendarData[parseInt(day)]?.income).length;
-              const avgIncomePerDay = currentMonthData.income / Math.max(daysWithIncome, 1);
-
-              return (
-                <View style={{ marginTop: 20 }}>
-                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>
-                    Income Frequency
-                  </Text>
-                  <View style={[styles.metricsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <View style={[styles.metricIcon, { backgroundColor: colors.income + '15', borderColor: colors.income }]}>
-                        <MaterialCommunityIcons name="calendar-check" size={20} color={colors.income} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Days with Income</Text>
-                        <Text style={[styles.metricValue, { color: colors.income }]}>
-                          {daysWithIncome} days
-                        </Text>
-                      </View>
-                      <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
-                        ₹{avgIncomePerDay.toFixed(0)}/day
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })()}
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Income Analytics</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary, fontSize: 14, fontWeight: '500' }]}>Loading summary ...</Text>
           </View>
         );
+
 
       case 'EXPENSE_FLOW':
         return (
@@ -688,7 +388,7 @@ export default function AnalysisScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Expense</Text>
                     <Text style={[styles.metricValue, { color: colors.expense }]}>
-                      ₹{currentMonthData.expense.toFixed(2)}
+                      {formatCurrency(currentMonthData.expense)}
                     </Text>
                   </View>
                 </View>
@@ -921,7 +621,7 @@ export default function AnalysisScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Income</Text>
                     <Text style={[styles.metricValue, { color: colors.income }]}>
-                      ₹{currentMonthData.income.toFixed(2)}
+                      {formatCurrency(currentMonthData.income)}
                     </Text>
                   </View>
                 </View>
@@ -1066,7 +766,7 @@ export default function AnalysisScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Total Expense</Text>
                     <Text style={[styles.metricValue, { color: colors.expense }]}>
-                      ₹{currentMonthData.expense.toFixed(2)}
+                      {formatCurrency(currentMonthData.expense)}
                     </Text>
                   </View>
                 </View>
@@ -1200,10 +900,23 @@ export default function AnalysisScreen() {
     }
   };
 
+  const renderAccountDetailsItem = ({ item }: { item: any }) => (
+    <View style={styles.detailedAccountCard}>
+      <Text style={styles.accountTitleLarge}>{item.label}</Text>
+      <Text style={styles.breakdownValue}>Balance: ₹{item.value.toFixed(2)}</Text>
+      <Text style={styles.breakdownLabel}>Income: ₹{item.income.toFixed(2)} · Expense: ₹{item.expense.toFixed(2)}</Text>
+    </View>
+  );
+
   const styles = createAnalysisStyles(spacing, isDark, colors);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+      }
+    >
       <View style={[styles.header, { backgroundColor: colors.headerBackground, borderBottomColor: colors.headerBorder }]}>
         <TouchableOpacity onPress={() => handleDateChange('prev')}>
           <MaterialCommunityIcons name="chevron-left" size={24} color={colors.text} />

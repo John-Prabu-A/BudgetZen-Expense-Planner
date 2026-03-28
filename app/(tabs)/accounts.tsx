@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
+import useAppSettings from '@/hooks/useAppSettings';
 import { useUIMode } from '@/hooks/useUIMode';
 import { deleteAccount, readAccounts, readRecords } from '@/lib/finance';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,6 +13,7 @@ export default function AccountsScreen() {
   const { user, session } = useAuth();
   const { isDark, colors } = useTheme();
   const spacing = useUIMode();
+  const { formatCurrency } = useAppSettings();
   const styles = createAccountsStyles(spacing, colors);
 
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -195,14 +197,14 @@ export default function AccountsScreen() {
           <View style={styles.balanceItem}>
             <Text style={[styles.balanceLabel, { color: colors.income }]}>+Income</Text>
             <Text style={[styles.balanceValue, { color: colors.income }]}>
-              ₹{income.toFixed(2)}
+              {formatCurrency(income)}
             </Text>
           </View>
           <View style={styles.balanceDivider} />
           <View style={styles.balanceItem}>
             <Text style={[styles.balanceLabel, { color: colors.expense }]}>-Expense</Text>
             <Text style={[styles.balanceValue, { color: colors.expense }]}>
-              ₹{expense.toFixed(2)}
+              {formatCurrency(expense)}
             </Text>
           </View>
         </View>
@@ -220,7 +222,7 @@ export default function AccountsScreen() {
                 },
               ]}
             >
-              ₹{balance.toFixed(2)}
+              {formatCurrency(balance)}
             </Text>
           </View>
           <MaterialCommunityIcons

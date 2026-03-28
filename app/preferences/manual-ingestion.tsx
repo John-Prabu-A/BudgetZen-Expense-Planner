@@ -248,7 +248,7 @@ export default function ManualTransactionIngestionScreen() {
           1. Copy or paste any bank transaction message
         </ThemedText>
         <ThemedText style={styles.infoItem}>
-          2. Click "Parse & Create" to extract transaction details
+          2. Click “Parse & Create” to extract transaction details
         </ThemedText>
         <ThemedText style={styles.infoItem}>
           3. The system will:

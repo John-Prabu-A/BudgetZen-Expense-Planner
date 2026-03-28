@@ -92,9 +92,11 @@ const CurrencyScreen = () => {
       // Complete this onboarding step
       console.log('[Currency] Completing onboarding step...');
       await completeStep(OnboardingStep.CURRENCY);
-      console.log('[Currency] Onboarding step completed, parent layout should navigate');
+      console.log('[Currency] Onboarding step completed');
       
-      // Navigation is handled automatically by parent layout
+      // Navigate to next screen explicitly
+      console.log('[Currency] Navigating to privacy screen...');
+      router.push('/(onboarding)/privacy');
     } catch (error) {
       console.error('[Currency] Error selecting currency:', error);
     }

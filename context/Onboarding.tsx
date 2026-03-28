@@ -1,5 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './Auth';
 
 /**
  * Onboarding Steps in order
@@ -63,24 +65,84 @@ const STORAGE_KEY = 'onboarding_step';
 export const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentStep, setCurrentStep] = useState<OnboardingStep | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  /**
+   * Sync onboarding state to database
+   */
+  const syncToDatabase = useCallback(async (step: OnboardingStep) => {
+    try {
+      if (!user?.id) {
+        console.log('[Onboarding] No user, skipping database sync');
+        return;
+      }
+
+      console.log('[Onboarding] Syncing onboarding step to database:', step);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding_step: step })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('[Onboarding] Error syncing to database:', error);
+      } else {
+        console.log('[Onboarding] Successfully synced to database:', step);
+      }
+    } catch (error) {
+      console.error('[Onboarding] Database sync error:', error);
+    }
+  }, [user?.id]);
 
   /**
    * Load onboarding state from persistent storage on app launch
+   * First tries database (if user exists), then falls back to SecureStore
    */
   useEffect(() => {
     const loadOnboardingState = async () => {
       try {
-        const savedStep = await SecureStore.getItemAsync(STORAGE_KEY);
-        console.log('Loaded onboarding step from storage:', savedStep);
+        let savedStep: string | null = null;
+
+        // Try to load from database first if user is logged in
+        if (user?.id) {
+          console.log('[Onboarding] Loading from database for user:', user.id);
+          try {
+            const { data, error: dbError } = await supabase
+              .from('profiles')
+              .select('onboarding_step')
+              .eq('id', user.id)
+              .single();
+
+            if (dbError) {
+              console.warn('[Onboarding] Error loading from database:', dbError.message);
+            } else if (data?.onboarding_step) {
+              savedStep = data.onboarding_step;
+              console.log('[Onboarding] Loaded onboarding step from database:', savedStep);
+            }
+          } catch (error) {
+            console.warn('[Onboarding] Database load error:', error);
+          }
+        }
+
+        // Fall back to SecureStore if no database result
+        if (!savedStep) {
+          console.log('[Onboarding] Loading from SecureStore');
+          savedStep = await SecureStore.getItemAsync(STORAGE_KEY);
+          if (savedStep) {
+            console.log('[Onboarding] Loaded onboarding step from SecureStore:', savedStep);
+          }
+        }
 
         if (savedStep && Object.values(OnboardingStep).includes(savedStep as OnboardingStep)) {
+          console.log('[Onboarding] Valid saved step found:', savedStep);
           setCurrentStep(savedStep as OnboardingStep);
         } else {
           // First time user - start onboarding
+          console.log('[Onboarding] No valid saved step found. savedStep:', savedStep, 'Valid enum values:', Object.values(OnboardingStep));
           setCurrentStep(OnboardingStep.NOT_STARTED);
         }
       } catch (error) {
-        console.error('Error loading onboarding state:', error);
+        console.error('[Onboarding] Error loading onboarding state:', error);
         // On error, assume first time user
         setCurrentStep(OnboardingStep.NOT_STARTED);
       } finally {
@@ -89,7 +151,7 @@ export const OnboardingProvider = ({ children }: { children: React.ReactNode }) 
     };
 
     loadOnboardingState();
-  }, []);
+  }, [user?.id]);
 
   /**
    * Start onboarding from the beginning
@@ -124,6 +186,8 @@ export const OnboardingProvider = ({ children }: { children: React.ReactNode }) 
         const finalStep = getNextStep(nextStep); // Returns PRIVACY
         await SecureStore.setItemAsync(STORAGE_KEY, finalStep);
         setCurrentStep(finalStep);
+        // Sync to database
+        await syncToDatabase(finalStep);
         console.log(`[Onboarding] Completed step: ${step}, moving to: ${finalStep}`);
         return;
       }
@@ -138,12 +202,14 @@ export const OnboardingProvider = ({ children }: { children: React.ReactNode }) 
       const nextStep = getNextStep(step);
       await SecureStore.setItemAsync(STORAGE_KEY, nextStep);
       setCurrentStep(nextStep);
+      // Sync to database
+      await syncToDatabase(nextStep);
       console.log(`[Onboarding] Completed step: ${step}, moving to: ${nextStep}`);
     } catch (error) {
       console.error('[Onboarding] Error completing onboarding step:', error);
       throw error;
     }
-  }, [currentStep]);
+  }, [currentStep, syncToDatabase]);
 
   /**
    * Skip to a specific step (for testing or recovery)
@@ -152,12 +218,14 @@ export const OnboardingProvider = ({ children }: { children: React.ReactNode }) 
     try {
       await SecureStore.setItemAsync(STORAGE_KEY, step);
       setCurrentStep(step);
+      // Sync to database
+      await syncToDatabase(step);
       console.log('Skipped to onboarding step:', step);
     } catch (error) {
       console.error('Error skipping to step:', error);
       throw error;
     }
-  }, []);
+  }, [syncToDatabase]);
 
   /**
    * Reset onboarding completely (when user logs out)

@@ -178,6 +178,10 @@ export class PushTokenManager {
         };
       }
 
+      const deviceId =
+        Constants.sessionId ||
+        `${Platform.OS}-${Constants.installationId || 'unknown'}-${Math.random().toString(36).slice(2, 8)}`;
+
       // Use UPSERT (insert with conflict update) to handle existing tokens
       // This avoids duplicate key constraint violations
       const { data, error } = await supabase
@@ -185,7 +189,7 @@ export class PushTokenManager {
         .upsert(
           {
             user_id: userId,
-            device_id: Constants.sessionId, // This is the unique key
+            device_id: deviceId, // This is the unique key
             expo_push_token: token,
             os_type: Constants.platform?.os === 'ios' ? 'ios' : 'android',
             os_version: Constants.osVersion || 'unknown',

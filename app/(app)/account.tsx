@@ -1,6 +1,5 @@
-
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/context/Auth';
 import { supabase } from '@/lib/supabase';
 import { useCallback, useEffect, useState } from 'react';

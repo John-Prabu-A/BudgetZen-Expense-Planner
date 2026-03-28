@@ -1,4 +1,5 @@
 import { ThemeColors, useTheme } from '@/context/Theme';
+import useAppSettings from '@/hooks/useAppSettings';
 import { useUIMode } from '@/hooks/useUIMode';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -47,6 +48,7 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
 }) => {
   const { isDark: themeDark, colors: themeColors } = useTheme();
   const themeUIMode = useUIMode();
+  const { formatCurrencyValue } = useAppSettings();
   const spacing = propsSpacing || themeUIMode;
   const colors = propsColors || themeColors;
   const isDark = overrideDark !== undefined ? overrideDark : themeDark;
@@ -343,12 +345,12 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
             <View style={styles.amountContainer}>
               {(type === 'income' || type === 'both') && item.income > 0 && (
                 <Text style={[isDimmed ? styles.amountTextDim : styles.amountText, { color: colors.income }]}>
-                  +₹{item.income.toFixed(0)}
+                  +₹{formatCurrencyValue(item.income)}
                 </Text>
               )}
               {(type === 'expense' || type === 'both') && item.expense > 0 && (
                 <Text style={[isDimmed ? styles.amountTextDim : styles.amountText, { color: colors.expense }]}>
-                  -₹{item.expense.toFixed(0)}
+                  -₹{formatCurrencyValue(item.expense)}
                 </Text>
               )}
               {item.income === 0 && item.expense === 0 && (
@@ -370,13 +372,13 @@ const IncomeExpenseCalendar: React.FC<IncomeExpenseCalendarProps> = ({
             {monthIncome > 0 && (
               <View style={styles.statBadge}>
                 <Text style={[styles.statText, { color: colors.income }]}>↑</Text>
-                <Text style={styles.statText}>₹{monthIncome.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</Text>
+                <Text style={styles.statText}>₹{formatCurrencyValue(monthIncome)}</Text>
               </View>
             )}
             {monthExpense > 0 && (
               <View style={styles.statBadge}>
                 <Text style={[styles.statText, { color: colors.expense }]}>↓</Text>
-                <Text style={styles.statText}>₹{monthExpense.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</Text>
+                <Text style={styles.statText}>₹{formatCurrencyValue(monthExpense)}</Text>
               </View>
             )}
           </View>

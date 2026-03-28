@@ -403,8 +403,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
         normalizedTime = `${hour12.toString().padStart(2, '0')}:${minute} ${period}`;
       }
 
-      console.log('[Preferences] Setting reminder time:', normalizedTime);
-      
       // Update local state
       setReminderTimeState(normalizedTime);
       
@@ -413,7 +411,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       
       // TODO: Sync with Supabase when user context is available
       // This will be handled by the NotificationsContext/dailyReminderJob
-      console.log('[Preferences] Reminder time saved to SecureStore:', normalizedTime);
     } catch (error) {
       console.error('Error setting reminder time:', error);
     }
@@ -432,7 +429,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     try {
       setBudgetAlertsState(enabled);
       await SecureStorageManager.setItem(STORAGE_KEYS.BUDGET_ALERTS, enabled.toString());
-      console.log('[Preferences] Budget alerts set to:', enabled);
     } catch (error) {
       console.error('Error setting budget alerts:', error);
     }
@@ -442,7 +438,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     try {
       setLowBalanceAlertsState(enabled);
       await SecureStorageManager.setItem(STORAGE_KEYS.LOW_BALANCE_ALERTS, enabled.toString());
-      console.log('[Preferences] Low balance alerts set to:', enabled);
     } catch (error) {
       console.error('Error setting low balance alerts:', error);
     }
@@ -452,7 +447,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     try {
       setEmailNotificationsState(enabled);
       await SecureStorageManager.setItem(STORAGE_KEYS.EMAIL_NOTIFICATIONS, enabled.toString());
-      console.log('[Preferences] Email notifications set to:', enabled);
     } catch (error) {
       console.error('Error setting email notifications:', error);
     }
@@ -462,7 +456,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     try {
       setPushNotificationsState(enabled);
       await SecureStorageManager.setItem(STORAGE_KEYS.PUSH_NOTIFICATIONS, enabled.toString());
-      console.log('[Preferences] Push notifications set to:', enabled);
     } catch (error) {
       console.error('Error setting push notifications:', error);
     }
@@ -472,7 +465,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     try {
       setAutoSyncState(enabled);
       await SecureStorageManager.setItem(STORAGE_KEYS.AUTO_SYNC, enabled.toString());
-      console.log('[Preferences] Auto sync set to:', enabled);
     } catch (error) {
       console.error('Error setting auto sync:', error);
     }
@@ -482,7 +474,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     try {
       setAutoBackupState(enabled);
       await SecureStorageManager.setItem(STORAGE_KEYS.AUTO_BACKUP, enabled.toString());
-      console.log('[Preferences] Auto backup set to:', enabled);
     } catch (error) {
       console.error('Error setting auto backup:', error);
     }
@@ -492,7 +483,6 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     try {
       setDataRetentionDaysState(days);
       await SecureStorageManager.setItem(STORAGE_KEYS.DATA_RETENTION_DAYS, days.toString());
-      console.log('[Preferences] Data retention days set to:', days);
     } catch (error) {
       console.error('Error setting data retention days:', error);
     }

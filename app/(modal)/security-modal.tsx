@@ -1,7 +1,7 @@
 import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
 import { useToast } from '@/context/Toast';
-import { hashPassword, validatePasswordStrength } from '@/lib/passwordUtils';
+import SecurePasswordManager from '@/lib/security/SecurePasswordManager';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
@@ -81,12 +81,12 @@ export default function SecurityModal() {
         if (!newPassword.trim()) return setPasswordError('Password cannot be empty');
         if (newPassword !== confirmPassword) return setPasswordError('Passwords do not match');
         
-        const validation = validatePasswordStrength(newPassword);
-        if (!validation.valid) return setPasswordError(validation.error || 'Invalid password');
+        const validation = SecurePasswordManager.validatePassword(newPassword);
+        if (!validation.isValid) return setPasswordError(validation.errors?.[0] || 'Invalid password');
 
         try {
             setIsLoading(true);
-            const hash = await hashPassword(newPassword);
+            const hash = await SecurePasswordManager.hashPassword(newPassword);
             await setPasswordHash(hash);
             
             // Auto-enable logic
@@ -160,7 +160,7 @@ export default function SecurityModal() {
 
         try {
             setIsLoading(true);
-            const hash = btoa(newPasscode); // Use stronger hash in prod
+            const hash = await SecurePasswordManager.hashPassword(newPasscode);
             await setPasscodeHash(hash);
             await setPasscodeLength(selectedPasscodeLength);
 

@@ -1,7 +1,7 @@
 import { Session, User } from '@supabase/supabase-js';
-import SecureStorageManager from '../lib/storage/secureStorageManager';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import SecureStorageManager from '../lib/storage/secureStorageManager';
 import { supabase } from '../lib/supabase';
 
 type AuthContextType = {
@@ -11,6 +11,7 @@ type AuthContextType = {
   loading: boolean;
   isPasswordLocked: boolean;
   unlockPassword: () => void;
+  passwordStatusChecked: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPasswordLocked, setIsPasswordLocked] = useState(false);
+  const [passwordStatusChecked, setPasswordStatusChecked] = useState(false);
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
@@ -28,30 +30,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Lock password when session is established (if password is enabled)
-      if (session && event === 'SIGNED_IN') {
-        checkPasswordStatus();
-      }
+      // DO NOT check password status on SIGNED_IN event
+      // This prevents re-locking the password immediately after the user unlocked it
+      // Password status will be checked on app startup and when app comes to foreground
       
       setLoading(false);
 
       // Reset lock if user signs out
       // NOTE: Do NOT clear onboarding step - it should persist across sessions
       if (event === 'SIGNED_OUT') {
+        console.log('[AUTH-DEBUG] SIGNED_OUT event - resetting password lock');
         setIsPasswordLocked(false);
       }
     });
 
     // Fetch initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('Initial session:', !!session);
+      console.log('[AUTH-DEBUG] Initial session:', !!session);
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Check password status on initial load
-      if (session) {
-        await checkPasswordStatus();
-      }
+      // Always check password status on initial load - BEFORE setting loading to false
+      // This applies whether user has a session or not
+      console.log('[AUTH-DEBUG] Checking password status on app startup');
+      await checkPasswordStatus();
       
       setLoading(false);
     });
@@ -98,8 +100,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('[AUTH] No password/passcode found, setting isPasswordLocked to false');
         setIsPasswordLocked(false);
       }
+      
+      // Mark that we've checked the password status
+      console.log('[AUTH-DEBUG] Password status check complete - setting passwordStatusChecked=true');
+      setPasswordStatusChecked(true);
     } catch (error) {
       console.error('Error checking password status:', error);
+      // Even on error, mark that we've attempted to check
+      setPasswordStatusChecked(true);
     }
   };
 
@@ -117,11 +125,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const unlockPassword = () => {
+    console.log('[AUTH] 🔓 UNLOCK PASSWORD called - setting isPasswordLocked to false');
     setIsPasswordLocked(false);
+    console.log('[AUTH] 🔓 isPasswordLocked state updated');
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, signOut, loading, isPasswordLocked, unlockPassword }}>
+    <AuthContext.Provider value={{ session, user, signOut, loading, isPasswordLocked, unlockPassword, passwordStatusChecked }}>
       {children}
     </AuthContext.Provider>
   );
