@@ -4,8 +4,10 @@ import { useAuth } from '@/context/Auth';
 import { supabase } from '@/lib/supabase';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function Account() {
+  const router = useRouter();
   const { session, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState('');
@@ -101,8 +103,16 @@ export default function Account() {
         />
       </View>
 
-      <View style={styles.verticallySpaced}>
+      <View style={[styles.verticallySpaced, styles.mt20]}>
         <Button title="Sign Out" onPress={handleSignOut} />
+      </View>
+
+      {/* Dev Only: Notification Tester */}
+      <View style={[styles.verticallySpaced, styles.mt20]}>
+        <Button 
+          title="🔔 Test Notifications (Dev)" 
+          onPress={() => router.push('/admin/notification-tester')}
+        />
       </View>
     </View>
   );

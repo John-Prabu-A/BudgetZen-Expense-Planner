@@ -3,8 +3,8 @@
  * Sends notifications when users hit savings goals (₹10K, ₹50K, ₹1L, etc.)
  */
 
-import { supabase } from '@/lib/supabase';
 import { formatCurrencyWithPreferences } from '@/lib/currency';
+import { supabase } from '@/lib/supabase';
 import { notificationService } from './NotificationService';
 import { NotificationType } from './types';
 

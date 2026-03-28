@@ -4,7 +4,6 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import { formatCurrencyWithPreferences } from '@/lib/currency';
 import { notificationService } from './NotificationService';
 import { smartTimingEngine } from './smartTimingEngine';
 import { NotificationType } from './types';

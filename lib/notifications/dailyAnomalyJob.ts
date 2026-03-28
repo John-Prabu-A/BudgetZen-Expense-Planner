@@ -5,7 +5,6 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import { formatCurrencyWithPreferences } from '@/lib/currency';
 import { notificationService } from './NotificationService';
 import { NotificationType } from './types';
 
