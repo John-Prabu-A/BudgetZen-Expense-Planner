@@ -1,4 +1,6 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
+import { useColorScheme } from 'react-native';
+import { usePreferences } from './Preferences';
 
 /**
  * Comprehensive color theme palette
@@ -214,10 +216,25 @@ const darkTheme: ThemeColors = {
  * Theme Provider Component
  */
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  // Use system color scheme as default to avoid blocking on PreferencesProvider
-  // The actual user preference will be applied once Preferences loads
-  const systemColorScheme = require('react-native').useColorScheme();
-  const isDark = systemColorScheme === 'dark';
+  const systemColorScheme = useColorScheme();
+  const { theme: userTheme, loading } = usePreferences();
+
+  // Determine if should be dark mode based on user preference
+  const isDark = useMemo(() => {
+    // If preferences are still loading, use system scheme as fallback
+    if (loading) {
+      return systemColorScheme === 'dark';
+    }
+
+    // If user selected 'system', use system color scheme
+    if (userTheme === 'system') {
+      return systemColorScheme === 'dark';
+    }
+
+    // Otherwise use user's explicit preference
+    return userTheme === 'dark';
+  }, [userTheme, systemColorScheme, loading]);
+
   const colors = isDark ? darkTheme : lightTheme;
 
   const theme: Theme = {
