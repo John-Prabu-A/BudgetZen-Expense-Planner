@@ -401,6 +401,7 @@ const InitialLayout = () => {
         }
     }, [
         session,
+        router,
         navigationReady,
         authLoading,
         onboardingLoading,

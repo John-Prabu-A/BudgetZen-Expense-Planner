@@ -6,7 +6,6 @@
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { getCategoryForNotificationType } from './notificationCategories';
-import { getChannelForNotificationType } from './notificationChannels';
 import { NotificationPayload, NotificationResult, NotificationType, NOTIFICATION_PRIORITIES } from './types';
 import { notificationThrottler } from './notificationThrottler';
 import { smartTimingEngine } from './smartTimingEngine';
@@ -67,15 +66,13 @@ export class NotificationService {
       }
 
       const categoryId = getCategoryForNotificationType(payload.type);
-      const channelId = getChannelForNotificationType(payload.type);
-
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: payload.title,
           body: payload.body,
           data: payload.data || {},
           badge: payload.badge,
-          sound: payload.sound || true,
+          sound: payload.sound ?? true,
           categoryIdentifier: categoryId,
         },
         trigger: null, // null means send immediately
@@ -113,6 +110,7 @@ export class NotificationService {
       const trigger = {
         hour,
         minute,
+        repeats,
       } as Notifications.NotificationTriggerInput;
 
       const categoryId = getCategoryForNotificationType(payload.type);
@@ -123,7 +121,7 @@ export class NotificationService {
           body: payload.body,
           data: payload.data || {},
           badge: payload.badge,
-          sound: payload.sound || true,
+          sound: payload.sound ?? true,
           categoryIdentifier: categoryId,
         },
         trigger,
@@ -167,28 +165,28 @@ export class NotificationService {
       const categoryId = getCategoryForNotificationType(payload.type);
 
       const delaySeconds = Math.max(1, Math.floor(seconds));
-      const scheduledDate = new Date(Date.now() + delaySeconds * 1000);
-
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: payload.title,
           body: payload.body,
           data: payload.data || {},
           badge: payload.badge,
-          sound: payload.sound || true,
+          sound: payload.sound ?? true,
           categoryIdentifier: categoryId,
         },
-        trigger: scheduledDate,
+        trigger: {
+          seconds: delaySeconds,
+        } as Notifications.NotificationTriggerInput,
       });
 
       console.log(
-        `⏳ Notification scheduled at ${scheduledDate.toISOString()}: ${payload.title} (ID: ${notificationId})`
+        `⏳ Notification scheduled in ${delaySeconds}s: ${payload.title} (ID: ${notificationId})`
       );
 
       return {
         success: true,
         notificationId,
-        message: `Notification scheduled for ${scheduledDate.toISOString()}`,
+        message: `Notification scheduled in ${delaySeconds} seconds`,
       };
     } catch (error) {
       console.error('❌ Error scheduling delayed notification:', error);
@@ -210,22 +208,11 @@ export class NotificationService {
     minute: number
   ): Promise<NotificationResult> {
     try {
-      // Calculate next occurrence of this weekday
-      const now = new Date();
-      const currentDay = now.getDay();
-      let daysUntil = weekday - currentDay;
-
-      if (daysUntil <= 0) {
-        daysUntil += 7;
-      }
-
-      const nextDate = new Date(now);
-      nextDate.setDate(nextDate.getDate() + daysUntil);
-      nextDate.setHours(hour, minute, 0, 0);
-
       const trigger = {
+        weekday,
         hour,
         minute,
+        repeats: true,
       } as Notifications.NotificationTriggerInput;
 
       const categoryId = getCategoryForNotificationType(payload.type);
@@ -239,7 +226,7 @@ export class NotificationService {
             weekday: weekday.toString(),
           },
           badge: payload.badge,
-          sound: payload.sound || true,
+          sound: payload.sound ?? true,
           categoryIdentifier: categoryId,
         },
         trigger,
@@ -306,7 +293,7 @@ export class NotificationService {
             dayOfMonth: dayOfMonth.toString(),
           },
           badge: payload.badge,
-          sound: payload.sound || true,
+          sound: payload.sound ?? true,
           categoryIdentifier: categoryId,
         },
         trigger,

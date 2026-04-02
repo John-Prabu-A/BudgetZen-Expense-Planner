@@ -2,7 +2,6 @@ import { useAuth } from '@/context/Auth';
 import { useTheme } from '@/context/Theme';
 import { useToast } from '@/context/Toast';
 import useAppSettings from '@/hooks/useAppSettings';
-import useNotifications from '@/hooks/useNotifications';
 import { useSmartLoading } from '@/hooks/useSmartLoading';
 import { useUIMode } from '@/hooks/useUIMode';
 import { deleteRecord, readRecords } from '@/lib/finance';
@@ -21,8 +20,6 @@ import {
     View
 } from 'react-native';
 import IncomeExpenseCalendar, { DailyDataItem } from '../components/IncomeExpenseCalendar';
-
-type ViewMode = 'DAILY' | 'WEEKLY' | 'MONTHLY' | '3MONTHS' | '6MONTHS' | 'YEARLY' | 'CALENDAR' | 'CHART';
 
 // Emoji to Material Community Icon mapping
 const EMOJI_TO_ICON_MAP: { [key: string]: string } = {
@@ -89,12 +86,11 @@ const getValidIconName = (icon: string | undefined): string => {
 export default function RecordsScreen() {
   const router = useRouter();
   const { user, session } = useAuth();
-  const { isDark, colors } = useTheme();
+  const { colors } = useTheme();
   const spacing = useUIMode();
   const styles = getStyles(spacing);
   const toast = useToast();
-  const { sendBudgetWarning } = useNotifications();
-  const { formatCurrencyValue, currencyPosition, currencySign, decimalPlaces, formatCurrencyWithPosition } = useAppSettings();
+  const { formatCurrencyWithPosition } = useAppSettings();
 
   // Animation refs
   const fabRotateAnim = useRef(new Animated.Value(0)).current;
@@ -105,7 +101,6 @@ export default function RecordsScreen() {
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [records, setRecords] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('MONTHLY');
   const [pagerView, setPagerView] = useState<'CALENDAR' | 'CHART'>('CALENDAR');
   const [fabExpanded, setFabExpanded] = useState(false);
 
@@ -202,7 +197,7 @@ export default function RecordsScreen() {
       fabScaleAnim.setValue(1);
       menuOpacityAnim.setValue(0);
       menuScaleAnim.setValue(0.8);
-    }, []) // Empty dependency array - only run on focus, not on every render
+    }, [handleLoad, fabRotateAnim, fabScaleAnim, menuOpacityAnim, menuScaleAnim])
   );
 
   // FAB animation effect
@@ -526,7 +521,7 @@ export default function RecordsScreen() {
     </View>
   ), [styles, formatCurrencyWithPosition]);
 
-  const RecordItem = React.memo(({ record, isExpanded, toggleExpand }: any) => {
+  const RecordItemComponent = ({ record, isExpanded, toggleExpand }: any) => {
     const isIncome = record.type === 'INCOME';
     const isTransfer = record.type === 'TRANSFER';
     const validIconName = getValidIconName(record.icon);
@@ -593,7 +588,9 @@ export default function RecordsScreen() {
         )}
       </View>
     );
-  });
+  };
+  RecordItemComponent.displayName = 'RecordItem';
+  const RecordItem = React.memo(RecordItemComponent);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -629,9 +626,6 @@ export default function RecordsScreen() {
             selectedValue={pagerView}
             onValueChange={(itemValue) => {
               setPagerView(itemValue as 'CALENDAR' | 'CHART');
-              if (itemValue === 'CHART') {
-                setViewMode('MONTHLY');
-              }
             }}
             style={[styles.picker, { color: colors.text, backgroundColor: colors.surface }]}
             dropdownIconColor={colors.accent}
@@ -653,7 +647,6 @@ export default function RecordsScreen() {
               spacing={spacing}
               onDayPress={(day) => {
                 setSelectedDate(new Date(day.date));
-                setViewMode('DAILY');
               }}
             />
           </>
@@ -777,19 +770,6 @@ export default function RecordsScreen() {
       </Animated.View>
     </View>
   );
-}
-
-// helper labels
-function getPeriodLabel(viewMode: ViewMode) {
-  switch (viewMode) {
-    case 'DAILY': return `Track your daily records`;
-    case 'WEEKLY': return `Track your weekly records`;
-    case 'MONTHLY': return `Track your monthly records`;
-    case '3MONTHS': return `Track your 3-month records`;
-    case '6MONTHS': return `Track your 6-month records`;
-    case 'YEARLY': return `Track your yearly records`;
-    default: return `Track your records`;
-  }
 }
 
 const getStyles = (spacing: any) =>

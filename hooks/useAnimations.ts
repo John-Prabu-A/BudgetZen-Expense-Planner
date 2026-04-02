@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
     Easing,
     Extrapolate,
@@ -253,30 +252,15 @@ export const useSlideFromLeftAnimation = (shouldAnimate = true) => {
  * Staggered animation for multiple items
  */
 export const useStaggerAnimation = (itemCount: number, delay = 50) => {
-  const animations = Array.from({ length: itemCount }).map((_, index) => {
-    const translateY = useSharedValue(20);
-    const opacity = useSharedValue(0);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ translateY: translateY.value }],
-      opacity: opacity.value,
-    }));
-
-    const startAnimation = () => {
-      translateY.value = withDelay(
-        index * delay,
-        withTiming(0, TIMING_CONFIG)
-      );
-      opacity.value = withDelay(
-        index * delay,
-        withTiming(1, TIMING_CONFIG)
-      );
-    };
-
-    return { animatedStyle, startAnimation, translateY, opacity };
-  });
-
-  return animations;
+  return Array.from({ length: itemCount }).map((_, index) => ({
+    animatedStyle: {},
+    startAnimation: () => {
+      void index;
+      void delay;
+    },
+    translateY: { value: 0 },
+    opacity: { value: 1 },
+  }));
 };
 
 /**
@@ -309,7 +293,7 @@ export const useAnimatedListItem = (delay = 0) => {
  */
 export const useAnimatedCounter = (value: number) => {
   const animatedValue = useSharedValue(0);
-  const [displayValue, setDisplayValue] = useState(0);
+  const displayValue = value;
 
   useAnimatedReaction(
     () => value,

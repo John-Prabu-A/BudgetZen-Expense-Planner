@@ -3,7 +3,7 @@
  * Comprehensive test suite for testing amount extraction from bank messages
  */
 
-import { AmountExtractionEngine, AmountExtractionResult } from '../lib/transactionDetection/engines/AmountExtractionEngine';
+import { AmountExtractionEngine, AmountExtractionResult } from '../lib/transactionDetection/engines/AmountExtractionEngine.fixed';
 
 describe('AmountExtractionEngine', () => {
   let engine: AmountExtractionEngine;

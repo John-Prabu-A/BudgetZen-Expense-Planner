@@ -272,7 +272,7 @@ describe('IntentClassificationEngine', () => {
     test('should handle conflicting keywords - debit dominant', () => {
       const result = engine.classify('Debit of ₹1000 and credit of ₹500');
       expect(result.intent).toBe('Debit');
-      expect(result.warnings).toContain(expect.stringMatching(/conflicting/i));
+      expect(result.warnings).toContainEqual(expect.stringMatching(/conflicting/i));
     });
 
     test('should handle empty message', () => {
@@ -377,7 +377,7 @@ describe('IntentClassificationEngine', () => {
     test('should extract matched keywords', () => {
       const result = engine.classify('Payment debited charged');
       expect(result.keywords.length).toBeGreaterThan(0);
-      expect(result.keywords).toContain(expect.stringMatching(/debit|payment|charged/i));
+      expect(result.keywords).toContainEqual(expect.stringMatching(/debit|payment|charged/i));
     });
 
     test('should return empty keywords for ignore', () => {

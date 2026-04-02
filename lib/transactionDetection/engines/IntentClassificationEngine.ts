@@ -22,6 +22,22 @@ export interface IntentClassificationResult {
  * Intent Classification Engine
  */
 export class IntentClassificationEngine {
+  private strongIgnoreKeywords = new Set([
+    'fraud',
+    'suspicious',
+    'blocked',
+    'declined',
+    'failed',
+    'otp',
+    'password',
+    'verification',
+    'kyc',
+    'unauthorized',
+    'offer',
+    'promotional',
+    'update',
+  ]);
+
   // Debit keywords and patterns
   private debitKeywords: string[] = [
     'debited',
@@ -87,7 +103,6 @@ export class IntentClassificationEngine {
   private transferKeywords: string[] = [
     'transferred',
     'transfer',
-    'sent',
     'sent to',
     'received from',
     'remittance',
@@ -138,6 +153,7 @@ export class IntentClassificationEngine {
     'verify account',
     'confirm identity',
     'update account',
+    'update your account details',
   ];
 
   // Bank-specific intent patterns
@@ -155,13 +171,13 @@ export class IntentClassificationEngine {
     },
     {
       bank: 'ICICI',
-      debitPattern: /(?:amount|spent|payment)\s+(?:of|Rs\.?)\s+\d+\s+(?:has\s+)?(?:debited|charged|deducted)/i,
-      creditPattern: /(?:amount|credited)\s+(?:of|Rs\.?)\s+\d+\s+(?:has\s+)?(?:credited|received)/i,
+      debitPattern: /(?:amount|spent|payment).*(?:debited|charged|deducted)/i,
+      creditPattern: /(?:amount|credited).*(?:credited|received)/i,
       ignorePattern: /(?:fraud alert|suspicious|card blocked|transaction failed)/i,
     },
     {
       bank: 'SBI',
-      debitPattern: /(?:withdrawn|debited)\s+(?:from\s+)?(?:account)?/i,
+      debitPattern: /(?:withdrawn|debited)(?:\s+(?:from\s+)?(?:account)?)?/i,
       creditPattern: /(?:deposited|credited)\s+(?:to\s+)?(?:account)?/i,
       ignorePattern: /(?:alert|blocked|unauthorized|limit exceeded)/i,
     },
@@ -288,26 +304,37 @@ export class IntentClassificationEngine {
   private classifyUsingKeywords(cleanMessage: string): IntentClassificationResult {
     // Check ignore keywords first (highest priority)
     const ignoreMatches = this.extractMatchingKeywords(cleanMessage, this.ignoreKeywords);
-    if (ignoreMatches.length > 0) {
-      const ignoreScore = ignoreMatches.length / this.ignoreKeywords.length;
-      if (ignoreScore > 0.3) {
-        return {
-          intent: 'Ignore',
-          confidence: Math.min(0.9, 0.5 + ignoreScore),
-          keywords: ignoreMatches,
-          matchedPatterns: ['ignore_keywords'],
-          reasoning: `Found ${ignoreMatches.length} ignore keywords`,
-          warnings: [],
-        };
-      }
+    if (
+      ignoreMatches.length > 0 &&
+      ignoreMatches.some((keyword) => this.strongIgnoreKeywords.has(keyword))
+    ) {
+      return {
+        intent: 'Ignore',
+        confidence: Math.min(0.95, 0.78 + ignoreMatches.length * 0.05),
+        keywords: ignoreMatches,
+        matchedPatterns: ['ignore_keywords'],
+        reasoning: `Found strong ignore keywords (${ignoreMatches.join(', ')})`,
+        warnings: [],
+      };
+    }
+
+    if (ignoreMatches.length > 0 && !this.hasPositiveTransactionSignal(cleanMessage)) {
+      return {
+        intent: 'Ignore',
+        confidence: Math.min(0.9, 0.7 + ignoreMatches.length * 0.04),
+        keywords: ignoreMatches,
+        matchedPatterns: ['ignore_keywords'],
+        reasoning: `Found ${ignoreMatches.length} ignore keywords`,
+        warnings: [],
+      };
     }
 
     // Check transfer keywords
     const transferMatches = this.extractMatchingKeywords(cleanMessage, this.transferKeywords);
-    if (transferMatches.length > 0) {
+    if (transferMatches.length > 0 && !cleanMessage.includes('received from')) {
       return {
         intent: 'Transfer',
-        confidence: Math.min(0.85, 0.4 + transferMatches.length / this.transferKeywords.length),
+        confidence: Math.min(0.85, 0.7 + transferMatches.length * 0.05),
         keywords: transferMatches,
         matchedPatterns: ['transfer_keywords'],
         reasoning: `Found ${transferMatches.length} transfer keywords`,
@@ -317,30 +344,34 @@ export class IntentClassificationEngine {
 
     // Check debit keywords
     const debitMatches = this.extractMatchingKeywords(cleanMessage, this.debitKeywords);
-    if (debitMatches.length > 0) {
-      // Additional check: make sure credit keywords are not dominant
-      const creditMatches = this.extractMatchingKeywords(cleanMessage, this.creditKeywords);
-      if (debitMatches.length > creditMatches.length) {
-        return {
-          intent: 'Debit',
-          confidence: Math.min(0.85, 0.4 + debitMatches.length / this.debitKeywords.length),
-          keywords: debitMatches,
-          matchedPatterns: ['debit_keywords'],
-          reasoning: `Found ${debitMatches.length} debit keywords`,
-          warnings:
-            creditMatches.length > 0
-              ? ['Also found credit keywords - verify intent']
-              : [],
-        };
-      }
+    const creditMatches = this.extractMatchingKeywords(cleanMessage, this.creditKeywords);
+
+    if (debitMatches.length > 0 && creditMatches.length > 0) {
+      return {
+        intent: 'Debit',
+        confidence: 0.74,
+        keywords: [...debitMatches, ...creditMatches],
+        matchedPatterns: ['debit_credit_keywords_conflict'],
+        reasoning: 'Found debit and credit keywords; defaulting to debit',
+        warnings: ['Conflicting credit indicators found - manual review recommended'],
+      };
     }
 
-    // Check credit keywords
-    const creditMatches = this.extractMatchingKeywords(cleanMessage, this.creditKeywords);
+    if (debitMatches.length > 0) {
+      return {
+        intent: 'Debit',
+        confidence: Math.min(0.79, 0.66 + debitMatches.length * 0.05),
+        keywords: debitMatches,
+        matchedPatterns: ['debit_keywords'],
+        reasoning: `Found ${debitMatches.length} debit keywords`,
+        warnings: [],
+      };
+    }
+
     if (creditMatches.length > 0) {
       return {
         intent: 'Credit',
-        confidence: Math.min(0.85, 0.4 + creditMatches.length / this.creditKeywords.length),
+        confidence: Math.min(0.79, 0.66 + creditMatches.length * 0.05),
         keywords: creditMatches,
         matchedPatterns: ['credit_keywords'],
         reasoning: `Found ${creditMatches.length} credit keywords`,
@@ -368,13 +399,16 @@ export class IntentClassificationEngine {
     const ignoreMatches = this.extractMatchingKeywords(cleanMessage, this.ignoreKeywords);
 
     // Ignore takes priority
-    if (ignoreMatches.length >= 2) {
+    if (
+      ignoreMatches.length > 0 &&
+      ignoreMatches.some((keyword) => this.strongIgnoreKeywords.has(keyword))
+    ) {
       return {
         intent: 'Ignore',
-        confidence: 0.75,
+        confidence: 0.82,
         keywords: ignoreMatches,
         matchedPatterns: ['combined_ignore'],
-        reasoning: 'Multiple ignore indicators found',
+        reasoning: 'Strong ignore indicators found',
         warnings: [],
       };
     }
@@ -400,7 +434,7 @@ export class IntentClassificationEngine {
     if (transferScore > debitScore && transferScore > creditScore) {
       return {
         intent: 'Transfer',
-        confidence: 0.65,
+        confidence: 0.74,
         keywords: transferMatches,
         matchedPatterns: ['combined_transfer'],
         reasoning: 'Transfer indicators dominant',
@@ -411,7 +445,7 @@ export class IntentClassificationEngine {
     if (debitScore > creditScore) {
       return {
         intent: 'Debit',
-        confidence: 0.65,
+        confidence: 0.74,
         keywords: debitMatches,
         matchedPatterns: ['combined_debit'],
         reasoning: 'Debit indicators dominant',
@@ -423,12 +457,23 @@ export class IntentClassificationEngine {
     if (creditScore > debitScore) {
       return {
         intent: 'Credit',
-        confidence: 0.65,
+        confidence: 0.74,
         keywords: creditMatches,
         matchedPatterns: ['combined_credit'],
         reasoning: 'Credit indicators dominant',
         warnings:
           debitScore > 0 ? ['Conflicting debit indicators found - manual review recommended'] : [],
+      };
+    }
+
+    if (debitScore > 0 && creditScore > 0) {
+      return {
+        intent: 'Debit',
+        confidence: 0.66,
+        keywords: [...debitMatches, ...creditMatches],
+        matchedPatterns: ['combined_conflict_debit'],
+        reasoning: 'Both debit and credit indicators found; defaulting to debit',
+        warnings: ['Conflicting credit indicators found - manual review recommended'],
       };
     }
 
@@ -449,14 +494,31 @@ export class IntentClassificationEngine {
     const matched: string[] = [];
 
     for (const keyword of keywords) {
-      // Use word boundaries to avoid partial matches
-      const pattern = new RegExp(`\\b${keyword}\\b`, 'gi');
+      const escapedKeyword = this.escapeRegex(keyword);
+      const hasWordCharsOnly = /^[a-z0-9]+$/i.test(keyword);
+      const pattern = hasWordCharsOnly
+        ? new RegExp(`\\b${escapedKeyword}\\b`, 'i')
+        : new RegExp(escapedKeyword, 'i');
       if (pattern.test(message)) {
         matched.push(keyword);
       }
     }
 
     return matched;
+  }
+
+  private hasPositiveTransactionSignal(message: string): boolean {
+    const positiveKeywords = [
+      ...this.debitKeywords,
+      ...this.creditKeywords,
+      ...this.transferKeywords,
+    ].filter((keyword) => !this.strongIgnoreKeywords.has(keyword));
+
+    return this.extractMatchingKeywords(message, positiveKeywords).length > 0;
+  }
+
+  private escapeRegex(input: string): string {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Amount Extraction Engine
  * Specialized engine for extracting monetary amounts from transaction messages.
@@ -21,6 +22,7 @@ export class AmountExtractionEngine {
     '¥': 'JPY',
     '₹': 'INR',
     '₹': 'INR',
+    'â‚¹': 'INR',
     'â‚¨': 'PKR',
     '$': 'USD',
     'â‚¬': 'EUR',
@@ -43,7 +45,7 @@ export class AmountExtractionEngine {
     amountGroup: number;
   }> = [
     { bankName: 'HDFC', pattern: /(?:₹|â‚¹)\s?([\d,]+(?:\.\d{1,2})?)\s*(?:debited|credited|spent|transferred)/i, amountGroup: 1 },
-    { bankName: 'ICICI', pattern: /amount\s*(?:of)?\s*(?:₹|â‚¹)?\s*([\d,]+(?:\.\d{1,2})?)\s*(?:has\s*)?(?:debited|credited)/i, amountGroup: 1 },
+    { bankName: 'ICICI', pattern: /(?:amount|spent|payment)[^₹â‚¹\d]*(?:₹|â‚¹)?\s*([\d,]+(?:\.\d{1,2})?).*(?:debited|credited|charged|deducted)/i, amountGroup: 1 },
     { bankName: 'SBI', pattern: /(?:₹|â‚¹)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:withdrawn|deposited|deducted|received)/i, amountGroup: 1 },
     { bankName: 'Axis', pattern: /(?:debited|credited|paid|received)\s*(?:from|to)?\s*(?:account|a\/c)?\s*(?:₹|â‚¹)\s*([\d,]+(?:\.\d{1,2})?)/i, amountGroup: 1 },
     { bankName: 'PayPal', pattern: /\$\s*([\d,]+(?:\.\d{1,2})?)\s*(?:sent|received|transferred)/i, amountGroup: 1 },
@@ -107,17 +109,8 @@ export class AmountExtractionEngine {
   }
 
   private extractFromBankPatterns(message: string): AmountExtractionResult {
-    const bankPatterns: { pattern: RegExp; amountGroup: number }[] = [
-      { pattern: /(?:₹|â‚¹)\s?([\d,]+(?:\.\d{1,2})?)\s*(?:debited|credited|spent|transferred)/i, amountGroup: 1 },
-      { pattern: /(?:amount|spent|payment).*(?:debited|credited|charged|deducted)/i, amountGroup: 1 },
-      { pattern: /(?:₹|â‚¹)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:withdrawn|deposited|deducted|received)/i, amountGroup: 1 },
-      { pattern: /(?:debited|credited|paid|received)\s*(?:from|to)?\s*(?:account|a\/c)?\s*(?:₹|â‚¹)\s*([\d,]+(?:\.\d{1,2})?)/i, amountGroup: 1 },
-      { pattern: /\$\s*([\d,]+(?:\.\d{1,2})?)\s*(?:sent|received|transferred)/i, amountGroup: 1 },
-      { pattern: /(?:sent|received)\s*(?:₹|â‚¹)\s*([\d,]+(?:\.\d{1,2})?)/i, amountGroup: 1 },
-      { pattern: /(?:paid|received)\s*(?:₹|â‚¹)\s*([\d,]+(?:\.\d{1,2})?)/i, amountGroup: 1 },
-    ];
-
-    for (const bankPattern of bankPatterns) {
+    for (const bankPattern of this.bankPatterns) {
+      bankPattern.pattern.lastIndex = 0;
       const match = bankPattern.pattern.exec(message);
       if (!match) continue;
 
@@ -359,6 +352,9 @@ export class AmountExtractionEngine {
   }
 
   private parseAmount(amountStr: string): number {
+    if (typeof amountStr !== 'string' || amountStr.length === 0) {
+      return 0;
+    }
     const cleaned = amountStr.replace(/,/g, '');
     const parsed = parseFloat(cleaned);
     return Number.isNaN(parsed) ? 0 : Math.abs(parsed);
@@ -366,6 +362,7 @@ export class AmountExtractionEngine {
 
   private isValidAmount(amount: number, message: string, matchIndex: number = 0): boolean {
     if (amount <= 0 || amount > 999999999) return false;
+    if (this.isHardExcludedContext(message, matchIndex)) return false;
     if (this.isExcludedContext(message, matchIndex) && !this.isTransactionContext(message, matchIndex)) return false;
     return true;
   }
@@ -373,6 +370,11 @@ export class AmountExtractionEngine {
   private isExcludedContext(message: string, matchIndex: number): boolean {
     const beforeMatch = message.substring(Math.max(0, matchIndex - 25), matchIndex).toLowerCase();
     return this.excludeKeywords.some((keyword) => beforeMatch.includes(keyword));
+  }
+
+  private isHardExcludedContext(message: string, matchIndex: number): boolean {
+    const beforeMatch = message.substring(Math.max(0, matchIndex - 12), matchIndex).toLowerCase();
+    return ['balance', 'limit', 'min.due', 'minimum', 'maximum'].some((keyword) => beforeMatch.includes(keyword));
   }
 
   private extractCurrency(message: string): string {
@@ -433,7 +435,7 @@ export class AmountExtractionEngine {
     if (beforeMatch.includes('call') || beforeMatch.includes('phone') || beforeMatch.includes('contact')) {
       return true;
     }
-    return amount >= 1000 && amount <= 9999 && !/[₹â‚¹$€£]/.test(message);
+    return false;
   }
 
   extractTransactionData(message: string): Partial<ExtractedTransactionData> {

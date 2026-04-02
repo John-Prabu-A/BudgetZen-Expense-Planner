@@ -10,7 +10,7 @@
  * 5. Result is stored and reported
  */
 
-import { AmountExtractionEngine } from './engines/AmountExtractionEngine';
+import { AmountExtractionEngine } from './engines/AmountExtractionEngine.fixed';
 import { IntentClassificationEngine } from './engines/IntentClassificationEngine';
 import { RecordCreationService } from './RecordCreationService';
 import { TransactionCandidate, TransactionClassification, UnifiedMessage, NormalizedMessage } from './types';
@@ -71,17 +71,35 @@ export class TransactionProcessingPipeline {
         console.log('[Pipeline] Processing message:', message.rawText);
       }
 
+      if (typeof message.rawText !== 'string') {
+        return {
+          success: false,
+          message: 'Pipeline processing failed: invalid message format',
+          warnings: ['Malformed message payload'],
+        };
+      }
+
       // STEP 1: Extract Amount
       const amountResult = this.amountEngine.extract(message.rawText);
 
       if (!amountResult.amount) {
+        const intentResult = this.intentEngine.classify(
+          message.rawText,
+          message.senderIdentifier
+        );
+
         if (this.config.debugMode) {
           console.log('[Pipeline] No amount found - skipping');
         }
         return {
           success: false,
+          intent: intentResult.intent as any,
+          confidence: intentResult.confidence,
           message: 'No amount detected in message',
-          warnings: ['Insufficient data for transaction detection'],
+          warnings: [
+            'Insufficient data for transaction detection',
+            ...intentResult.warnings,
+          ],
         };
       }
 

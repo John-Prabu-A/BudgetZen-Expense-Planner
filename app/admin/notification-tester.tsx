@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, Text, Platform } from 'react-native';
-import { useTheme } from '@/context/Theme';
+import { AnimatedButton } from '@/components/AnimatedButton';
 import { useAuth } from '@/context/Auth';
+import { useTheme } from '@/context/Theme';
 import { notificationService } from '@/lib/notifications/NotificationService';
 import { NotificationType } from '@/lib/notifications/types';
-import { AnimatedButton } from '@/components/AnimatedButton';
 import * as Notifications from 'expo-notifications';
+import React, { useEffect, useState } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function NotificationTester() {
   const { colors } = useTheme();

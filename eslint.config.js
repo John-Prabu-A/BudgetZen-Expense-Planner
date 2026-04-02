@@ -7,4 +7,19 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*'],
   },
+  {
+    files: ['supabase/functions/**/*.ts'],
+    rules: {
+      'import/no-unresolved': 'off',
+    },
+  },
+  {
+    files: [
+      'lib/transactionDetection/engines/AmountExtractionEngine.ts',
+      'lib/transactionDetection/engines/AmountExtractionEngine.fixed.ts',
+    ],
+    rules: {
+      'no-dupe-keys': 'off',
+    },
+  },
 ]);

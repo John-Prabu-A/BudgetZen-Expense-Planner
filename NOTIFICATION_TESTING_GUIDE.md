@@ -14,17 +14,17 @@
 ### Architecture Flow
 ```
 User Action
-    ↓
+      ↓
 Preferences Check
-    ↓
+      ↓
 Notification Payload Created
-    ↓
+      ↓
 NotificationService.sendNotification()
-    ↓
+      ↓
 Expo Notifications API
-    ↓
+      ↓
 Device OS (iOS/Android)
-    ↓
+      ↓
 User sees notification
 ```
 

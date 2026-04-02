@@ -6,7 +6,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { TransactionProcessingPipeline } from '../transactionDetection/TransactionProcessingPipeline';
-import { AmountExtractionEngine } from '../transactionDetection/engines/AmountExtractionEngine';
+import { AmountExtractionEngine } from '../transactionDetection/engines/AmountExtractionEngine.fixed';
 import { IntentClassificationEngine } from '../transactionDetection/engines/IntentClassificationEngine';
 import { offlineDatabase } from './OfflineDatabase';
 import { syncManager } from './SyncManager';
