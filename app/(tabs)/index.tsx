@@ -103,6 +103,8 @@ export default function RecordsScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [pagerView, setPagerView] = useState<'CALENDAR' | 'CHART'>('CALENDAR');
   const [fabExpanded, setFabExpanded] = useState(false);
+  const fabRightOffset = typeof spacing?.xl === 'number' ? spacing.xl : 24;
+  const bottomFabOffset = fabRightOffset + 12;
 
   // --- Date Range Logic (Preserved) ---
   const initializeCurrentMonthRange = () => {
@@ -199,6 +201,11 @@ export default function RecordsScreen() {
       menuScaleAnim.setValue(0.8);
     }, [handleLoad, fabRotateAnim, fabScaleAnim, menuOpacityAnim, menuScaleAnim])
   );
+
+  useEffect(() => {
+    // Ensure FAB is closed on (re)mounts, including Fast Refresh cycles in dev.
+    setFabExpanded(false);
+  }, []);
 
   // FAB animation effect
   useEffect(() => {
@@ -658,7 +665,7 @@ export default function RecordsScreen() {
         )}
 
         {/* Records List */}
-        <View style={{ paddingBottom: spacing.xl }}>
+        <View style={{ paddingBottom: (spacing?.xxl ?? 48) + 120 }}>
           {loading ? (
             <View style={styles.emptyState}>
               <MaterialCommunityIcons name="loading" size={48} color={colors.accent} />
@@ -699,6 +706,8 @@ export default function RecordsScreen() {
           style={[
             styles.fabMenu,
             {
+              bottom: bottomFabOffset + 72,
+              right: fabRightOffset,
               opacity: menuOpacityAnim,
               transform: [{ scale: menuScaleAnim }],
             },
@@ -738,34 +747,25 @@ export default function RecordsScreen() {
         style={[
           styles.fabContainer,
           {
+            bottom: bottomFabOffset,
+            right: fabRightOffset,
             transform: [{ scale: fabScaleAnim }],
           },
         ]}
       >
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: colors.accent }]}
-          onPress={() => setFabExpanded(!fabExpanded)}
+          onPress={() => setFabExpanded((prev) => !prev)}
           activeOpacity={0.8}
         >
-          <Animated.View
-            style={{
-              transform: [
-                {
-                  rotate: fabRotateAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '45deg'],
-                  }),
-                },
-              ],
-            }}
-          >
+          <View>
             <MaterialCommunityIcons
               name={fabExpanded ? 'close' : 'plus'}
               size={28}
               color="#FFFFFF"
               style={{ fontWeight: 'bold' }}
             />
-          </Animated.View>
+          </View>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -776,7 +776,7 @@ const getStyles = (spacing: any) =>
   StyleSheet.create({
     container: { flex: 1 },
     scrollContent: { flexGrow: 1, paddingHorizontal: 8 },
-    scrollContentInner: { paddingBottom: 45 },
+    scrollContentInner: { paddingBottom: 140 },
 
     headerContainer: {
       flexDirection: 'row',
@@ -1057,9 +1057,6 @@ const getStyles = (spacing: any) =>
     },
 
     fab: {
-      position: 'absolute',
-      bottom: spacing?.xl ?? 24,
-      right: spacing?.xl ?? 24,
       width: 60,
       height: 60,
       borderRadius: 30,
@@ -1075,8 +1072,6 @@ const getStyles = (spacing: any) =>
 
     fabContainer: {
       position: 'absolute',
-      bottom: spacing?.xl ?? 24,
-      right: spacing?.xl ?? 24,
       zIndex: 999,
     },
 
@@ -1092,8 +1087,6 @@ const getStyles = (spacing: any) =>
 
     fabMenu: {
       position: 'absolute',
-      bottom: 100,
-      right: spacing?.xl ?? 24,
       gap: 12,
       zIndex: 950,
       alignItems: 'flex-end',
