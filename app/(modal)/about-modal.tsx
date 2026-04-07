@@ -3,12 +3,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Linking,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -135,7 +135,7 @@ export default function AboutModal() {
               styles.contactButton,
               { borderColor: colors.border },
             ]}
-            onPress={() => handleOpenURL('mailto:jpdevland@gmail.com')}>
+            onPress={() => handleOpenURL('mailto:jpdevland.dev@gmail.com')}>
             <View style={styles.contactContent}>
               <MaterialCommunityIcons
                 name="email-outline"
@@ -147,7 +147,7 @@ export default function AboutModal() {
                   Email Support
                 </Text>
                 <Text style={[styles.contactValue, { color: colors.textSecondary }]}>
-                  jpdevland@gmail.com
+                  jpdevland.dev@gmail.com
                 </Text>
               </View>
             </View>

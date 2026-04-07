@@ -6,20 +6,20 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Dimensions,
-    Linking,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    View,
+  Dimensions,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
 } from 'react-native';
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withTiming,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -233,14 +233,14 @@ const PrivacyScreen = () => {
                   I agree to the{' '}
                   <Text
                     style={{ color: colors.accent, fontWeight: '700' }}
-                    onPress={() => Linking.openURL('https://example.com/terms')}
+                    onPress={() => Linking.openURL('https://jpdevland.com/p/terms-conditions-budgetzen')}
                   >
                     Terms of Service
                   </Text>
                   {' '}and{' '}
                   <Text
                     style={{ color: colors.accent, fontWeight: '700' }}
-                    onPress={() => Linking.openURL('https://example.com/privacy')}
+                    onPress={() => Linking.openURL('https://jpdevland.com/p/privacy-policy-budgetzen')}
                   >
                     Privacy Policy
                   </Text>
@@ -286,17 +286,17 @@ const PrivacyScreen = () => {
               {
                 icon: 'file-document-outline',
                 label: 'Terms of Service',
-                url: 'https://example.com/terms',
+                url: 'https://jpdevland.com/p/terms-conditions-budgetzen',
               },
               {
                 icon: 'lock-outline',
                 label: 'Privacy Policy',
-                url: 'https://example.com/privacy',
+                url: 'https://jpdevland.com/p/privacy-policy-budgetzen',
               },
               {
                 icon: 'information-outline',
                 label: 'Data Security',
-                url: 'https://example.com/security',
+                url: 'https://jpdevland.com/p/data-security-policy-budgetzen',
               },
             ].map((link, index) => (
               <View

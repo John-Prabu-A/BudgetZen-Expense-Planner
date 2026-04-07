@@ -176,7 +176,7 @@ export const sendContactMessage = async (
  * This calls the Supabase Edge Function that:
  * 1. Receives the contact message
  * 2. Formats it into a nice email
- * 3. Sends to creator (jpdevland@gmail.com) via Resend
+ * 3. Sends to creator (jpdevland.dev@gmail.com) via Resend
  * 4. Updates message status to 'sent' or 'failed'
  * 
  * @param message - Contact message object

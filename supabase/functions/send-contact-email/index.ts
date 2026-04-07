@@ -259,7 +259,7 @@ serve(async (req) => {
 
     const emailHtml = buildEmailHTML(body);
 // @ts-ignore
-    const recipient = Deno.env.get("CONTACT_RECIPIENT_EMAIL") || "jpdevland@gmail.com";
+    const recipient = Deno.env.get("CONTACT_RECIPIENT_EMAIL") || "jpdevland.dev@gmail.com";
     const emailSubject = `[${body.messageType.replace(/_/g, " ")}] ${body.subject}`;
 
     const emailResult = await sendEmail(recipient, emailSubject, emailHtml);
