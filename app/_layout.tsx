@@ -2,7 +2,7 @@ import UnifiedLockScreen from '@/components/UnifiedLockScreen';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../context/Auth';
 import { NotificationsProvider, useNotifications } from '../context/Notifications';
@@ -20,6 +20,14 @@ import { NotificationService } from '../lib/notifications/NotificationService';
 import { supabase } from '../lib/supabase';
 
 const InitialLayout = () => {
+    // Disable console logs in production for better performance and privacy
+    if (!__DEV__) {
+        console.log = () => {};
+        console.info = () => {};
+        console.debug = () => {};
+        // Keep console.warn and console.error for monitoring
+    }
+
     const { session, loading: authLoading, isPasswordLocked, unlockPassword, passwordStatusChecked } = useAuth();
     const { isDark, colors } = useTheme();
     const { authMethod, passwordHash, passcodeHash, passcodeLength } = usePreferences();
@@ -279,11 +287,11 @@ const InitialLayout = () => {
 
         // If segments don't have a group, navigation hasn't been initialized yet
         // This is normal when the app is first loading - just wait
-        if (!inAuthGroup && !inOnboardingGroup && !inTabsGroup && !inPreferences && !isModal && !inAppGroup) {
-            console.log('[NAV] ⏳ Waiting for route initialization (segments not yet populated)');
-            console.log('[NAV-DEBUG] ⏳ Segments is empty or invalid:', segments);
-            return;
-        }
+        // if (!inAuthGroup && !inOnboardingGroup && !inTabsGroup && !inPreferences && !isModal && !inAppGroup) {
+        //     console.log('[NAV] ⏳ Waiting for route initialization (segments not yet populated)');
+        //     console.log('[NAV-DEBUG] ⏳ Segments is empty or invalid:', segments);
+        //     return;
+        // }
 
         console.log('[NAV] Current route state:', {
             segments: segments[0],
@@ -381,7 +389,7 @@ const InitialLayout = () => {
             return;
         }
 
-        if (!inTabsGroup && !inAppGroup) {
+        if (!inTabsGroup && !inAppGroup && !inOnboardingGroup && !inAuthGroup && segments?.length > 0) {
             const targetRoute = '/(tabs)';
             const now = Date.now();
             // Prevent rapid repeated navigation
@@ -397,7 +405,7 @@ const InitialLayout = () => {
                 }
             }
         } else {
-            console.log('[NAV] ✅ Already on main app screen');
+            console.log('[NAV] ✅ Already on expected screen or segments not ready');
         }
     }, [
         session,
@@ -434,6 +442,7 @@ const InitialLayout = () => {
 
     // Show password lock screen if password is locked
     // Show the appropriate lock screen based on authMethod and available credentials
+    let lockScreenElement = null;
     if (isPasswordLocked) {
         console.log('[DEBUG] 🔒 PASSWORD LOCK SCREEN - Rendering lock screen:', {
             isPasswordLocked,
@@ -446,7 +455,7 @@ const InitialLayout = () => {
         // If we have password hash, show password lock screen (fallback/default)
         if (passwordHash) {
             console.log('[DEBUG] 🔐 Rendering PASSWORD lock screen');
-            return (
+            lockScreenElement = (
                 <UnifiedLockScreen
                     authMethod={authMethod === 'passcode' ? 'passcode' : authMethod === 'both' ? 'both' : 'password'}
                     passwordHash={passwordHash}
@@ -459,7 +468,7 @@ const InitialLayout = () => {
         // If we have passcode hash but no password, show passcode lock screen
         else if (passcodeHash) {
             console.log('[DEBUG] 📱 Rendering PASSCODE lock screen');
-            return (
+            lockScreenElement = (
                 <UnifiedLockScreen
                     authMethod="passcode"
                     passcodeHash={passcodeHash}
@@ -467,14 +476,14 @@ const InitialLayout = () => {
                     onUnlock={unlockPassword}
                 />
             );
+        } else {
+            // If neither password nor passcode, something is wrong
+            console.warn('[DEBUG] ⚠️ PASSWORD LOCKED BUT NO CREDENTIALS FOUND!', {
+                isPasswordLocked,
+                hasPasswordHash: !!passwordHash,
+                hasPasscodeHash: !!passcodeHash,
+            });
         }
-        
-        // If neither password nor passcode, something is wrong
-        console.warn('[DEBUG] ⚠️ PASSWORD LOCKED BUT NO CREDENTIALS FOUND!', {
-            isPasswordLocked,
-            hasPasswordHash: !!passwordHash,
-            hasPasscodeHash: !!passcodeHash,
-        });
     }
 
     console.log('[DEBUG] 🗺️ RENDERING STACK with all routes registered:', {
@@ -507,6 +516,11 @@ const InitialLayout = () => {
                 <Stack.Screen name="preferences" options={{ headerShown: false }} />
                 <Stack.Screen name="passcode-setup" options={{ headerShown: false }} />
             </Stack>
+            {lockScreenElement && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background, zIndex: 9999 }]}>
+                    {lockScreenElement}
+                </View>
+            )}
         </>
     );
 };

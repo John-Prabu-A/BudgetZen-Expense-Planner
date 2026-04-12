@@ -6,11 +6,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     Modal,
     ScrollView,
     StyleSheet,
     Switch,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -20,7 +23,7 @@ type ModalType = 'theme' | 'uiMode' | 'currencySign' | 'currencyPosition' | 'dec
 export default function PreferencesScreen() {
   const router = useRouter();
   const { isDark, colors } = useTheme();
-  const { user } = useAuth();
+  const { user, deleteAccount } = useAuth();
   const {
     theme,
     setTheme,
@@ -44,6 +47,9 @@ export default function PreferencesScreen() {
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [showTimePickerModal, setShowTimePickerModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Theme modal options
   const themeOptions = [
@@ -502,6 +508,36 @@ export default function PreferencesScreen() {
             <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
+
+        {/* DANGER ZONE SECTION */}
+        <View style={[styles.section, { marginBottom: 60, backgroundColor: colors.danger + '08' }]}>
+          <View style={[styles.sectionHeader, { paddingBottom: 4 }]}>
+            <Text style={[styles.sectionTitle, { color: colors.danger }]}>Danger Zone</Text>
+          </View>
+          
+          <TouchableOpacity
+            style={[
+              styles.preferenceRow,
+              {
+                backgroundColor: 'transparent',
+                borderBottomColor: 'transparent',
+              },
+            ]}
+            onPress={() => setShowDeleteModal(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.prefLeft}>
+              <MaterialCommunityIcons name="account-remove-outline" size={24} color={colors.danger} />
+              <View style={styles.prefLabel}>
+                <Text style={[styles.prefTitle, { color: colors.danger, fontWeight: '700' }]}>Delete Account</Text>
+                <Text style={[styles.prefDescription, { color: colors.textSecondary }]}>
+                  Permanently wipe all your data
+                </Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons name="alert-outline" size={20} color={colors.danger} />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* Modals */}
@@ -561,6 +597,94 @@ export default function PreferencesScreen() {
         onClose={() => setShowTimePickerModal(false)}
         title="Set Reminder Time"
       />
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={[styles.deleteModalContent, { backgroundColor: colors.surface }]}>
+            <View style={[styles.deleteIconContainer, { backgroundColor: colors.danger + '15' }]}>
+              <MaterialCommunityIcons name="alert-decagram" size={40} color={colors.danger} />
+            </View>
+            
+            <Text style={[styles.deleteTitle, { color: colors.text }]}>Delete Account?</Text>
+            <Text style={[styles.deleteDescription, { color: colors.textSecondary }]}>
+              This action is <Text style={{ fontWeight: '700', color: colors.danger }}>permanent</Text>. 
+              All your accounts, categories, and transactions will be wiped forever.
+            </Text>
+
+            <View style={styles.deleteConfirmInputWrapper}>
+              <Text style={[styles.deleteConfirmLabel, { color: colors.textSecondary }]}>
+                Type <Text style={{ color: colors.text, fontWeight: '700' }}>DELETE</Text> to confirm
+              </Text>
+              <TextInput
+                style={[
+                  styles.deleteInput,
+                  { 
+                    color: colors.text, 
+                    backgroundColor: colors.background,
+                    borderColor: deleteConfirmText === 'DELETE' ? colors.danger : colors.border
+                  }
+                ]}
+                value={deleteConfirmText}
+                onChangeText={setDeleteConfirmText}
+                placeholder="Type here..."
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="characters"
+                editable={!isDeleting}
+              />
+            </View>
+
+            <View style={styles.deleteActions}>
+              <TouchableOpacity
+                style={[styles.deleteButton, styles.cancelButton, { borderColor: colors.border }]}
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText('');
+                }}
+                disabled={isDeleting}
+              >
+                <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.deleteButton, 
+                  styles.confirmDeleteButton, 
+                  { 
+                    backgroundColor: deleteConfirmText === 'DELETE' ? colors.danger : colors.border,
+                    opacity: deleteConfirmText === 'DELETE' ? 1 : 0.5
+                  }
+                ]}
+                onPress={async () => {
+                  if (deleteConfirmText !== 'DELETE') return;
+                  
+                  try {
+                    setIsDeleting(true);
+                    await deleteAccount();
+                    setShowDeleteModal(false);
+                    // Auth state change will handle routing to login
+                  } catch (error: any) {
+                    Alert.alert('Error', error.message || 'Failed to delete account. Please try again.');
+                    setIsDeleting(false);
+                  }
+                }}
+                disabled={deleteConfirmText !== 'DELETE' || isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.confirmDeleteButtonText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -675,5 +799,88 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  // Delete Modal Styles
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  deleteModalContent: {
+    width: '100%',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+  },
+  deleteIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  deleteTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  deleteDescription: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  deleteConfirmInputWrapper: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  deleteConfirmLabel: {
+    fontSize: 13,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  deleteInput: {
+    height: 50,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 2,
+  },
+  deleteActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  deleteButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    borderWidth: 1.5,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmDeleteButton: {
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  confirmDeleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

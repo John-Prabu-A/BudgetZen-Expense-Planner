@@ -8,6 +8,7 @@ type AuthContextType = {
   session: Session | null;
   user: User | null;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   loading: boolean;
   isPasswordLocked: boolean;
   unlockPassword: () => void;
@@ -124,6 +125,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      console.log('[AUTH] 🗑️ Initiating account deletion...');
+      
+      // Call the RPC function we created in SQL
+      // This requires the function to be created in Supabase first
+      const { error } = await supabase.rpc('delete_user');
+      
+      if (error) {
+        console.error('Error during account deletion RPC:', error);
+        throw error;
+      }
+
+      console.log('[AUTH] ✅ Account deleted successfully from DB');
+      
+      // After database deletion, sign out to clear local session
+      await signOut();
+
+      // Clear local secure storage related to auth/security
+      await SecureStorageManager.deleteItem('pref_password_hash');
+      await SecureStorageManager.deleteItem('pref_passcode_hash');
+      
+      console.log('[AUTH] 🧹 Local auth data cleared');
+    } catch (error) {
+      console.error('Error during account deletion:', error);
+      throw error;
+    }
+  };
+
   const unlockPassword = () => {
     console.log('[AUTH] 🔓 UNLOCK PASSWORD called - setting isPasswordLocked to false');
     setIsPasswordLocked(false);
@@ -131,7 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, signOut, loading, isPasswordLocked, unlockPassword, passwordStatusChecked }}>
+    <AuthContext.Provider value={{ session, user, signOut, deleteAccount, loading, isPasswordLocked, unlockPassword, passwordStatusChecked }}>
       {children}
     </AuthContext.Provider>
   );

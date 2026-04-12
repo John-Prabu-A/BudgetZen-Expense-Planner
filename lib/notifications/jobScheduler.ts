@@ -134,23 +134,11 @@ export class JobScheduler {
    * Start the scheduler
    */
   async start(): Promise<void> {
-    if (this.isRunning) {
-      console.log(`⚠️ [Scheduler] Already running`);
-      return;
-    }
-
+    // DISABLED for backend migration
+    // Frontend-based background notifications have been migrated to Supabase pg_cron
+    // and Edge Functions for true reliable delivery while the app is killed.
+    console.log(`⚠️ [Scheduler] Local frontend scheduler is disabled. Relying on Supabase pg_cron.`);
     this.isRunning = true;
-    console.log(`🚀 [Scheduler] Starting job scheduler...`);
-
-    // Schedule each job
-    for (const [jobName, job] of this.jobs) {
-      if (job.enabled) {
-        this.scheduleJob(jobName, job);
-      }
-    }
-
-    // Log status
-    console.log(`✅ [Scheduler] Started with ${this.timers.size} scheduled job(s)`);
   }
 
   /**

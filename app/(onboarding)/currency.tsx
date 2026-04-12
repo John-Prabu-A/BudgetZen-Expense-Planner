@@ -4,6 +4,7 @@ import { usePreferences } from '@/context/Preferences';
 import { useTheme } from '@/context/Theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
 import {
   Dimensions,
@@ -44,7 +45,7 @@ const getCurrencySymbol = (code: string): string => {
 
 const CurrencyScreen = () => {
   const { isDark, colors } = useTheme();
-  const { completeStep } = useOnboarding();
+  const { completeStep, skipToStep } = useOnboarding();
   const { setCurrencySign } = usePreferences();
   const [search, setSearch] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
@@ -99,6 +100,17 @@ const CurrencyScreen = () => {
       router.push('/(onboarding)/privacy');
     } catch (error) {
       console.error('[Currency] Error selecting currency:', error);
+    }
+  };
+
+  const handleSkip = async () => {
+    try {
+      console.log('[Currency] Skipping onboarding...');
+      await skipToStep(OnboardingStep.COMPLETED);
+      // _layout should automatically catch this and navigate, but we can be explicit
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('[Currency] Error skipping onboarding:', error);
     }
   };
 
@@ -240,6 +252,10 @@ const CurrencyScreen = () => {
           />
         ) : null}
       </View>
+
+      <TouchableOpacity onPress={handleSkip} style={[styles.skipButton, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+        <Text style={[styles.skipText, { color: colors.accent }]}>Already have an account? Sign In</Text>
+      </TouchableOpacity>
     </Animated.View>
   );
 
@@ -315,6 +331,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
+  },
+  skipButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  skipText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   currencyCard: {
     flexDirection: 'row',

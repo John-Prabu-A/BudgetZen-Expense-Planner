@@ -68,6 +68,7 @@ interface PreferencesContextType {
 
   // Loading state
   loading: boolean;
+  resetAllPreferences: () => Promise<void>;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(undefined);
@@ -409,8 +410,8 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
       // Persist to SecureStore
       await SecureStorageManager.setItem(STORAGE_KEYS.REMINDER_TIME, normalizedTime);
       
-      // TODO: Sync with Supabase when user context is available
-      // This will be handled by the NotificationsContext/dailyReminderJob
+      // Sync with Supabase when combined with NotificationsContext/JobScheduler
+      // This is handled by lib/notifications/notificationScheduler if it needs to update the db
     } catch (error) {
       console.error('Error setting reminder time:', error);
     }
@@ -548,6 +549,45 @@ export const PreferencesProvider = ({ children }: { children: React.ReactNode })
     setSendCrashStats,
     appVersion: '1.0.0',
     loading,
+    resetAllPreferences: async () => {
+      try {
+        setLoading(true);
+        // Delete all keys from secure storage
+        const keys = Object.values(STORAGE_KEYS);
+        for (const key of keys) {
+          await SecureStorageManager.deleteItem(key);
+        }
+        // Reset states to defaults
+        setThemeState(DEFAULT_VALUES.theme);
+        setUIModeState(DEFAULT_VALUES.uiMode);
+        setCurrencySignState(DEFAULT_VALUES.currencySign);
+        setCurrencyPositionState(DEFAULT_VALUES.currencyPosition);
+        setDecimalPlacesState(DEFAULT_VALUES.decimalPlaces);
+        setHasSecurityState(DEFAULT_VALUES.hasSecurity);
+        setPasscodeEnabledState(DEFAULT_VALUES.passcodeEnabled);
+        setPasscodeHashState(DEFAULT_VALUES.passcodeHash);
+        setPasscodeLengthState(DEFAULT_VALUES.passcodeLength);
+        setPasswordEnabledState(DEFAULT_VALUES.passwordEnabled);
+        setPasswordHashState(DEFAULT_VALUES.passwordHash);
+        setAuthMethodState(DEFAULT_VALUES.authMethod);
+        setRemindDailyState(DEFAULT_VALUES.remindDaily);
+        setReminderTimeState(DEFAULT_VALUES.reminderTime);
+        setBudgetAlertsState(DEFAULT_VALUES.budgetAlerts);
+        setLowBalanceAlertsState(DEFAULT_VALUES.lowBalanceAlerts);
+        setEmailNotificationsState(DEFAULT_VALUES.emailNotifications);
+        setPushNotificationsState(DEFAULT_VALUES.pushNotifications);
+        setAutoSyncState(DEFAULT_VALUES.autoSync);
+        setAutoBackupState(DEFAULT_VALUES.autoBackup);
+        setDataRetentionDaysState(DEFAULT_VALUES.dataRetentionDays);
+        setExportFormatState(DEFAULT_VALUES.exportFormat);
+        setSendCrashStatsState(DEFAULT_VALUES.sendCrashStats);
+        console.log('✨ [Preferences] All preferences reset to factory defaults');
+      } catch (error) {
+        console.error('Error resetting preferences:', error);
+      } finally {
+        setLoading(false);
+      }
+    },
   };
 
   return (

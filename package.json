@@ -15,7 +15,8 @@
     "metro": "expo start --clear",
     "lint": "eslint . --ext .ts,.tsx --no-cache",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "eas-build-pre-install": "cp $GOOGLE_SERVICES_JSON ./google-services.json"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

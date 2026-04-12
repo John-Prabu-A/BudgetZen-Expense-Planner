@@ -1,4 +1,3 @@
-
 import { AnimatedButton } from '@/components/AnimatedButton';
 import { Input } from '@/components/ui/Input';
 import { useTheme } from '@/context/Theme';
@@ -40,10 +39,9 @@ AppState.addEventListener('change', (nextAppState) => {
 export default function Auth() {
   const { isDark, colors } = useTheme();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -102,42 +100,43 @@ export default function Auth() {
     transform: [{ translateY: formTranslateY.value }],
   }));
 
-  async function signInWithEmail() {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+  async function sendOtp() {
+    if (!email.trim() || !email.includes('@')) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      password: password,
     });
 
-    if (error) Alert.alert('Sign In Error', error.message);
+    if (error) {
+      Alert.alert('Error Sending Code', error.message);
+    } else {
+      setOtpSent(true);
+    }
     setLoading(false);
   }
 
-  async function signUpWithEmail() {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+  async function verifyOtp() {
+    if (!otp.trim() || otp.length !== 6) {
+      Alert.alert('Error', 'Please enter the 6-digit code');
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.verifyOtp({
       email: email.trim(),
-      password: password,
+      token: otp.trim(),
+      type: 'email',
     });
 
-    if (error) Alert.alert('Sign Up Error', error.message);
-    else Alert.alert('Success', 'Check your email to confirm your account');
-    setLoading(false);
+    if (error) {
+      Alert.alert('Verification Error', error.message);
+      setLoading(false);
+    }
+    // On success, the session state updates and _layout.tsx will navigate to main app
   }
 
   return (
@@ -191,88 +190,81 @@ export default function Auth() {
               { color: colors.textSecondary },
             ]}
           >
-            {isSignUp
-              ? 'Create your account to get started'
-              : 'Welcome back! Sign in to continue'}
+            {otpSent
+              ? 'Enter the 6-digit code sent to your email'
+              : 'Sign in instantly with a secure code sent to your email.'}
           </Text>
         </Animated.View>
 
         {/* Form Section */}
         <Animated.View style={[styles.formSection, formAnimatedStyle]}>
-          {/* Email Input */}
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: colors.text }]}>Email</Text>
-            <View
-              style={[
-                styles.inputContainer,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="email-outline"
-                size={20}
-                color={colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <Input
-                placeholder="you@example.com"
-                value={email}
-                onChangeText={setEmail}
-                editable={!loading}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={[styles.input, {color: colors.text}]}
-                placeholderTextColor={colors.inputPlaceholder}
-              />
-            </View>
-          </View>
-
-          {/* Password Input */}
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: colors.text }]}>Password</Text>
-            <View
-              style={[
-                styles.inputContainer,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="lock-outline"
-                size={20}
-                color={colors.textSecondary}
-                style={styles.inputIcon}
-              />
-              <Input
-                placeholder="••••••••"
-                value={password}
-                onChangeText={setPassword}
-                editable={!loading}
-                secureTextEntry={!showPassword}
-                style={[styles.input, {color: colors.text}]}
-                placeholderTextColor={colors.inputPlaceholder}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
+          {!otpSent ? (
+            /* Email Input */
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Email Address</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
               >
                 <MaterialCommunityIcons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  name="email-outline"
                   size={20}
                   color={colors.textSecondary}
+                  style={styles.inputIcon}
                 />
-              </TouchableOpacity>
+                <Input
+                  placeholder="you@example.com"
+                  value={email}
+                  onChangeText={setEmail}
+                  editable={!loading}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  style={[styles.input, {color: colors.text}]}
+                  placeholderTextColor={colors.inputPlaceholder}
+                />
+              </View>
             </View>
-          </View>
+          ) : (
+            /* OTP Input */
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Security Code</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="lock-check-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <Input
+                  placeholder="123456"
+                  value={otp}
+                  onChangeText={setOtp}
+                  editable={!loading}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  style={[styles.input, {color: colors.text}]}
+                  placeholderTextColor={colors.inputPlaceholder}
+                />
+              </View>
+            </View>
+          )}
 
           {/* Primary Action Button */}
           <AnimatedButton
-            onPress={isSignUp ? signUpWithEmail : signInWithEmail}
+            onPress={otpSent ? verifyOtp : sendOtp}
             disabled={loading}
             style={{
               marginTop: 20,
@@ -297,41 +289,42 @@ export default function Auth() {
                 />
               ) : (
                 <MaterialCommunityIcons
-                  name={isSignUp ? 'account-plus-outline' : 'login-variant'}
+                  name={otpSent ? 'check-circle-outline' : 'email-fast-outline'}
                   size={20}
                   color={colors.textOnAccent}
                   style={{ marginRight: 8 }}
                 />
               )}
               <Text style={[styles.primaryButtonText, { color: colors.textOnAccent }]}>
-                {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
+                {loading ? 'Please wait...' : otpSent ? 'Verify Code' : 'Send Code'}
               </Text>
             </View>
           </AnimatedButton>
 
           {/* Secondary Action Button */}
-          <AnimatedButton
-            onPress={() => {
-              setIsSignUp(!isSignUp);
-              setEmail('');
-              setPassword('');
-            }}
-            disabled={loading}
-          >
-            <View
-              style={[
-                styles.secondaryButton,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
+          {otpSent && (
+            <AnimatedButton
+              onPress={() => {
+                setOtpSent(false);
+                setOtp('');
+              }}
+              disabled={loading}
             >
-              <Text style={[styles.secondaryButtonText, { color: colors.accent }]}>
-                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-              </Text>
-            </View>
-          </AnimatedButton>
+              <View
+                style={[
+                  styles.secondaryButton,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.accent }]}>
+                  Change Email Address
+                </Text>
+              </View>
+            </AnimatedButton>
+          )}
 
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
@@ -344,7 +337,7 @@ export default function Auth() {
             ]}
           >
             <MaterialCommunityIcons
-              name="information-outline"
+              name={otpSent ? "email-check-outline" : "information-outline"}
               size={18}
               color={colors.accent}
               style={{ marginRight: 8 }}
@@ -355,7 +348,7 @@ export default function Auth() {
                 { color: colors.accent },
               ]}
             >
-              Your data is securely encrypted
+              {otpSent ? "Check your spam folder if you don't instantly see it." : "We'll email you a magic code for password-free login."}
             </Text>
           </View>
         </Animated.View>
@@ -435,9 +428,6 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 15,
     fontWeight: '500',
-  },
-  eyeIcon: {
-    padding: 8,
   },
   primaryButton: {
     flexDirection: 'row',
